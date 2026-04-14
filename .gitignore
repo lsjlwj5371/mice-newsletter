@@ -1,0 +1,4 @@
+# Whitelist approach: ignore everything except target files
+*
+!.gitignore
+!ground_insight_gmail_v5.html
