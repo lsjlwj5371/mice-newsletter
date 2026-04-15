@@ -7,7 +7,7 @@
  */
 
 export interface NewsletterContent {
-  /** Issue date e.g. "2026.04" or "2026.04.15" */
+  /** Issue date e.g. "2026.04" or "VOL.01 · 2026년 4월호" */
   issueLabel: string;
 
   /** Email subject line (also visible in inbox preview) */
@@ -18,105 +18,196 @@ export interface NewsletterContent {
   openingHook: OpeningHookContent;
   numberOfMonth: NumberOfMonthContent;
   newsBriefing: BriefingSection;
-  miceInOut: BriefingSection;
-  techSignal: BriefingSection;
-  theoryToField: BriefingSection;
+  miceInOut: MiceInOutContent;
+  techSignal: TechSignalContent;
+  theoryToField: TheoryToFieldContent;
   nowMice: NowMiceContent;
-  groundkStory: GroundkStorySection;
+  groundkStory: GroundkStoryContent;
   footer: FooterContent;
 }
 
+// ─────────────────────────────────────────────
+// 1. Header — SPEAK wordmark style
+// ─────────────────────────────────────────────
 export interface HeaderContent {
-  /** Eyebrow text above the brand title — e.g. "MICE · PCO · Event Industry" */
-  eyebrow: string;
-  /** Brand title — e.g. "GROUND INSIGHT" */
-  brandTitle: string;
-  /** Tagline below the title */
-  tagline: string;
+  /** Small grey text above the wordmark — e.g. "보이지 않던 것들을 말해드립니다." */
+  topMessage: string;
+  /** Big wordmark — typically "SPEAK" */
+  wordmark: string;
+  /**
+   * Subtitle expansion. Each `boldChar` letter inside `subtitle` gets bolded
+   * to spell out the wordmark acronym. e.g.
+   *   subtitle = "Stories People in micE Always Know | by GroundK"
+   *   boldIndices = [0, 8, 18, 20, 27]  // positions of S, P, E, A, K
+   */
+  subtitle: string;
+  /** Indices in `subtitle` to render bold (acronym letters) */
+  boldIndices: number[];
 }
 
+// ─────────────────────────────────────────────
+// 2. Referral CTA (compact horizontal)
+// ─────────────────────────────────────────────
 export interface ReferralCtaContent {
-  /** Short message shown to the left of the button */
   message: string;
-  /** Button label e.g. "추천하기" */
   buttonLabel: string;
-  /** Button target — will be replaced at send time with a tokenized URL */
   buttonHref: string;
 }
 
+// ─────────────────────────────────────────────
+// 3. Opening hook
+// ─────────────────────────────────────────────
 export interface OpeningHookContent {
-  /** Main hook lines (use \n for line breaks) */
   hook: string;
-  /** Optional supporting paragraph below the hook */
   subtext?: string;
 }
 
+// ─────────────────────────────────────────────
+// 4. Number of the Month
+// ─────────────────────────────────────────────
 export interface NumberOfMonthContent {
-  /** Numeric value e.g. "73" */
   number: string;
-  /** Optional suffix e.g. "%" */
   suffix?: string;
-  /** Caption explaining what the number means (markdown-lite: **bold**) */
   caption: string;
-  /** Source/citation */
   source: string;
 }
 
+// ─────────────────────────────────────────────
+// 5. News Briefing — multiple items
+// ─────────────────────────────────────────────
 export interface BriefingSection {
-  /** Section number "01" / "02" etc — auto-assigned by template if undefined */
-  index?: string;
-  /** English label e.g. "News Briefing" */
   englishLabel: string;
   items: BriefingItem[];
 }
 
 export interface BriefingItem {
-  /** Category tag like "Macro & Economy" */
   categoryTag: string;
-  /** Headline */
   title: string;
-  /** Body text */
   body: string;
-  /** Optional Insight box */
   insight?: {
-    label?: string; // default "Insight"
+    label?: string;
     text: string;
   };
-  /** Optional source URL displayed under body */
   sourceUrl?: string;
 }
 
-export interface NowMiceContent {
-  /** Section index e.g. "06" */
-  index?: string;
-  englishLabel: string; // e.g. "Editor's Take" or "지금 MICE는"
-  title: string;
-  /** Optional pull-quote shown in italic with gold left border */
-  pullQuote?: string;
-  /** Body paragraphs */
-  paragraphs: string[];
-}
-
-export interface GroundkStorySection {
-  index?: string;
+// ─────────────────────────────────────────────
+// 6. MICE IN & OUT — 2-column (IN / OUT)
+// ─────────────────────────────────────────────
+export interface MiceInOutContent {
   englishLabel: string;
-  items: GroundkStoryItem[];
+  inItem: MiceInOutCard; // 국내
+  outItem: MiceInOutCard; // 글로벌
 }
 
-export interface GroundkStoryItem {
+export interface MiceInOutCard {
+  /** Sub-category like "정책", "산업 동향" */
   categoryTag: string;
   title: string;
   body: string;
-  pills?: string[]; // small chip labels like "VIP 의전", "서울 · 2026.03"
+  source?: string;
 }
 
+// ─────────────────────────────────────────────
+// 7. TECH SIGNAL — dark inverted card with single feature
+// ─────────────────────────────────────────────
+export interface TechSignalContent {
+  englishLabel: string;
+  /** Topic eyebrow like "Agentic AI" */
+  topicLabel: string;
+  /** Right-aligned meta line like "2026.04 · 이번 달 가장 뜨거운 기술 이슈" */
+  topicMeta?: string;
+  /** Headline */
+  title: string;
+  /** Body paragraphs (1-3) */
+  paragraphs: string[];
+  /** MICE perspective insight */
+  miceInsight: string;
+}
+
+// ─────────────────────────────────────────────
+// 8. From Theory to Field — long-form story
+// ─────────────────────────────────────────────
+export interface TheoryToFieldContent {
+  englishLabel: string;
+  /** Year/origin of the theory like "1990" */
+  sourceYear?: string;
+  /** Author + institution like "얀 비외르크 / 카롤린스카 연구소" */
+  sourceAuthor?: string;
+  /** Optional Latin/sub-label like "Circadian Rhythm & Cognitive Performance, Stockholm" */
+  sourceMeta?: string;
+  /** Big title */
+  title: string;
+  /** Intro narrative paragraphs */
+  introParagraphs: string[];
+  /** Bridge box (the "→ 현장에서는" connector) */
+  bridge: {
+    label?: string;
+    text: string;
+  };
+  /** Outro paragraphs after the bridge */
+  outroParagraphs: string[];
+  /** Optional italic closing line */
+  closingNote?: string;
+}
+
+// ─────────────────────────────────────────────
+// 9. 지금 MICE는 — opinion piece
+// ─────────────────────────────────────────────
+export interface NowMiceContent {
+  englishLabel: string;
+  /** Eyebrow like "이달의 이슈" */
+  eyebrow?: string;
+  title: string;
+  /** Lead-in paragraph before the pull quote */
+  leadParagraph?: string;
+  /** Optional pull quote */
+  pullQuote?: string;
+  /** Body paragraphs */
+  paragraphs: string[];
+  /** Optional italic closing note */
+  closingNote?: string;
+}
+
+// ─────────────────────────────────────────────
+// 10. GroundK Story — Field Briefing + Project Sketch
+// ─────────────────────────────────────────────
+export interface GroundkStoryContent {
+  englishLabel: string;
+  fieldBriefing: FieldBriefingItem;
+  projectSketch: ProjectSketchItem;
+}
+
+export interface FieldBriefingItem {
+  /** Subhead like "이달의 현장 브리핑" */
+  eyebrow: string;
+  /** Topic tag like "공항 운영" */
+  categoryTag: string;
+  /** Body (can include a strong highlight) */
+  body: string;
+}
+
+export interface ProjectSketchItem {
+  /** "Project" / project name like "COS" */
+  projectMeta: string;
+  /** Date like "2026.03.25" */
+  dateMeta: string;
+  /** Eyebrow like "그라운드케이 프로젝트 스케치" */
+  eyebrow: string;
+  /** Headline */
+  title: string;
+  /** Multiple paragraphs */
+  paragraphs: string[];
+  /** Tag chips at the bottom */
+  tags: string[];
+}
+
+// ─────────────────────────────────────────────
+// 11. Footer
+// ─────────────────────────────────────────────
 export interface FooterContent {
-  /** Display name — e.g. "GroundK" */
   brandName: string;
-  /** Up to 4 link rows */
   links: Array<{ label: string; href: string }>;
-  /** Unsubscribe link — replaced with tokenized URL at send time */
   unsubscribeHref: string;
-  /** Logo image URL (relative or absolute). Defaults to /logo.png */
   logoSrc?: string;
 }

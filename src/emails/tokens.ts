@@ -9,23 +9,36 @@
 
 export const colors = {
   brandNavy: "#2E3092",
+  brandNavyDeep: "#1a1b6e",
   accentGold: "#E8A020",
 
   bgWhite: "#ffffff",
   bgInsight: "#f7f9fa",
+  bgInsightSoft: "#f7f8ff",
   bgDarkCard: "#2E3092",
+
+  // TECH SIGNAL inversion + dark sections
+  bgTechDark: "#0e0e1c",
+  bgTechDarker: "#0a0a14",
+  borderTechAccent: "rgba(232,160,32,0.2)",
+  insightOnDark: "rgba(46,48,146,0.22)",
+  insightOnDarkBorder: "rgba(46,48,146,0.4)",
 
   textHeadline: "#111111",
   textBody: "#444444",
   textMuted: "#666666",
   textSoft: "#888888",
   textFaint: "#999999",
+
   textOnDark: "#ffffff",
-  textOnDarkBody: "#bbbbbb",
+  textOnDarkBody: "rgba(255,255,255,0.62)",
+  textOnDarkMuted: "rgba(255,255,255,0.35)",
+  textOnDarkFaint: "rgba(255,255,255,0.18)",
 
   borderStrong: "#000000",
   borderSoft: "#eeeeee",
   borderPill: "#dddddd",
+  borderCard: "rgba(46,48,146,0.09)",
 } as const;
 
 export const typography = {
