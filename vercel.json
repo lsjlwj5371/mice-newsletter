@@ -4,14 +4,7 @@
     {
       "path": "/api/cron/collect-articles",
       "schedule": "0 20 * * *"
-    },
-    {
-      "path": "/api/cron/send-queue",
-      "schedule": "*/1 * * * *"
-    },
-    {
-      "path": "/api/cron/bounce-scan",
-      "schedule": "0 */2 * * *"
     }
   ]
 }
+
