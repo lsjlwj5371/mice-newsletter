@@ -188,6 +188,24 @@ export async function triggerCollectionAction(): Promise<ActionResult> {
       cache: "no-store",
     });
 
+    // 504 / 502 = Vercel proxy timed out the response, but the function may
+    // have actually completed most of the work. Show a friendly message
+    // pointing the user to the articles page.
+    if (res.status === 504 || res.status === 502) {
+      revalidatePath("/rss");
+      revalidatePath("/articles");
+      await logAudit({
+        adminId: admin.id,
+        action: "rss.manual_collect",
+        metadata: { status: res.status, note: "proxy timeout, work likely partially completed" },
+      });
+      return {
+        ok: true,
+        message:
+          "수집이 백그라운드에서 진행 중일 수 있습니다 (Vercel 60초 한도). 잠시 후 '후보 기사' 페이지에서 결과를 확인해 주세요.",
+      };
+    }
+
     const body = await res.json().catch(() => ({}));
 
     if (!res.ok) {
@@ -219,6 +237,20 @@ export async function triggerCollectionAction(): Promise<ActionResult> {
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    // Network-level abort (Vercel killed our outer function while we were
+    // waiting on the inner one) — same recovery message.
+    if (
+      msg.includes("aborted") ||
+      msg.includes("timeout") ||
+      msg.includes("ETIMEDOUT")
+    ) {
+      revalidatePath("/articles");
+      return {
+        ok: true,
+        message:
+          "수집이 백그라운드에서 진행 중일 수 있습니다. 잠시 후 '후보 기사' 페이지에서 결과를 확인해 주세요.",
+      };
+    }
     return { ok: false, error: `수집 호출 중 예외: ${msg}` };
   }
 }

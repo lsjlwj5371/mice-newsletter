@@ -13,6 +13,11 @@ import type { ArticleCategory, RssFeed } from "@/lib/validation/rss";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // Vercel Hobby allows up to 60s
 
+// Per-call processing budget. Each Claude analysis takes ~2-4s.
+// 15 items × 3s = ~45s — fits inside the 60s function timeout with margin.
+const MAX_ITEMS_PER_FEED_PER_RUN = 15;
+const SOFT_DEADLINE_MS = 50_000; // bail out before Vercel kills us
+
 interface RunSummary {
   ok: true;
   feeds_processed: number;
@@ -46,6 +51,7 @@ function authorize(req: NextRequest): boolean {
 
 async function runCollection(): Promise<RunSummary> {
   const supabase = createAdminClient();
+  const startedAt = Date.now();
 
   // Fetch all active feeds
   const { data: feeds, error: feedsErr } = await supabase
@@ -69,6 +75,12 @@ async function runCollection(): Promise<RunSummary> {
   };
 
   for (const feed of (feeds ?? []) as RssFeed[]) {
+    // Stop processing more feeds if we're close to the function timeout
+    if (Date.now() - startedAt > SOFT_DEADLINE_MS) {
+      console.warn("[collect] soft deadline reached, stopping early");
+      break;
+    }
+
     summary.feeds_processed++;
     const detail: RunSummary["details"][number] = {
       feed_id: feed.id,
@@ -77,9 +89,24 @@ async function runCollection(): Promise<RunSummary> {
     };
 
     try {
-      const items = await parseFeed(feed.url);
+      const allItems = await parseFeed(feed.url);
+
+      // Sort newest first so we always grab the freshest items when truncating.
+      allItems.sort((a, b) => {
+        const ta = a.publishedAt?.getTime() ?? 0;
+        const tb = b.publishedAt?.getTime() ?? 0;
+        return tb - ta;
+      });
+
+      // Cap items per feed per run to fit inside the function timeout.
+      const items = allItems.slice(0, MAX_ITEMS_PER_FEED_PER_RUN);
 
       for (const item of items) {
+        if (Date.now() - startedAt > SOFT_DEADLINE_MS) {
+          console.warn("[collect] soft deadline reached during item loop");
+          break;
+        }
+
         // Check if guid already exists
         const { data: existing } = await supabase
           .from("articles")
