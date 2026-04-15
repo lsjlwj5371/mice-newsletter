@@ -6,6 +6,45 @@
  * can produce/modify any subset of these fields.
  */
 
+export const NEWSLETTER_STATUSES = [
+  "draft",
+  "review",
+  "scheduled",
+  "sent",
+  "archived",
+] as const;
+
+export type NewsletterStatus = (typeof NEWSLETTER_STATUSES)[number];
+
+export const NEWSLETTER_STATUS_LABELS: Record<NewsletterStatus, string> = {
+  draft: "초안",
+  review: "감수 중",
+  scheduled: "발송 예약",
+  sent: "발송 완료",
+  archived: "보관",
+};
+
+/** A row in the `newsletters` table */
+export interface NewsletterRow {
+  id: string;
+  issue_label: string;
+  subject: string;
+  status: NewsletterStatus;
+  schema_version: number;
+  content_json: NewsletterContent;
+  collection_period_start: string | null;
+  collection_period_end: string | null;
+  reference_notes: string | null;
+  used_article_ids: string[];
+  scheduled_at: string | null;
+  sent_at: string | null;
+  rendered_html_snapshot: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  last_drafted_at: string;
+}
+
 export interface NewsletterContent {
   /** Issue date e.g. "2026.04" or "VOL.01 · 2026년 4월호" */
   issueLabel: string;
