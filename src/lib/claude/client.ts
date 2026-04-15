@@ -12,6 +12,12 @@ export function getClaudeClient(): Anthropic {
   return _client;
 }
 
-// Default model for article analysis. Sonnet 4.5 gives best quality;
-// can be downgraded to Haiku for cost optimization later.
+// Default model for article analysis (small per-call, quality matters
+// since this is the raw summarization layer).
 export const DEFAULT_MODEL = "claude-sonnet-4-5";
+
+// Model used for newsletter draft generation. Needs to complete within
+// Vercel Hobby's 60s function timeout, so we use the faster Haiku 4.5
+// which can emit ~3-5K tokens well within the budget. Quality is still
+// good for a first draft — admin can edit/regenerate as needed.
+export const DRAFT_MODEL = "claude-haiku-4-5";

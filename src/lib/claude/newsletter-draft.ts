@@ -1,4 +1,4 @@
-import { getClaudeClient, DEFAULT_MODEL } from "./client";
+import { getClaudeClient, DRAFT_MODEL } from "./client";
 import {
   newsletterContentSchema,
   type NewsletterContentParsed,
@@ -223,7 +223,7 @@ export async function generateNewsletterDraft(
   const userMessage = buildUserMessage(input);
 
   const response = await client.messages.create({
-    model: DEFAULT_MODEL,
+    model: DRAFT_MODEL,
     max_tokens: 8000,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: userMessage }],

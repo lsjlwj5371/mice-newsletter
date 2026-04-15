@@ -16,7 +16,9 @@ export function NewDraftForm() {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setStatusMessage("Claude가 후보 기사를 분석하고 11개 섹션 초안을 작성하는 중입니다… (30초~1분 소요)");
+    setStatusMessage(
+      "Claude가 후보 기사를 분석하고 11개 섹션 초안을 작성하는 중입니다… (20~45초 소요)"
+    );
 
     const formData = new FormData(e.currentTarget);
     // Strip period if user opted out
@@ -26,11 +28,23 @@ export function NewDraftForm() {
     }
 
     startTransition(async () => {
-      const result = await createDraftNewsletterAction(formData);
-      if (result.ok && result.id) {
-        router.push(`/newsletters/${result.id}` as never);
-      } else if (!result.ok) {
-        setError(result.error);
+      try {
+        const result = await createDraftNewsletterAction(formData);
+        if (result.ok && result.id) {
+          router.push(`/newsletters/${result.id}` as never);
+        } else if (!result.ok) {
+          setError(result.error);
+          setStatusMessage(null);
+        }
+      } catch (err) {
+        // Server action threw before returning JSON (most commonly a Vercel
+        // function timeout at 60s → proxy 504 → client sees unexpected response)
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(
+          `서버 응답 오류: ${msg}\n\n` +
+            "보통 Claude 생성이 60초 함수 한도를 넘어서 발생합니다. 잠시 기다렸다가 " +
+            "'카테고리당 후보 기사 수'를 더 낮춰서(예: 4) 다시 시도해 보세요."
+        );
         setStatusMessage(null);
       }
     });
