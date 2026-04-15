@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/dashboard", label: "대시보드", icon: "▤" },
   { href: "/newsletters", label: "뉴스레터", icon: "✉" },
+  { href: "/preview/newsletter", label: "템플릿 미리보기", icon: "👁" },
   { href: "/recipients", label: "수신자", icon: "👥" },
   { href: "/articles", label: "후보 기사", icon: "📰" },
   { href: "/rss", label: "RSS 피드", icon: "📡" },
