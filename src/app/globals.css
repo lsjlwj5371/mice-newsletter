@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  *,
+  *::before,
+  *::after {
+    border-color: hsl(var(--border, 214 32% 91%));
+  }
+}
