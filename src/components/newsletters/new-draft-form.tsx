@@ -11,6 +11,7 @@ export function NewDraftForm() {
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
+  const [usePeriod, setUsePeriod] = React.useState(true);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -18,6 +19,11 @@ export function NewDraftForm() {
     setStatusMessage("Claude가 후보 기사를 분석하고 11개 섹션 초안을 작성하는 중입니다… (30초~1분 소요)");
 
     const formData = new FormData(e.currentTarget);
+    // Strip period if user opted out
+    if (!usePeriod) {
+      formData.delete("periodStart");
+      formData.delete("periodEnd");
+    }
 
     startTransition(async () => {
       const result = await createDraftNewsletterAction(formData);
@@ -56,32 +62,50 @@ export function NewDraftForm() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <Label htmlFor="periodStart">수집 기간 시작</Label>
-          <Input
-            id="periodStart"
-            name="periodStart"
-            type="date"
-            defaultValue={thirtyAgoStr}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <input
+            id="usePeriod"
+            type="checkbox"
+            checked={usePeriod}
+            onChange={(e) => setUsePeriod(e.target.checked)}
             disabled={pending}
+            className="h-4 w-4 rounded border-border"
           />
+          <Label htmlFor="usePeriod" className="cursor-pointer">
+            기간으로 후보 기사 필터링
+          </Label>
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="periodEnd">수집 기간 종료</Label>
-          <Input
-            id="periodEnd"
-            name="periodEnd"
-            type="date"
-            defaultValue={todayStr}
-            disabled={pending}
-          />
-        </div>
+        {usePeriod && (
+          <div className="grid grid-cols-2 gap-4 pl-6">
+            <div className="space-y-1">
+              <Label htmlFor="periodStart">시작</Label>
+              <Input
+                id="periodStart"
+                name="periodStart"
+                type="date"
+                defaultValue={thirtyAgoStr}
+                disabled={pending}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="periodEnd">종료</Label>
+              <Input
+                id="periodEnd"
+                name="periodEnd"
+                type="date"
+                defaultValue={todayStr}
+                disabled={pending}
+              />
+            </div>
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground">
+          {usePeriod
+            ? "이 기간 안에 수집된 기사만 사용. 종료일은 그 날 끝까지 포함됩니다."
+            : "체크 해제 — 수집된 모든 기사 중에서 Claude가 선택합니다."}
+        </p>
       </div>
-      <p className="-mt-2 text-xs text-muted-foreground">
-        이 기간 안에 수집된 후보 기사들이 Claude에게 전달됩니다. 비워두면 전체
-        기사가 사용됩니다.
-      </p>
 
       <div className="space-y-1">
         <Label htmlFor="referenceNotes">사전 레퍼런스 / 인사이트 (선택)</Label>

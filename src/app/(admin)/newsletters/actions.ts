@@ -101,7 +101,13 @@ export async function createDraftNewsletterAction(
       q = q.gte("collected_at", parsed.data.periodStart);
     }
     if (parsed.data.periodEnd) {
-      q = q.lte("collected_at", parsed.data.periodEnd);
+      // periodEnd is YYYY-MM-DD. Postgres parses bare dates as 00:00:00 UTC,
+      // which would exclude articles collected later in the day. Bump to the
+      // next day's 00:00:00 with an exclusive upper bound so the entire end
+      // day is included.
+      const endDate = new Date(parsed.data.periodEnd);
+      endDate.setUTCDate(endDate.getUTCDate() + 1);
+      q = q.lt("collected_at", endDate.toISOString());
     }
 
     const { data, error } = await q;
@@ -311,7 +317,10 @@ export async function regenerateDraftAction(
       q = q.gte("collected_at", existing.collection_period_start);
     }
     if (existing.collection_period_end) {
-      q = q.lte("collected_at", existing.collection_period_end);
+      // Same fix as createDraftNewsletterAction: include the entire end day
+      const endDate = new Date(existing.collection_period_end);
+      endDate.setUTCDate(endDate.getUTCDate() + 1);
+      q = q.lt("collected_at", endDate.toISOString());
     }
     const { data } = await q;
     articlesByCategory[cat] = (data ?? []) as Article[];
