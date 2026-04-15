@@ -17,12 +17,13 @@ export const colors = {
   bgInsightSoft: "#f7f8ff",
   bgDarkCard: "#2E3092",
 
-  // TECH SIGNAL inversion + dark sections
-  bgTechDark: "#0e0e1c",
-  bgTechDarker: "#0a0a14",
-  borderTechAccent: "rgba(232,160,32,0.2)",
-  insightOnDark: "rgba(46,48,146,0.22)",
-  insightOnDarkBorder: "rgba(46,48,146,0.4)",
+  // TECH SIGNAL — light tinted accent (minimal but distinct)
+  bgTechAccent: "#f0f2fa",
+  bgTechAccentSoft: "rgba(232,160,32,0.06)",
+  borderTechAccent: "rgba(232,160,32,0.25)",
+
+  // Field Briefing — light card differentiated from white project sketch
+  bgFieldBriefing: "#f5f6fa",
 
   textHeadline: "#111111",
   textBody: "#444444",

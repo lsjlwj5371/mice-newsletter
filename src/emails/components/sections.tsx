@@ -418,7 +418,9 @@ function InOutCard({
 }
 
 // ─────────────────────────────────────────────
-// 7. TECH SIGNAL — dark inverted section
+// 7. TECH SIGNAL — light tinted accent section
+// (Distinct from other sections via light lavender background +
+//  gold accent, while keeping the minimal design language.)
 // ─────────────────────────────────────────────
 export function TechSignalDarkSection({
   content,
@@ -430,46 +432,43 @@ export function TechSignalDarkSection({
   return (
     <Section
       style={{
-        backgroundColor: colors.bgTechDark,
-        padding: "40px 28px",
+        backgroundColor: colors.bgTechAccent,
+        padding: "36px 28px",
         borderRadius: "14px",
         margin: `${spacing.sectionVertical} 0`,
       }}
     >
-      {/* Section label on dark */}
+      {/* Section label */}
       <Section style={{ marginBottom: "20px" }}>
         <Text
           style={{
             ...typography.sectionLabel,
-            color: colors.accentGold,
             margin: 0,
           }}
         >
           <span style={{ color: colors.accentGold }}>{index}</span>
-          <span
-            style={{ color: colors.textOnDarkFaint, margin: "0 6px" }}
-          >
+          <span style={{ color: "rgba(46,48,146,0.25)", margin: "0 6px" }}>
             /
           </span>
-          <span style={{ color: colors.textOnDarkMuted }}>
+          <span style={{ color: colors.brandNavy, opacity: 0.75 }}>
             {content.englishLabel.toUpperCase()}
           </span>
         </Text>
       </Section>
 
-      {/* Inner card */}
+      {/* Inner card — white with subtle border */}
       <Section
         style={{
-          backgroundColor: colors.bgTechDarker,
+          backgroundColor: colors.bgWhite,
           border: `1px solid ${colors.borderTechAccent}`,
-          borderRadius: "14px",
+          borderRadius: "12px",
           overflow: "hidden",
         }}
       >
-        {/* Topic top bar */}
+        {/* Topic top bar — golden tint */}
         <Section
           style={{
-            backgroundColor: "rgba(232,160,32,0.08)",
+            backgroundColor: colors.bgTechAccentSoft,
             borderBottom: `1px solid ${colors.borderTechAccent}`,
             padding: "10px 20px",
           }}
@@ -494,7 +493,7 @@ export function TechSignalDarkSection({
                 <Text
                   style={{
                     fontSize: "10px",
-                    color: colors.textOnDarkFaint,
+                    color: colors.textSoft,
                     letterSpacing: "0.5px",
                     margin: 0,
                   }}
@@ -513,7 +512,7 @@ export function TechSignalDarkSection({
             style={{
               fontSize: "20px",
               fontWeight: 700,
-              color: colors.textOnDark,
+              color: colors.textHeadline,
               lineHeight: 1.4,
               letterSpacing: "-0.2px",
               margin: "0 0 16px 0",
@@ -526,35 +525,36 @@ export function TechSignalDarkSection({
             <Text
               key={i}
               style={{
-                fontSize: "13px",
-                color: colors.textOnDarkBody,
+                fontSize: "13.5px",
+                color: colors.textBody,
                 lineHeight: 1.85,
                 fontWeight: 300,
                 margin: "0 0 16px 0",
               }}
               dangerouslySetInnerHTML={{
-                __html: renderInlineMarkdownOnDark(p),
+                __html: renderInlineMarkdown(p),
               }}
             />
           ))}
 
-          {/* MICE perspective insight */}
+          {/* MICE perspective insight box — light navy tint */}
           <Section
             style={{
-              backgroundColor: colors.insightOnDark,
-              border: `1px solid ${colors.insightOnDarkBorder}`,
-              borderRadius: "8px",
+              backgroundColor: colors.bgInsightSoft,
+              borderLeft: `3px solid ${colors.brandNavy}`,
+              borderRadius: "0 8px 8px 0",
               padding: "14px 16px",
-              marginTop: "8px",
+              marginTop: "12px",
             }}
           >
             <Text
               style={{
-                fontSize: "9px",
+                fontSize: "10px",
                 fontWeight: 700,
                 letterSpacing: "2px",
-                color: "#8b9ee8",
+                color: colors.brandNavy,
                 textTransform: "uppercase",
+                opacity: 0.7,
                 margin: "0 0 6px 0",
               }}
             >
@@ -562,14 +562,14 @@ export function TechSignalDarkSection({
             </Text>
             <Text
               style={{
-                fontSize: "12px",
-                color: "rgba(255,255,255,0.7)",
+                fontSize: "12.5px",
+                color: colors.textMuted,
                 lineHeight: 1.75,
                 fontWeight: 300,
                 margin: 0,
               }}
               dangerouslySetInnerHTML={{
-                __html: renderInlineMarkdownOnDark(content.miceInsight),
+                __html: renderInlineMarkdown(content.miceInsight),
               }}
             />
           </Section>
@@ -883,10 +883,10 @@ export function GroundkStoryMajorSection({
     <MajorSection noBorder>
       <SectionLabel index={index} label={content.englishLabel} />
 
-      {/* Field Briefing — dark card */}
+      {/* Field Briefing — light tinted card */}
       <Section
         style={{
-          backgroundColor: "#1A1A2E",
+          backgroundColor: colors.bgFieldBriefing,
           borderRadius: "14px",
           padding: "22px 24px",
           marginBottom: "16px",
@@ -907,7 +907,7 @@ export function GroundkStoryMajorSection({
 
         <Section
           style={{
-            borderLeft: `3px solid rgba(232,160,32,0.5)`,
+            borderLeft: `3px solid ${colors.accentGold}`,
             paddingLeft: "14px",
           }}
         >
@@ -917,7 +917,8 @@ export function GroundkStoryMajorSection({
               fontWeight: 700,
               letterSpacing: "1.5px",
               textTransform: "uppercase",
-              color: colors.textOnDarkMuted,
+              color: colors.brandNavy,
+              opacity: 0.7,
               margin: "0 0 4px 0",
             }}
           >
@@ -926,14 +927,14 @@ export function GroundkStoryMajorSection({
           <Text
             style={{
               fontSize: "13px",
-              color: colors.textOnDarkBody,
+              color: colors.textBody,
               lineHeight: 1.85,
               fontWeight: 300,
               margin: 0,
               whiteSpace: "pre-line",
             }}
             dangerouslySetInnerHTML={{
-              __html: renderInlineMarkdownOnDark(
+              __html: renderInlineMarkdown(
                 content.fieldBriefing.body.replace(/\n/g, "<br>")
               ),
             }}
