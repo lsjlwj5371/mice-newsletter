@@ -17,7 +17,10 @@ import {
   SOURCE_LABELS,
   type Recipient,
 } from "@/lib/validation/recipient";
-import { deleteRecipientAction } from "@/app/(admin)/recipients/actions";
+import {
+  deleteRecipientAction,
+  generateReferralUrlAction,
+} from "@/app/(admin)/recipients/actions";
 
 interface Props {
   recipients: Recipient[];
@@ -35,6 +38,34 @@ export function RecipientTable({ recipients }: Props) {
   const [deleting, setDeleting] = React.useState<Recipient | null>(null);
   const [pending, startTransition] = React.useTransition();
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
+  const [referralPendingId, setReferralPendingId] = React.useState<
+    string | null
+  >(null);
+  const [referralToast, setReferralToast] = React.useState<string | null>(
+    null
+  );
+
+  async function handleCopyReferral(recipientId: string) {
+    setReferralPendingId(recipientId);
+    setReferralToast(null);
+    try {
+      const res = await generateReferralUrlAction(recipientId);
+      if (!res.ok || !res.url) {
+        setReferralToast(`오류: ${!res.ok ? res.error : "URL 생성 실패"}`);
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(res.url);
+        setReferralToast("추천 링크를 클립보드에 복사했습니다!");
+      } catch {
+        // Fallback: show link in toast so user can select manually
+        setReferralToast(`복사 실패 — 링크: ${res.url}`);
+      }
+    } finally {
+      setReferralPendingId(null);
+      setTimeout(() => setReferralToast(null), 4000);
+    }
+  }
 
   function handleDelete() {
     if (!deleting) return;
@@ -120,6 +151,15 @@ export function RecipientTable({ recipients }: Props) {
                     <Button
                       size="sm"
                       variant="ghost"
+                      onClick={() => handleCopyReferral(r.id)}
+                      disabled={referralPendingId === r.id}
+                      title="이 수신자의 추천 링크 복사"
+                    >
+                      {referralPendingId === r.id ? "..." : "추천 링크"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       onClick={() => setEditing(r)}
                     >
                       수정
@@ -139,6 +179,13 @@ export function RecipientTable({ recipients }: Props) {
           </tbody>
         </table>
       </div>
+
+      {/* Referral copy toast */}
+      {referralToast && (
+        <div className="fixed bottom-6 right-6 z-50 rounded-lg border border-border bg-background shadow-lg px-4 py-3 text-sm max-w-sm animate-in fade-in">
+          {referralToast}
+        </div>
+      )}
 
       {/* Edit dialog */}
       <RecipientFormDialog

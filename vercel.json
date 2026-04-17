@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/send-queue",
       "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/bounce-scan",
+      "schedule": "0 22 * * *"
     }
   ]
 }

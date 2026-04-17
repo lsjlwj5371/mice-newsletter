@@ -1,5 +1,7 @@
 "use server";
 
+import { signReferralToken } from "@/lib/referral-token";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -194,4 +196,46 @@ export async function deleteRecipientAction(
 
   revalidatePath("/recipients");
   return { ok: true };
+}
+
+// ─────────────────────────────────────────────
+// GENERATE REFERRAL URL
+// Returns a {APP_URL}/r/{token} link that, when submitted, attributes
+// the new signup to `referrerId`.
+// ─────────────────────────────────────────────
+export async function generateReferralUrlAction(
+  referrerId: string | null
+): Promise<ActionResult & { url?: string }> {
+  const admin = await requireAdmin();
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!appUrl) {
+    return { ok: false, error: "NEXT_PUBLIC_APP_URL 환경변수가 설정되지 않았습니다." };
+  }
+
+  // Verify the referrer exists if one was passed
+  if (referrerId) {
+    const supabase = createAdminClient();
+    const { data: rec } = await supabase
+      .from("recipients")
+      .select("id")
+      .eq("id", referrerId)
+      .maybeSingle();
+    if (!rec) {
+      return { ok: false, error: "추천인 수신자를 찾을 수 없습니다." };
+    }
+  }
+
+  const token = signReferralToken(referrerId);
+  const url = `${appUrl}/r/${token}`;
+
+  await logAudit({
+    adminId: admin.id,
+    action: "referral.generate_url",
+    entity: "recipient",
+    entityId: referrerId ?? undefined,
+    metadata: { url },
+  });
+
+  return { ok: true, url };
 }
