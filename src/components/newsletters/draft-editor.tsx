@@ -42,6 +42,8 @@ interface Props {
   articleMeta: Record<string, ArticleMetaEntry>;
   /** Count of recipients with status='active' for the send panel. */
   activeRecipientCount: number;
+  /** Scheduled-send timestamp (ISO), or null when not scheduled. */
+  scheduledAt: string | null;
   /** Server-rendered SendHistory component passed through as a slot. */
   sendHistorySlot: React.ReactNode;
 }
@@ -51,6 +53,7 @@ export function DraftEditor({
   initialHtml,
   articleMeta,
   activeRecipientCount,
+  scheduledAt,
   sendHistorySlot,
 }: Props) {
   const router = useRouter();
@@ -251,6 +254,7 @@ export function DraftEditor({
               newsletterId={newsletter.id}
               status={newsletter.status}
               activeRecipientCount={activeRecipientCount}
+              scheduledAt={scheduledAt}
             />
             {sendHistorySlot}
           </div>

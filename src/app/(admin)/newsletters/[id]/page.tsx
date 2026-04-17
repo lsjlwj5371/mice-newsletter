@@ -130,6 +130,7 @@ export default async function NewsletterDraftPage({
         initialHtml={html}
         articleMeta={articleMeta}
         activeRecipientCount={activeRecipientCount ?? 0}
+        scheduledAt={newsletter.scheduled_at}
         sendHistorySlot={<SendHistory newsletterId={newsletter.id} />}
       />
     </>

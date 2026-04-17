@@ -418,3 +418,144 @@ export async function resendNewsletterAction(
       (drain.failed > 0 ? ` · ${drain.failed}건 실패` : ""),
   };
 }
+
+// ─────────────────────────────────────────────
+// SCHEDULE — send this newsletter at a future time
+// ─────────────────────────────────────────────
+
+export interface ScheduleInput {
+  newsletterId: string;
+  /** ISO 8601 timestamp in the future (UTC). */
+  scheduledAt: string;
+}
+
+export async function scheduleNewsletterAction(
+  input: ScheduleInput
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const supabase = createAdminClient();
+
+  // Validate timestamp
+  const scheduledDate = new Date(input.scheduledAt);
+  if (Number.isNaN(scheduledDate.getTime())) {
+    return { ok: false, error: "예약 시각이 올바르지 않습니다." };
+  }
+  const nowMs = Date.now();
+  if (scheduledDate.getTime() <= nowMs) {
+    return { ok: false, error: "예약 시각은 현재 시각보다 미래여야 합니다." };
+  }
+  // Upper bound: 1 year
+  if (scheduledDate.getTime() > nowMs + 365 * 24 * 60 * 60 * 1000) {
+    return { ok: false, error: "예약 시각이 너무 멉니다. (최대 1년 이내)" };
+  }
+
+  const { data: nl, error: nlErr } = await supabase
+    .from("newsletters")
+    .select("id, status")
+    .eq("id", input.newsletterId)
+    .single();
+  if (nlErr || !nl) {
+    return { ok: false, error: "뉴스레터를 찾을 수 없습니다." };
+  }
+  if (nl.status === "sent") {
+    return { ok: false, error: "이미 발송된 호는 예약할 수 없습니다." };
+  }
+
+  // Count active recipients up front so the UI can show the scope
+  const { count: activeCount } = await supabase
+    .from("recipients")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "active");
+  if (!activeCount || activeCount === 0) {
+    return {
+      ok: false,
+      error: "활성 수신자가 없습니다. 먼저 수신자를 등록해 주세요.",
+    };
+  }
+
+  const { error: updErr } = await supabase
+    .from("newsletters")
+    .update({
+      status: "scheduled",
+      scheduled_at: scheduledDate.toISOString(),
+    })
+    .eq("id", input.newsletterId);
+  if (updErr) {
+    return { ok: false, error: `예약 설정 실패: ${updErr.message}` };
+  }
+
+  await logAudit({
+    adminId: admin.id,
+    action: "newsletter.schedule",
+    entity: "newsletter",
+    entityId: input.newsletterId,
+    metadata: {
+      scheduledAt: scheduledDate.toISOString(),
+      activeRecipientCount: activeCount,
+    },
+  });
+
+  revalidatePath(`/newsletters/${input.newsletterId}`);
+  revalidatePath("/newsletters");
+  revalidatePath("/history");
+
+  return {
+    ok: true,
+    message: `${scheduledDate.toLocaleString("ko-KR")}에 ${activeCount}명에게 발송 예약됨.`,
+  };
+}
+
+export async function cancelScheduledSendAction(
+  newsletterId: string
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const supabase = createAdminClient();
+
+  const { data: nl, error: nlErr } = await supabase
+    .from("newsletters")
+    .select("id, status, scheduled_at")
+    .eq("id", newsletterId)
+    .single();
+  if (nlErr || !nl) {
+    return { ok: false, error: "뉴스레터를 찾을 수 없습니다." };
+  }
+  if (nl.status !== "scheduled") {
+    return { ok: false, error: "예약되지 않은 호입니다." };
+  }
+
+  // If there are already queued sends for this newsletter (e.g. the
+  // cron just started firing), don't allow cancel — it's too late.
+  const { count: queuedCount } = await supabase
+    .from("sends")
+    .select("*", { count: "exact", head: true })
+    .eq("newsletter_id", newsletterId)
+    .in("status", ["queued", "sending"]);
+  if (queuedCount && queuedCount > 0) {
+    return {
+      ok: false,
+      error: `발송이 이미 시작되었습니다 (${queuedCount}건 대기 중). 취소할 수 없습니다.`,
+    };
+  }
+
+  const { error: updErr } = await supabase
+    .from("newsletters")
+    .update({ status: "draft", scheduled_at: null })
+    .eq("id", newsletterId);
+  if (updErr) {
+    return { ok: false, error: `취소 실패: ${updErr.message}` };
+  }
+
+  await logAudit({
+    adminId: admin.id,
+    action: "newsletter.cancel_schedule",
+    entity: "newsletter",
+    entityId: newsletterId,
+    metadata: { previouslyScheduledAt: nl.scheduled_at },
+  });
+
+  revalidatePath(`/newsletters/${newsletterId}`);
+  revalidatePath("/newsletters");
+  revalidatePath("/history");
+
+  return { ok: true, message: "예약이 취소되었습니다. 호 상태는 초안으로 돌아갔습니다." };
+}

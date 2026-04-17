@@ -8,6 +8,8 @@ import {
   sendTestEmailAction,
   sendNewsletterAction,
   resendNewsletterAction,
+  scheduleNewsletterAction,
+  cancelScheduledSendAction,
   type ResendAudience,
 } from "@/app/(admin)/newsletters/send-actions";
 import { Select } from "@/components/ui/select";
@@ -17,21 +19,27 @@ interface Props {
   newsletterId: string;
   status: NewsletterStatus;
   activeRecipientCount: number;
+  /** ISO timestamp of the currently scheduled send, if any. */
+  scheduledAt: string | null;
 }
 
 export function SendPanel({
   newsletterId,
   status,
   activeRecipientCount,
+  scheduledAt,
 }: Props) {
   const router = useRouter();
   const [testEmails, setTestEmails] = React.useState("");
   const [testPending, startTest] = React.useTransition();
   const [massPending, startMass] = React.useTransition();
   const [resendPending, startResend] = React.useTransition();
+  const [schedulePending, startSchedule] = React.useTransition();
   const [resendAudience, setResendAudience] =
     React.useState<ResendAudience>("non_openers");
   const [resendEmails, setResendEmails] = React.useState("");
+  const [scheduleDate, setScheduleDate] = React.useState("");
+  const [scheduleTime, setScheduleTime] = React.useState("09:00");
   const [msg, setMsg] = React.useState<{
     type: "success" | "error";
     text: string;
@@ -73,6 +81,49 @@ export function SendPanel({
     });
   }
 
+  function handleSchedule() {
+    if (!scheduleDate || !scheduleTime) {
+      setMsg({ type: "error", text: "날짜와 시각을 모두 선택해 주세요." });
+      return;
+    }
+    // Combine into local datetime, then convert to ISO.
+    const localIso = `${scheduleDate}T${scheduleTime}:00`;
+    const d = new Date(localIso);
+    if (Number.isNaN(d.getTime())) {
+      setMsg({ type: "error", text: "예약 시각 형식이 잘못되었습니다." });
+      return;
+    }
+    const confirmMsg = `${d.toLocaleString("ko-KR")}에 활성 수신자 ${activeRecipientCount}명에게 자동 발송됩니다.\n\n계속할까요?`;
+    if (!confirm(confirmMsg)) return;
+    setMsg(null);
+    startSchedule(async () => {
+      const res = await scheduleNewsletterAction({
+        newsletterId,
+        scheduledAt: d.toISOString(),
+      });
+      if (res.ok) {
+        setMsg({ type: "success", text: res.message ?? "예약 완료" });
+        router.refresh();
+      } else {
+        setMsg({ type: "error", text: res.error });
+      }
+    });
+  }
+
+  function handleCancelSchedule() {
+    if (!confirm("예약을 취소하고 초안 상태로 되돌릴까요?")) return;
+    setMsg(null);
+    startSchedule(async () => {
+      const res = await cancelScheduledSendAction(newsletterId);
+      if (res.ok) {
+        setMsg({ type: "success", text: res.message ?? "예약이 취소되었습니다." });
+        router.refresh();
+      } else {
+        setMsg({ type: "error", text: res.error });
+      }
+    });
+  }
+
   function handleResend() {
     const labelMap: Record<ResendAudience, string> = {
       non_openers: "미오픈자에게",
@@ -104,6 +155,14 @@ export function SendPanel({
   }
 
   const alreadySent = status === "sent";
+  const isScheduled = status === "scheduled" && !!scheduledAt;
+
+  // Default the date picker to tomorrow so the calendar isn't blank
+  const tomorrow = React.useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return formatDateForInput(d);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -138,6 +197,34 @@ export function SendPanel({
         </Button>
       </section>
 
+      {/* Scheduled state banner */}
+      {isScheduled && (
+        <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-3">
+          <div>
+            <Label className="text-sm font-semibold text-emerald-900">
+              예약 발송됨
+            </Label>
+            <p className="text-xs text-emerald-800 mt-0.5">
+              {new Date(scheduledAt!).toLocaleString("ko-KR")} 에 활성 수신자{" "}
+              {activeRecipientCount}명에게 자동으로 발송됩니다.
+            </p>
+            <p className="text-[11px] text-emerald-700 mt-1">
+              실제 발송 시각은 예약 시각에서 최대 24시간 늦을 수 있습니다
+              (Vercel Hobby 플랜의 cron이 하루 1회 실행되기 때문).
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-rose-700"
+            onClick={handleCancelSchedule}
+            disabled={schedulePending}
+          >
+            {schedulePending ? "취소 중..." : "예약 취소"}
+          </Button>
+        </section>
+      )}
+
       {/* Mass send */}
       <section className="rounded-xl border border-border bg-background p-4 space-y-3">
         <div>
@@ -171,6 +258,63 @@ export function SendPanel({
           </Button>
         )}
       </section>
+
+      {/* Schedule — visible when not yet sent or scheduled */}
+      {!alreadySent && !isScheduled && activeRecipientCount > 0 && (
+        <section className="rounded-xl border border-border bg-background p-4 space-y-3">
+          <div>
+            <Label className="text-sm font-semibold">예약 발송</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              즉시 발송 대신 특정 시각에 자동 발송하고 싶으면 여기서 설정하세요.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 max-w-md">
+            <div className="space-y-1">
+              <Label htmlFor="schedule-date" className="text-xs">
+                날짜
+              </Label>
+              <Input
+                id="schedule-date"
+                type="date"
+                min={tomorrow}
+                value={scheduleDate}
+                onChange={(e) => setScheduleDate(e.target.value)}
+                disabled={schedulePending}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="schedule-time" className="text-xs">
+                시각
+              </Label>
+              <Input
+                id="schedule-time"
+                type="time"
+                value={scheduleTime}
+                onChange={(e) => setScheduleTime(e.target.value)}
+                disabled={schedulePending}
+              />
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Vercel Hobby 플랜의 제약으로 예약 시각에서 최대 24시간 늦게 발송될 수
+            있습니다. 정확한 시각 발송이 필요하면 "즉시 발송"을 사용하세요.
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleSchedule}
+            disabled={
+              schedulePending ||
+              testPending ||
+              massPending ||
+              !scheduleDate ||
+              !scheduleTime
+            }
+          >
+            {schedulePending ? "설정 중..." : "예약 설정"}
+          </Button>
+        </section>
+      )}
 
       {/* Resend — visible only once the newsletter has been sent at least once */}
       {alreadySent && (
@@ -249,4 +393,11 @@ export function SendPanel({
       </div>
     </div>
   );
+}
+
+function formatDateForInput(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
