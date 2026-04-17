@@ -13,6 +13,8 @@ interface SearchParams {
   q?: string;
   category?: string;
   min_importance?: string;
+  /** 'new' | 'pinned' | 'used' | 'archived' | undefined(all) */
+  view?: string;
 }
 
 export default async function ArticlesPage({
@@ -24,10 +26,26 @@ export default async function ArticlesPage({
   const params = await searchParams;
   const supabase = createAdminClient();
 
+  const view = params.view ?? "new";
+
   let query = supabase
     .from("articles")
     .select("*")
+    .order("pinned", { ascending: false })
     .order("collected_at", { ascending: false });
+
+  // View filter: which status bucket to show
+  if (view === "pinned") {
+    query = query.eq("pinned", true).eq("review_status", "new");
+  } else if (view === "archived") {
+    query = query.eq("review_status", "archived");
+  } else if (view === "used") {
+    query = query.not("used_in_newsletter_id", "is", null);
+  } else if (view === "new") {
+    // "검토 대기" — not archived, not used
+    query = query.eq("review_status", "new").is("used_in_newsletter_id", null);
+  }
+  // view=all → no status filter
 
   if (
     params.category &&
@@ -50,9 +68,38 @@ export default async function ArticlesPage({
 
   const { data, error } = await query.limit(200);
 
-  const { count: totalCount } = await supabase
-    .from("articles")
-    .select("*", { count: "exact", head: true });
+  // Counts for each tab
+  const [totalRes, pinnedRes, archivedRes, usedRes, newRes] = await Promise.all(
+    [
+      supabase.from("articles").select("*", { count: "exact", head: true }),
+      supabase
+        .from("articles")
+        .select("*", { count: "exact", head: true })
+        .eq("pinned", true)
+        .eq("review_status", "new"),
+      supabase
+        .from("articles")
+        .select("*", { count: "exact", head: true })
+        .eq("review_status", "archived"),
+      supabase
+        .from("articles")
+        .select("*", { count: "exact", head: true })
+        .not("used_in_newsletter_id", "is", null),
+      supabase
+        .from("articles")
+        .select("*", { count: "exact", head: true })
+        .eq("review_status", "new")
+        .is("used_in_newsletter_id", null),
+    ]
+  );
+
+  const counts = {
+    all: totalRes.count ?? 0,
+    new: newRes.count ?? 0,
+    pinned: pinnedRes.count ?? 0,
+    used: usedRes.count ?? 0,
+    archived: archivedRes.count ?? 0,
+  };
 
   if (error) {
     return (
@@ -73,10 +120,15 @@ export default async function ArticlesPage({
     <>
       <PageHeader
         title="후보 기사"
-        description="RSS로 수집되고 Claude가 분석한 기사 목록. 카테고리·중요도·검색으로 필터링하고 클릭해서 상세 내용을 확인할 수 있습니다."
+        description="수집된 기사를 검토하고 상태를 관리합니다. '다음 호 예약'으로 표시한 기사는 다음 초안 생성 시 우선 반영됩니다."
       />
       <div className="px-8 py-6 space-y-4">
-        <ArticleList articles={articles} totalCount={totalCount ?? 0} />
+        <ArticleList
+          articles={articles}
+          totalCount={counts.all}
+          currentView={view}
+          counts={counts}
+        />
       </div>
     </>
   );

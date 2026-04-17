@@ -119,9 +119,12 @@ const BLOCK_ARTICLE_POLICY: Record<BlockType, BlockArticlePolicy> = {
     limit: 0,
   },
   stat_feature: {
+    // "이달의 숫자" — good stat can come from any time period, so we
+    // read all-time like theory_to_field. Keeps statistic quality high
+    // even for issues with a narrow collection window.
     primary: ["news", "tech", "mice_in_out"],
     fallback: ["theory"],
-    ignoreDateFilter: false,
+    ignoreDateFilter: true,
     limit: 10,
   },
   news_briefing: {
@@ -596,10 +599,17 @@ export interface DraftGenerationResult {
   failedBlocks: Array<{ type: BlockType; error: string }>;
 }
 
+/**
+ * Build a non-overlapping article pool for a single block, respecting an
+ * externally-tracked set of IDs already claimed by other blocks. Articles
+ * with pinned=true are always considered first so admin's "다음 호에서 써야 함"
+ * flags win over normal priority.
+ */
 function getArticlesForBlock(
   type: BlockType,
   articlesByCategory: Record<ArticleCategory, Article[]>,
-  articlesByCategoryAllTime?: Record<ArticleCategory, Article[]>
+  articlesByCategoryAllTime?: Record<ArticleCategory, Article[]>,
+  alreadyClaimed?: Set<string>
 ): Article[] {
   const policy = BLOCK_ARTICLE_POLICY[type];
   const pool =
@@ -607,30 +617,81 @@ function getArticlesForBlock(
       ? articlesByCategoryAllTime
       : articlesByCategory;
 
-  const seen = new Set<string>();
+  const claimed = alreadyClaimed ?? new Set<string>();
   const out: Article[] = [];
 
-  // Primary categories first
-  for (const cat of policy.primary) {
+  function consume(cat: ArticleCategory, pinnedOnly: boolean) {
     for (const a of pool[cat] ?? []) {
-      if (seen.has(a.id)) continue;
-      seen.add(a.id);
+      if (claimed.has(a.id)) continue;
+      if (pinnedOnly && !a.pinned) continue;
+      if (!pinnedOnly && a.pinned) continue; // already pulled via pinned pass
       out.push(a);
-      if (out.length >= policy.limit) return out;
+      claimed.add(a.id);
+      if (out.length >= policy.limit) return true;
     }
+    return false;
   }
 
-  // Fallback categories if primary didn't fill
+  // Pass 1: pinned articles from primary (admin "must use")
+  for (const cat of policy.primary) {
+    if (consume(cat, true)) return out;
+  }
+  // Pass 2: pinned articles from fallback
   for (const cat of policy.fallback) {
-    for (const a of pool[cat] ?? []) {
-      if (seen.has(a.id)) continue;
-      seen.add(a.id);
-      out.push(a);
-      if (out.length >= policy.limit) return out;
-    }
+    if (consume(cat, true)) return out;
+  }
+  // Pass 3: regular articles from primary
+  for (const cat of policy.primary) {
+    if (consume(cat, false)) return out;
+  }
+  // Pass 4: regular articles from fallback
+  for (const cat of policy.fallback) {
+    if (consume(cat, false)) return out;
   }
 
   return out;
+}
+
+/**
+ * Partition articles across selected blocks so no single article appears
+ * in more than one block's candidate pool. Blocks with the narrowest
+ * primary categories get first pick; broader-scope blocks (like
+ * consolidated_insight or stat_feature) take leftovers afterward.
+ */
+export function partitionArticlePools(
+  blockTypes: BlockType[],
+  articlesByCategory: Record<ArticleCategory, Article[]>,
+  articlesByCategoryAllTime?: Record<ArticleCategory, Article[]>
+): Partial<Record<BlockType, Article[]>> {
+  // Priority order: narrowest primary first. Ties broken by alphabetical
+  // block type to keep partitioning deterministic across runs.
+  const order = [...blockTypes].sort((a, b) => {
+    const pa = BLOCK_ARTICLE_POLICY[a].primary.length;
+    const pb = BLOCK_ARTICLE_POLICY[b].primary.length;
+    if (pa !== pb) return pa - pb;
+    return a < b ? -1 : a > b ? 1 : 0;
+  });
+
+  const claimedDate = new Set<string>();
+  const claimedAllTime = new Set<string>();
+  const pools: Partial<Record<BlockType, Article[]>> = {};
+
+  for (const type of order) {
+    const policy = BLOCK_ARTICLE_POLICY[type];
+    if (policy.primary.length === 0 && policy.fallback.length === 0) {
+      // Article-less block (opening_lede, editor_take, groundk_story, etc.)
+      continue;
+    }
+    const claimed = policy.ignoreDateFilter ? claimedAllTime : claimedDate;
+    pools[type] = getArticlesForBlock(
+      type,
+      articlesByCategory,
+      articlesByCategoryAllTime,
+      claimed
+    );
+  }
+
+  return pools;
 }
 
 /**
@@ -649,16 +710,23 @@ export async function generateNewsletterDraft(
 
   // Kick off per-block generation in parallel, remembering the article pool
   // used per block so it can be stored for the admin to review.
+  // Partition articles up-front so each block's Claude call sees a
+  // disjoint subset. This prevents the same article ending up in two
+  // blocks' outputs.
+  const autoSearchBlocks = blockTypes.filter((t) => {
+    const cfg = instructionMap.get(t);
+    return cfg?.autoSearch ?? true;
+  });
+  const partitioned = partitionArticlePools(
+    autoSearchBlocks,
+    input.articlesByCategory,
+    input.articlesByCategoryAllTime
+  );
+
   const perBlockContexts = blockTypes.map((type) => {
     const cfg = instructionMap.get(type);
     const autoSearch = cfg?.autoSearch ?? true;
-    const articles = autoSearch
-      ? getArticlesForBlock(
-          type,
-          input.articlesByCategory,
-          input.articlesByCategoryAllTime
-        )
-      : [];
+    const articles = autoSearch ? partitioned[type] ?? [] : [];
     const ctx: BlockGenContext = {
       issueLabel: input.issueLabel,
       referenceNotes: input.referenceNotes,

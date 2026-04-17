@@ -452,15 +452,25 @@ export async function createDraftWithBlocksAction(
     theory: [],
   };
 
+  // Loading rules:
+  //  - exclude articles with review_status='archived' (admin said "not needed")
+  //  - sort pinned articles first (admin said "use next issue"), then by
+  //    importance desc, then by collected_at desc
+  //  - widen per-category limit: partitioning will distribute across blocks
+  //    so a single block won't see all N, but total pool needs to be deep
+  const effectiveLimit = Math.max(perCategoryLimit, 15);
+
   if (needsResearch) {
     for (const cat of ARTICLE_CATEGORIES) {
       let q = supabase
         .from("articles")
         .select("*")
         .eq("category", cat)
+        .eq("review_status", "new")
+        .order("pinned", { ascending: false })
         .order("importance", { ascending: false, nullsFirst: false })
         .order("collected_at", { ascending: false })
-        .limit(perCategoryLimit);
+        .limit(effectiveLimit);
 
       if (input.periodStart) {
         q = q.gte("collected_at", input.periodStart);
@@ -485,9 +495,11 @@ export async function createDraftWithBlocksAction(
         .from("articles")
         .select("*")
         .eq("category", cat)
+        .eq("review_status", "new")
+        .order("pinned", { ascending: false })
         .order("importance", { ascending: false, nullsFirst: false })
         .order("collected_at", { ascending: false })
-        .limit(30);
+        .limit(40);
 
       if (error) {
         return {
@@ -543,6 +555,26 @@ export async function createDraftWithBlocksAction(
     return { ok: false, error: `DB 저장 실패: ${insertErr.message}` };
   }
 
+  // Collect articles that ended up referenced by any block in this draft,
+  // then mark them as used-in-this-newsletter and clear their pinned flag
+  // so they don't get force-pinned again in the next issue.
+  const referencedByAnyBlock = Array.from(
+    new Set(
+      (draftResult.content.blocks ?? []).flatMap(
+        (b) => b.referencedArticleIds ?? []
+      )
+    )
+  );
+  if (referencedByAnyBlock.length > 0) {
+    await supabase
+      .from("articles")
+      .update({
+        used_in_newsletter_id: inserted.id,
+        pinned: false,
+      })
+      .in("id", referencedByAnyBlock);
+  }
+
   await logAudit({
     adminId: admin.id,
     action: "newsletter.create_draft",
@@ -553,10 +585,12 @@ export async function createDraftWithBlocksAction(
       blockCount: input.blocks.length,
       blockTypes: input.blocks.map((b) => b.type),
       failedBlocks: draftResult.failedBlocks,
+      referencedArticles: referencedByAnyBlock.length,
     },
   });
 
   revalidatePath("/newsletters");
+  revalidatePath("/articles");
   const failedSummary = draftResult.failedBlocks.length > 0
     ? ` (경고: ${draftResult.failedBlocks.length}개 블록 생성 실패 — placeholder로 대체됨)`
     : "";
@@ -603,9 +637,9 @@ export async function regenerateBlockAction(
   const targetBlock = content.blocks[input.blockIndex];
   const type = targetBlock.type;
 
-  // Refresh the candidate article pool following this block's policy
-  // (primary + fallback categories, optionally ignoring the issue's
-  // stored date filter for blocks like theory_to_field).
+  // Refresh the candidate article pool following this block's policy.
+  // Exclude articles already claimed by OTHER blocks of this same
+  // newsletter so regeneration doesn't stomp on their references.
   let articles: Article[] = [];
   if (input.autoSearch) {
     const policy = BLOCK_ARTICLE_POLICY[type];
@@ -627,14 +661,15 @@ export async function regenerateBlockAction(
     };
 
     for (const cat of cats) {
-      // Date-filtered query (used when policy.ignoreDateFilter = false)
       let q = supabase
         .from("articles")
         .select("*")
         .eq("category", cat)
+        .eq("review_status", "new")
+        .order("pinned", { ascending: false })
         .order("importance", { ascending: false, nullsFirst: false })
         .order("collected_at", { ascending: false })
-        .limit(policy.ignoreDateFilter ? 30 : 10);
+        .limit(policy.ignoreDateFilter ? 40 : 15);
 
       if (!policy.ignoreDateFilter) {
         if (row.collection_period_start) {
@@ -658,10 +693,20 @@ export async function regenerateBlockAction(
       }
     }
 
+    // Articles already claimed by other blocks of this same newsletter
+    const otherBlocksUsed = new Set<string>();
+    content.blocks.forEach((b, i) => {
+      if (i === input.blockIndex) return;
+      for (const id of b.referencedArticleIds ?? []) {
+        otherBlocksUsed.add(id);
+      }
+    });
+
     articles = getArticlesForBlock(
       type,
       articlesByCategory,
-      policy.ignoreDateFilter ? articlesByCategoryAllTime : undefined
+      policy.ignoreDateFilter ? articlesByCategoryAllTime : undefined,
+      otherBlocksUsed
     );
   }
 

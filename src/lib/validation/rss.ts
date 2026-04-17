@@ -58,6 +58,14 @@ export interface RssFeed {
   created_at: string;
 }
 
+export const ARTICLE_REVIEW_STATUSES = ["new", "archived"] as const;
+export type ArticleReviewStatus = (typeof ARTICLE_REVIEW_STATUSES)[number];
+
+export const REVIEW_STATUS_LABELS: Record<ArticleReviewStatus, string> = {
+  new: "검토 대기",
+  archived: "불필요",
+};
+
 export interface Article {
   id: string;
   feed_id: string | null;
@@ -75,4 +83,6 @@ export interface Article {
   analyzed_at: string | null;
   analysis_error: string | null;
   used_in_newsletter_id: string | null;
+  review_status: ArticleReviewStatus;
+  pinned: boolean;
 }
