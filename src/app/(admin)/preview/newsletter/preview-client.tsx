@@ -35,24 +35,33 @@ export function PreviewClient({
     <>
       <PageHeader
         title="템플릿 미리보기"
-        description="현재 디자인 베이스. Phase 4.2부터는 실제 호 데이터를 미리볼 수 있습니다."
+        description="현재 디자인 베이스. /newsletters 에서 실제 호를 생성하면 그 호의 내용으로 미리볼 수 있습니다."
         actions={
-          <div className="flex gap-1 rounded-lg border border-border bg-background p-1">
-            <ModeButton
-              active={mode === "desktop"}
-              onClick={() => setMode("desktop")}
-              label="데스크톱"
-            />
-            <ModeButton
-              active={mode === "mobile"}
-              onClick={() => setMode("mobile")}
-              label="모바일"
-            />
-            <ModeButton
-              active={mode === "dark"}
-              onClick={() => setMode("dark")}
-              label="다크"
-            />
+          <div className="flex gap-2 items-center">
+            <a
+              href="/api/preview/newsletter/html?download=1"
+              download
+              className="inline-flex items-center h-9 px-4 rounded-md border border-border bg-background hover:bg-muted text-sm font-medium"
+            >
+              ↓ HTML 다운로드
+            </a>
+            <div className="flex gap-1 rounded-lg border border-border bg-background p-1">
+              <ModeButton
+                active={mode === "desktop"}
+                onClick={() => setMode("desktop")}
+                label="데스크톱"
+              />
+              <ModeButton
+                active={mode === "mobile"}
+                onClick={() => setMode("mobile")}
+                label="모바일"
+              />
+              <ModeButton
+                active={mode === "dark"}
+                onClick={() => setMode("dark")}
+                label="다크"
+              />
+            </div>
           </div>
         }
       />

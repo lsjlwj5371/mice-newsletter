@@ -1,6 +1,10 @@
 /**
- * Higher-level newsletter section components.
- * All inline-styled for email client compatibility.
+ * Block components — one renderer per BlockType.
+ * Each component receives a typed block instance and renders it inline-styled
+ * for email client compatibility.
+ *
+ * The main Newsletter template iterates content.blocks and dispatches to the
+ * right renderer here via BlockRenderer.
  */
 
 import * as React from "react";
@@ -16,117 +20,172 @@ import {
 import { colors, typography, spacing } from "../tokens";
 import {
   SectionLabel,
-  SectionLabelOnDark,
   ItemGroup,
-  InsightBox,
   MajorSection,
   Pill,
 } from "./primitives";
 import type {
+  BlockInstance,
   HeaderContent,
   ReferralCtaContent,
-  OpeningHookContent,
-  NumberOfMonthContent,
-  BriefingSection,
-  MiceInOutContent,
-  MiceInOutCard,
-  TechSignalContent,
-  TheoryToFieldContent,
-  NowMiceContent,
-  GroundkStoryContent,
   FooterContent,
+  OpeningLedeBlock,
+  StatFeatureBlock,
+  NewsBriefingBlock,
+  InOutComparisonBlock,
+  MiceInOutCard,
+  TechSignalBlock,
+  TheoryToFieldBlock,
+  EditorTakeBlock,
+  GroundkStoryBlock,
+  ConsolidatedInsightBlock,
+  BlogCardGridBlock,
 } from "@/types/newsletter";
 
 // ─────────────────────────────────────────────
-// 1. Header — SPEAK wordmark
+// FIXED: Header — PIK wordmark
 // ─────────────────────────────────────────────
-export function SpeakHeader({ content }: { content: HeaderContent }) {
+export function NewsletterHeaderBlock({
+  content,
+}: {
+  content: HeaderContent;
+}) {
   return (
     <Section
       style={{
-        paddingBottom: spacing.headerBottomBorderGap,
-        marginBottom: spacing.headerBottomBorderGap,
+        paddingBottom: "32px",
+        marginBottom: "32px",
         borderBottom: `2px solid ${colors.borderStrong}`,
       }}
     >
-      {/* Top message */}
+      {/* Industry tag eyebrow */}
+      <Text
+        style={{
+          fontSize: "11px",
+          fontWeight: 500,
+          color: colors.textMuted,
+          margin: "0 0 16px 0",
+          letterSpacing: "2px",
+          textTransform: "uppercase",
+        }}
+      >
+        {content.industryTag}
+      </Text>
+
+      {/* Wordmark with inline diamond accent */}
+      <Section style={{ marginBottom: "10px" }}>
+        <Row>
+          <Column style={{ verticalAlign: "middle", width: "auto" }}>
+            <span
+              style={{
+                display: "inline-block",
+                fontSize: "56px",
+                fontWeight: 900,
+                lineHeight: 0.95,
+                color: colors.textHeadline,
+                letterSpacing: "-1px",
+                fontFamily:
+                  "'Pretendard', 'Impact', 'Arial Black', Arial, sans-serif",
+              }}
+            >
+              {renderWordmarkWithDiamond(content.wordmark)}
+            </span>
+            <span
+              style={{
+                display: "inline-block",
+                marginLeft: "14px",
+                fontSize: "13px",
+                fontWeight: 400,
+                color: colors.textMuted,
+                verticalAlign: "middle",
+                letterSpacing: "-0.1px",
+              }}
+            >
+              {content.tagline}
+            </span>
+          </Column>
+        </Row>
+      </Section>
+
+      {/* Description */}
       <Text
         style={{
           fontSize: "13px",
-          fontWeight: 400,
-          color: colors.textMuted,
-          margin: "0 0 16px 0",
-          letterSpacing: "-0.2px",
+          color: colors.textSoft,
+          fontWeight: 300,
+          margin: "6px 0 18px 0",
         }}
       >
-        {content.topMessage}
+        {content.description}
       </Text>
 
-      {/* Wordmark */}
-      <Heading
-        as="h1"
+      {/* Meta bar (issue number) */}
+      <Section
         style={{
-          fontSize: "72px",
-          fontWeight: 900,
-          lineHeight: 0.95,
-          color: colors.brandNavy,
-          letterSpacing: "-2px",
-          margin: "0 0 12px 0",
-          fontFamily:
-            "'Pretendard', 'Impact', 'Arial Black', Arial, sans-serif",
+          paddingTop: "14px",
+          borderTop: `1px solid ${colors.borderSoft}`,
         }}
       >
-        {content.wordmark}
-      </Heading>
-
-      {/* Subtitle with bolded acronym letters */}
-      <Text
-        style={{
-          fontSize: "14px",
-          fontWeight: 400,
-          color: colors.textMuted,
-          margin: 0,
-          letterSpacing: "-0.1px",
-          lineHeight: 1.5,
-        }}
-      >
-        {renderSubtitleWithBoldChars(content.subtitle, content.boldIndices)}
-      </Text>
+        <Text
+          style={{
+            fontSize: "9px",
+            fontWeight: 700,
+            color: colors.textFaint,
+            letterSpacing: "2px",
+            textTransform: "uppercase",
+            margin: "0 0 3px 0",
+          }}
+        >
+          Issue
+        </Text>
+        <Text
+          style={{
+            fontSize: "12px",
+            color: colors.textMuted,
+            margin: 0,
+          }}
+        >
+          {content.issueMeta}
+        </Text>
+      </Section>
     </Section>
   );
 }
 
-function renderSubtitleWithBoldChars(
-  subtitle: string,
-  boldIndices: number[]
-): React.ReactNode[] {
-  const set = new Set(boldIndices);
-  return Array.from(subtitle).map((char, i) =>
-    set.has(i) ? (
-      <strong
-        key={i}
-        style={{
-          color: colors.brandNavy,
-          fontWeight: 800,
-        }}
-      >
-        {char}
-      </strong>
-    ) : (
-      <React.Fragment key={i}>{char}</React.Fragment>
-    )
-  );
+/**
+ * Render a wordmark like "PIK" with the middle letters styled as accent
+ * (e.g. the "I" rendered in navy while P and K are black). Uses a simple
+ * heuristic: if the wordmark contains recognized accent letters, color the
+ * last one navy. Otherwise render plain.
+ */
+function renderWordmarkWithDiamond(wordmark: string): React.ReactNode {
+  const chars = Array.from(wordmark);
+  if (chars.length === 0) return wordmark;
+  return chars.map((c, i) => (
+    <span
+      key={i}
+      style={{
+        color: i === chars.length - 1 ? colors.brandNavy : colors.textHeadline,
+      }}
+    >
+      {c}
+    </span>
+  ));
 }
 
 // ─────────────────────────────────────────────
-// 2. Referral CTA (compact horizontal)
+// FIXED: Referral CTA
 // ─────────────────────────────────────────────
-export function ReferralCtaTop({ content }: { content: ReferralCtaContent }) {
+export function ReferralCtaBlock({
+  content,
+}: {
+  content: ReferralCtaContent;
+}) {
   return (
     <Section
       style={{
         backgroundColor: colors.bgInsight,
-        padding: "20px 24px",
+        padding: "22px 24px",
         borderRadius: "8px",
         marginBottom: "8px",
       }}
@@ -171,9 +230,106 @@ export function ReferralCtaTop({ content }: { content: ReferralCtaContent }) {
 }
 
 // ─────────────────────────────────────────────
-// 3. Opening hook
+// FIXED: Footer
 // ─────────────────────────────────────────────
-export function OpeningHook({ content }: { content: OpeningHookContent }) {
+export function NewsletterFooterBlock({
+  content,
+  appUrl,
+}: {
+  content: FooterContent;
+  appUrl: string;
+}) {
+  const logoSrc = content.logoSrc ?? `${appUrl}/logo.png`;
+
+  return (
+    <Section
+      style={{
+        marginTop: "60px",
+        paddingTop: "40px",
+        paddingBottom: "40px",
+        borderTop: `2px solid ${colors.borderStrong}`,
+      }}
+    >
+      <Row>
+        <Column width="60%" style={{ verticalAlign: "top" }}>
+          <Img
+            src={logoSrc}
+            alt={content.brandName}
+            width="160"
+            style={{
+              display: "block",
+              marginBottom: "12px",
+              maxWidth: "160px",
+              height: "auto",
+            }}
+          />
+          {content.brandTagline && (
+            <Text
+              style={{
+                fontSize: "11px",
+                color: colors.textFaint,
+                margin: "0 0 10px 0",
+                letterSpacing: "0.3px",
+              }}
+            >
+              {content.brandTagline}
+            </Text>
+          )}
+          <Text
+            style={{
+              ...typography.footerLink,
+              color: colors.textMuted,
+              margin: 0,
+            }}
+          >
+            {content.links.map((link, i) => (
+              <React.Fragment key={i}>
+                <Link
+                  href={link.href}
+                  style={{ color: colors.textMuted, textDecoration: "none" }}
+                >
+                  {link.label}
+                </Link>
+                {i < content.links.length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </Text>
+        </Column>
+        <Column
+          width="40%"
+          align="right"
+          style={{ verticalAlign: "bottom" }}
+        >
+          <Text
+            style={{
+              ...typography.footerSmall,
+              color: colors.textFaint,
+              textAlign: "right",
+              margin: 0,
+            }}
+          >
+            수신을 원치 않으시면{" "}
+            <Link
+              href={content.unsubscribeHref}
+              style={{
+                color: colors.textHeadline,
+                textDecoration: "underline",
+              }}
+            >
+              여기
+            </Link>
+            에서 수신 거부하실 수 있습니다.
+          </Text>
+        </Column>
+      </Row>
+    </Section>
+  );
+}
+
+// ─────────────────────────────────────────────
+// BLOCK: opening_lede
+// ─────────────────────────────────────────────
+function OpeningLede({ block }: { block: OpeningLedeBlock }) {
   return (
     <MajorSection
       noBorder
@@ -193,9 +349,9 @@ export function OpeningHook({ content }: { content: OpeningHookContent }) {
             wordBreak: "keep-all",
           }}
         >
-          {renderMultiline(content.hook)}
+          {renderMultiline(block.data.hook)}
         </Text>
-        {content.subtext && (
+        {block.data.subtext && (
           <Text
             style={{
               ...typography.hookSubtext,
@@ -204,7 +360,7 @@ export function OpeningHook({ content }: { content: OpeningHookContent }) {
               marginBottom: 0,
             }}
           >
-            {renderMultiline(content.subtext)}
+            {renderMultiline(block.data.subtext)}
           </Text>
         )}
       </Section>
@@ -213,18 +369,18 @@ export function OpeningHook({ content }: { content: OpeningHookContent }) {
 }
 
 // ─────────────────────────────────────────────
-// 4. Number of the Month
+// BLOCK: stat_feature (Number of the Month)
 // ─────────────────────────────────────────────
-export function NumberOfMonthSection({
-  content,
-  index = "01",
+function StatFeature({
+  block,
+  index,
 }: {
-  content: NumberOfMonthContent;
-  index?: string;
+  block: StatFeatureBlock;
+  index: string;
 }) {
   return (
     <MajorSection>
-      <SectionLabel index={index} label="Number of the Month" />
+      <SectionLabel index={index} label={block.data.englishLabel} />
       <Section>
         <Text style={{ margin: "0 0 16px 0" }}>
           <span
@@ -234,15 +390,15 @@ export function NumberOfMonthSection({
               display: "inline-block",
             }}
           >
-            {content.number}
-            {content.suffix && (
+            {block.data.number}
+            {block.data.suffix && (
               <span
                 style={{
                   ...typography.bigNumberSuffix,
                   color: colors.accentGold,
                 }}
               >
-                {content.suffix}
+                {block.data.suffix}
               </span>
             )}
           </span>
@@ -254,7 +410,7 @@ export function NumberOfMonthSection({
             margin: "0 0 8px 0",
           }}
           dangerouslySetInnerHTML={{
-            __html: renderInlineMarkdown(content.caption),
+            __html: renderInlineMarkdown(block.data.caption),
           }}
         />
         <Text
@@ -264,7 +420,7 @@ export function NumberOfMonthSection({
             margin: 0,
           }}
         >
-          {content.source}
+          {block.data.source}
         </Text>
       </Section>
     </MajorSection>
@@ -272,19 +428,19 @@ export function NumberOfMonthSection({
 }
 
 // ─────────────────────────────────────────────
-// 5. News Briefing — multi-item list
+// BLOCK: news_briefing
 // ─────────────────────────────────────────────
-export function BriefingMajorSection({
-  content,
+function NewsBriefing({
+  block,
   index,
 }: {
-  content: BriefingSection;
+  block: NewsBriefingBlock;
   index: string;
 }) {
   return (
     <MajorSection>
-      <SectionLabel index={index} label={content.englishLabel} />
-      {content.items.map((item, i) => (
+      <SectionLabel index={index} label={block.data.englishLabel} />
+      {block.data.items.map((item, i) => (
         <ItemGroup
           key={i}
           categoryTag={item.categoryTag}
@@ -292,7 +448,7 @@ export function BriefingMajorSection({
           body={item.body}
           insight={item.insight}
           sourceUrl={item.sourceUrl}
-          isLast={i === content.items.length - 1}
+          isLast={i === block.data.items.length - 1}
         />
       ))}
     </MajorSection>
@@ -300,18 +456,18 @@ export function BriefingMajorSection({
 }
 
 // ─────────────────────────────────────────────
-// 6. MICE IN & OUT — 2-column cards
+// BLOCK: in_out_comparison
 // ─────────────────────────────────────────────
-export function MiceInOutTwoColumn({
-  content,
-  index = "03",
+function InOutComparison({
+  block,
+  index,
 }: {
-  content: MiceInOutContent;
-  index?: string;
+  block: InOutComparisonBlock;
+  index: string;
 }) {
   return (
     <MajorSection>
-      <SectionLabel index={index} label={content.englishLabel} />
+      <SectionLabel index={index} label={block.data.englishLabel} />
       <Row>
         <Column
           style={{
@@ -320,7 +476,7 @@ export function MiceInOutTwoColumn({
             width: "50%",
           }}
         >
-          <InOutCard card={content.inItem} accent={colors.brandNavy} />
+          <InOutCard card={block.data.inItem} accent={colors.brandNavy} />
         </Column>
         <Column
           style={{
@@ -329,7 +485,7 @@ export function MiceInOutTwoColumn({
             width: "50%",
           }}
         >
-          <InOutCard card={content.outItem} accent={colors.accentGold} />
+          <InOutCard card={block.data.outItem} accent={colors.accentGold} />
         </Column>
       </Row>
     </MajorSection>
@@ -352,7 +508,6 @@ function InOutCard({
         overflow: "hidden",
       }}
     >
-      {/* Top accent stripe */}
       <Section
         style={{
           backgroundColor: accent,
@@ -418,16 +573,14 @@ function InOutCard({
 }
 
 // ─────────────────────────────────────────────
-// 7. TECH SIGNAL — light tinted accent section
-// (Distinct from other sections via light lavender background +
-//  gold accent, while keeping the minimal design language.)
+// BLOCK: tech_signal (light tinted, minimal style)
 // ─────────────────────────────────────────────
-export function TechSignalDarkSection({
-  content,
-  index = "04",
+function TechSignal({
+  block,
+  index,
 }: {
-  content: TechSignalContent;
-  index?: string;
+  block: TechSignalBlock;
+  index: string;
 }) {
   return (
     <Section
@@ -438,25 +591,16 @@ export function TechSignalDarkSection({
         margin: `${spacing.sectionVertical} 0`,
       }}
     >
-      {/* Section label */}
       <Section style={{ marginBottom: "20px" }}>
-        <Text
-          style={{
-            ...typography.sectionLabel,
-            margin: 0,
-          }}
-        >
+        <Text style={{ ...typography.sectionLabel, margin: 0 }}>
           <span style={{ color: colors.accentGold }}>{index}</span>
-          <span style={{ color: "rgba(46,48,146,0.25)", margin: "0 6px" }}>
-            /
-          </span>
+          <span style={{ color: "rgba(46,48,146,0.25)", margin: "0 6px" }}>/</span>
           <span style={{ color: colors.brandNavy, opacity: 0.75 }}>
-            {content.englishLabel.toUpperCase()}
+            {block.data.englishLabel.toUpperCase()}
           </span>
         </Text>
       </Section>
 
-      {/* Inner card — white with subtle border */}
       <Section
         style={{
           backgroundColor: colors.bgWhite,
@@ -465,7 +609,6 @@ export function TechSignalDarkSection({
           overflow: "hidden",
         }}
       >
-        {/* Topic top bar — golden tint */}
         <Section
           style={{
             backgroundColor: colors.bgTechAccentSoft,
@@ -485,10 +628,10 @@ export function TechSignalDarkSection({
                   margin: 0,
                 }}
               >
-                ● {content.topicLabel}
+                ● {block.data.topicLabel}
               </Text>
             </Column>
-            {content.topicMeta && (
+            {block.data.topicMeta && (
               <Column align="right" style={{ verticalAlign: "middle" }}>
                 <Text
                   style={{
@@ -498,14 +641,13 @@ export function TechSignalDarkSection({
                     margin: 0,
                   }}
                 >
-                  {content.topicMeta}
+                  {block.data.topicMeta}
                 </Text>
               </Column>
             )}
           </Row>
         </Section>
 
-        {/* Body */}
         <Section style={{ padding: "24px" }}>
           <Heading
             as="h2"
@@ -518,10 +660,9 @@ export function TechSignalDarkSection({
               margin: "0 0 16px 0",
             }}
           >
-            {content.title}
+            {block.data.title}
           </Heading>
-
-          {content.paragraphs.map((p, i) => (
+          {block.data.paragraphs.map((p, i) => (
             <Text
               key={i}
               style={{
@@ -531,13 +672,9 @@ export function TechSignalDarkSection({
                 fontWeight: 300,
                 margin: "0 0 16px 0",
               }}
-              dangerouslySetInnerHTML={{
-                __html: renderInlineMarkdown(p),
-              }}
+              dangerouslySetInnerHTML={{ __html: renderInlineMarkdown(p) }}
             />
           ))}
-
-          {/* MICE perspective insight box — light navy tint */}
           <Section
             style={{
               backgroundColor: colors.bgInsightSoft,
@@ -569,7 +706,7 @@ export function TechSignalDarkSection({
                 margin: 0,
               }}
               dangerouslySetInnerHTML={{
-                __html: renderInlineMarkdown(content.miceInsight),
+                __html: renderInlineMarkdown(block.data.miceInsight),
               }}
             />
           </Section>
@@ -580,24 +717,22 @@ export function TechSignalDarkSection({
 }
 
 // ─────────────────────────────────────────────
-// 8. From Theory to Field — long-form story
+// BLOCK: theory_to_field
 // ─────────────────────────────────────────────
-export function TheoryToFieldSection({
-  content,
-  index = "05",
+function TheoryToField({
+  block,
+  index,
 }: {
-  content: TheoryToFieldContent;
-  index?: string;
+  block: TheoryToFieldBlock;
+  index: string;
 }) {
   return (
     <MajorSection>
-      <SectionLabel index={index} label={content.englishLabel} />
-
-      {/* Source row */}
-      {(content.sourceYear || content.sourceAuthor) && (
+      <SectionLabel index={index} label={block.data.englishLabel} />
+      {(block.data.sourceYear || block.data.sourceAuthor) && (
         <Section style={{ marginBottom: "18px" }}>
           <Row>
-            {content.sourceYear && (
+            {block.data.sourceYear && (
               <Column style={{ width: "70px", verticalAlign: "middle" }}>
                 <Text
                   style={{
@@ -609,7 +744,7 @@ export function TheoryToFieldSection({
                     fontWeight: 700,
                   }}
                 >
-                  {content.sourceYear}
+                  {block.data.sourceYear}
                 </Text>
               </Column>
             )}
@@ -620,7 +755,7 @@ export function TheoryToFieldSection({
                 borderLeft: `1px solid ${colors.borderSoft}`,
               }}
             >
-              {content.sourceAuthor && (
+              {block.data.sourceAuthor && (
                 <Text
                   style={{
                     fontSize: "11px",
@@ -630,10 +765,10 @@ export function TheoryToFieldSection({
                     margin: "0 0 2px 0",
                   }}
                 >
-                  {content.sourceAuthor}
+                  {block.data.sourceAuthor}
                 </Text>
               )}
-              {content.sourceMeta && (
+              {block.data.sourceMeta && (
                 <Text
                   style={{
                     fontSize: "10px",
@@ -642,7 +777,7 @@ export function TheoryToFieldSection({
                     margin: 0,
                   }}
                 >
-                  {content.sourceMeta}
+                  {block.data.sourceMeta}
                 </Text>
               )}
             </Column>
@@ -650,7 +785,6 @@ export function TheoryToFieldSection({
         </Section>
       )}
 
-      {/* Title */}
       <Heading
         as="h2"
         style={{
@@ -665,11 +799,10 @@ export function TheoryToFieldSection({
           display: "inline-block",
         }}
       >
-        {content.title}
+        {block.data.title}
       </Heading>
 
-      {/* Intro paragraphs */}
-      {content.introParagraphs.map((p, i) => (
+      {block.data.introParagraphs.map((p, i) => (
         <Text
           key={`intro-${i}`}
           style={{
@@ -683,7 +816,6 @@ export function TheoryToFieldSection({
         />
       ))}
 
-      {/* Bridge box (→ 현장에서는) */}
       <Section
         style={{
           margin: "24px 0",
@@ -702,7 +834,7 @@ export function TheoryToFieldSection({
             margin: "0 0 8px 0",
           }}
         >
-          {content.bridge.label ?? "→ 현장에서는"}
+          {block.data.bridge.label ?? "→ 현장에서는"}
         </Text>
         <Text
           style={{
@@ -713,13 +845,12 @@ export function TheoryToFieldSection({
             margin: 0,
           }}
           dangerouslySetInnerHTML={{
-            __html: renderInlineMarkdown(content.bridge.text),
+            __html: renderInlineMarkdown(block.data.bridge.text),
           }}
         />
       </Section>
 
-      {/* Outro paragraphs */}
-      {content.outroParagraphs.map((p, i) => (
+      {block.data.outroParagraphs.map((p, i) => (
         <Text
           key={`outro-${i}`}
           style={{
@@ -733,8 +864,7 @@ export function TheoryToFieldSection({
         />
       ))}
 
-      {/* Closing italic note */}
-      {content.closingNote && (
+      {block.data.closingNote && (
         <Text
           style={{
             fontSize: "13px",
@@ -746,7 +876,7 @@ export function TheoryToFieldSection({
             margin: 0,
           }}
         >
-          {content.closingNote}
+          {block.data.closingNote}
         </Text>
       )}
     </MajorSection>
@@ -754,20 +884,19 @@ export function TheoryToFieldSection({
 }
 
 // ─────────────────────────────────────────────
-// 9. 지금 MICE는 (light section now, with pull quote card)
+// BLOCK: editor_take (지금 MICE는 / Editor's Take)
 // ─────────────────────────────────────────────
-export function NowMiceSection({
-  content,
-  index = "06",
+function EditorTake({
+  block,
+  index,
 }: {
-  content: NowMiceContent;
-  index?: string;
+  block: EditorTakeBlock;
+  index: string;
 }) {
   return (
     <MajorSection>
-      <SectionLabel index={index} label={content.englishLabel} />
-
-      {content.eyebrow && (
+      <SectionLabel index={index} label={block.data.englishLabel} />
+      {block.data.eyebrow && (
         <Text
           style={{
             fontSize: "11px",
@@ -778,10 +907,9 @@ export function NowMiceSection({
             margin: "0 0 8px 0",
           }}
         >
-          {content.eyebrow}
+          {block.data.eyebrow}
         </Text>
       )}
-
       <Heading
         as="h2"
         style={{
@@ -795,10 +923,9 @@ export function NowMiceSection({
           margin: "0 0 24px 0",
         }}
       >
-        {renderMultiline(content.title)}
+        {renderMultiline(block.data.title)}
       </Heading>
-
-      {content.leadParagraph && (
+      {block.data.leadParagraph && (
         <Text
           style={{
             fontSize: "14px",
@@ -808,11 +935,10 @@ export function NowMiceSection({
             margin: "0 0 8px 0",
           }}
         >
-          {content.leadParagraph}
+          {block.data.leadParagraph}
         </Text>
       )}
-
-      {content.pullQuote && (
+      {block.data.pullQuote && (
         <Section
           style={{
             margin: "26px 0",
@@ -831,12 +957,11 @@ export function NowMiceSection({
               margin: 0,
             }}
           >
-            &ldquo;{renderMultiline(content.pullQuote)}&rdquo;
+            &ldquo;{renderMultiline(block.data.pullQuote)}&rdquo;
           </Text>
         </Section>
       )}
-
-      {content.paragraphs.map((p, i) => (
+      {block.data.paragraphs.map((p, i) => (
         <Text
           key={i}
           style={{
@@ -849,8 +974,7 @@ export function NowMiceSection({
           dangerouslySetInnerHTML={{ __html: renderInlineMarkdown(p) }}
         />
       ))}
-
-      {content.closingNote && (
+      {block.data.closingNote && (
         <Text
           style={{
             fontSize: "13px",
@@ -862,7 +986,7 @@ export function NowMiceSection({
             margin: 0,
           }}
         >
-          {content.closingNote}
+          {block.data.closingNote}
         </Text>
       )}
     </MajorSection>
@@ -870,18 +994,18 @@ export function NowMiceSection({
 }
 
 // ─────────────────────────────────────────────
-// 10. GroundK Story — Field Briefing (dark) + Project Sketch (light)
+// BLOCK: groundk_story
 // ─────────────────────────────────────────────
-export function GroundkStoryMajorSection({
-  content,
-  index = "07",
+function GroundkStory({
+  block,
+  index,
 }: {
-  content: GroundkStoryContent;
-  index?: string;
+  block: GroundkStoryBlock;
+  index: string;
 }) {
   return (
     <MajorSection noBorder>
-      <SectionLabel index={index} label={content.englishLabel} />
+      <SectionLabel index={index} label={block.data.englishLabel} />
 
       {/* Field Briefing — light tinted card */}
       <Section
@@ -902,9 +1026,8 @@ export function GroundkStoryMajorSection({
             margin: "0 0 14px 0",
           }}
         >
-          {content.fieldBriefing.eyebrow}
+          {block.data.fieldBriefing.eyebrow}
         </Text>
-
         <Section
           style={{
             borderLeft: `3px solid ${colors.accentGold}`,
@@ -922,7 +1045,7 @@ export function GroundkStoryMajorSection({
               margin: "0 0 4px 0",
             }}
           >
-            {content.fieldBriefing.categoryTag}
+            {block.data.fieldBriefing.categoryTag}
           </Text>
           <Text
             style={{
@@ -935,7 +1058,7 @@ export function GroundkStoryMajorSection({
             }}
             dangerouslySetInnerHTML={{
               __html: renderInlineMarkdown(
-                content.fieldBriefing.body.replace(/\n/g, "<br>")
+                block.data.fieldBriefing.body.replace(/\n/g, "<br>")
               ),
             }}
           />
@@ -951,7 +1074,6 @@ export function GroundkStoryMajorSection({
           padding: "24px",
         }}
       >
-        {/* Meta row */}
         <Row style={{ marginBottom: "14px" }}>
           <Column>
             <Text
@@ -963,7 +1085,7 @@ export function GroundkStoryMajorSection({
                 margin: 0,
               }}
             >
-              {content.projectSketch.projectMeta}
+              {block.data.projectSketch.projectMeta}
             </Text>
           </Column>
           <Column align="right">
@@ -975,12 +1097,10 @@ export function GroundkStoryMajorSection({
                 margin: 0,
               }}
             >
-              {content.projectSketch.dateMeta}
+              {block.data.projectSketch.dateMeta}
             </Text>
           </Column>
         </Row>
-
-        {/* Eyebrow */}
         <Text
           style={{
             fontSize: "11px",
@@ -992,10 +1112,8 @@ export function GroundkStoryMajorSection({
             margin: "0 0 6px 0",
           }}
         >
-          {content.projectSketch.eyebrow}
+          {block.data.projectSketch.eyebrow}
         </Text>
-
-        {/* Title */}
         <Heading
           as="h3"
           style={{
@@ -1009,11 +1127,9 @@ export function GroundkStoryMajorSection({
             margin: "0 0 18px 0",
           }}
         >
-          {content.projectSketch.title}
+          {block.data.projectSketch.title}
         </Heading>
-
-        {/* Paragraphs */}
-        {content.projectSketch.paragraphs.map((p, i) => (
+        {block.data.projectSketch.paragraphs.map((p, i) => (
           <Text
             key={i}
             style={{
@@ -1026,9 +1142,7 @@ export function GroundkStoryMajorSection({
             {p}
           </Text>
         ))}
-
-        {/* Tags */}
-        {content.projectSketch.tags.length > 0 && (
+        {block.data.projectSketch.tags.length > 0 && (
           <Section
             style={{
               paddingTop: "14px",
@@ -1036,7 +1150,7 @@ export function GroundkStoryMajorSection({
               marginTop: "6px",
             }}
           >
-            {content.projectSketch.tags.map((t, i) => (
+            {block.data.projectSketch.tags.map((t, i) => (
               <span
                 key={i}
                 style={{
@@ -1062,91 +1176,253 @@ export function GroundkStoryMajorSection({
 }
 
 // ─────────────────────────────────────────────
-// 11. Footer
+// BLOCK: consolidated_insight (Ver.2 long-form multi-part)
 // ─────────────────────────────────────────────
-export function NewsletterFooter({
-  content,
-  appUrl,
+function ConsolidatedInsight({
+  block,
+  index,
 }: {
-  content: FooterContent;
-  appUrl: string;
+  block: ConsolidatedInsightBlock;
+  index: string;
 }) {
-  const logoSrc = content.logoSrc ?? `${appUrl}/logo.png`;
-
   return (
-    <Section
-      style={{
-        marginTop: "60px",
-        paddingTop: "40px",
-        paddingBottom: "40px",
-        borderTop: `2px solid ${colors.borderStrong}`,
-      }}
-    >
-      <Row>
-        <Column width="60%" style={{ verticalAlign: "top" }}>
-          <Img
-            src={logoSrc}
-            alt={content.brandName}
-            width="160"
-            style={{
-              display: "block",
-              marginBottom: "16px",
-              maxWidth: "160px",
-              height: "auto",
-            }}
-          />
-          <Text
-            style={{
-              ...typography.footerLink,
-              color: colors.textMuted,
-              margin: 0,
-            }}
-          >
-            {content.links.map((link, i) => (
-              <React.Fragment key={i}>
-                <Link
-                  href={link.href}
-                  style={{
-                    color: colors.textMuted,
-                    textDecoration: "none",
-                  }}
-                >
-                  {link.label}
-                </Link>
-                {i < content.links.length - 1 && <br />}
-              </React.Fragment>
-            ))}
-          </Text>
-        </Column>
-        <Column
-          width="40%"
-          align="right"
-          style={{ verticalAlign: "bottom" }}
+    <MajorSection>
+      <SectionLabel index={index} label={block.data.englishLabel} />
+      {block.data.parts.map((part, i) => (
+        <Section
+          key={i}
+          style={{
+            marginBottom:
+              i === block.data.parts.length - 1 ? "0" : "48px",
+            paddingBottom:
+              i === block.data.parts.length - 1
+                ? "0"
+                : "48px",
+            borderBottom:
+              i === block.data.parts.length - 1
+                ? "none"
+                : `1px solid ${colors.borderSoft}`,
+          }}
         >
           <Text
             style={{
-              ...typography.footerSmall,
-              color: colors.textFaint,
-              textAlign: "right",
-              margin: 0,
+              fontSize: "11px",
+              fontWeight: 700,
+              letterSpacing: "2px",
+              color: colors.brandNavy,
+              textTransform: "uppercase",
+              opacity: 0.7,
+              margin: "0 0 8px 0",
             }}
           >
-            수신을 원치 않으시면{" "}
-            <Link
-              href={content.unsubscribeHref}
+            {part.categoryTag}
+          </Text>
+          <Heading
+            as="h3"
+            style={{
+              fontSize: "21px",
+              fontWeight: 700,
+              color: colors.textHeadline,
+              lineHeight: 1.4,
+              letterSpacing: "-0.3px",
+              margin: "0 0 14px 0",
+            }}
+          >
+            {part.title}
+          </Heading>
+          {part.paragraphs.map((p, j) => (
+            <Text
+              key={j}
               style={{
-                color: colors.textHeadline,
-                textDecoration: "underline",
+                fontSize: "14px",
+                color: colors.textBody,
+                lineHeight: 1.9,
+                fontWeight: 300,
+                margin: "0 0 14px 0",
+              }}
+              dangerouslySetInnerHTML={{ __html: renderInlineMarkdown(p) }}
+            />
+          ))}
+          {part.insight && (
+            <Section
+              style={{
+                backgroundColor: colors.bgInsight,
+                padding: "16px 18px",
+                borderRadius: "6px",
+                marginTop: "6px",
               }}
             >
-              여기
-            </Link>
-            에서 수신 거부하실 수 있습니다.
-          </Text>
-        </Column>
-      </Row>
-    </Section>
+              <Text
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  letterSpacing: "1.5px",
+                  color: colors.textHeadline,
+                  textTransform: "uppercase",
+                  margin: "0 0 6px 0",
+                }}
+              >
+                {part.insight.label ?? "Insight"}
+              </Text>
+              <Text
+                style={{
+                  fontSize: "13px",
+                  color: "#555555",
+                  lineHeight: 1.7,
+                  margin: 0,
+                }}
+                dangerouslySetInnerHTML={{
+                  __html: renderInlineMarkdown(part.insight.text),
+                }}
+              />
+            </Section>
+          )}
+        </Section>
+      ))}
+    </MajorSection>
   );
+}
+
+// ─────────────────────────────────────────────
+// BLOCK: blog_card_grid (Ver.2 2x2 cards)
+// ─────────────────────────────────────────────
+function BlogCardGrid({
+  block,
+  index,
+}: {
+  block: BlogCardGridBlock;
+  index: string;
+}) {
+  // Pair cards into rows of 2 for email-safe layout
+  const rows: Array<typeof block.data.cards> = [];
+  for (let i = 0; i < block.data.cards.length; i += 2) {
+    rows.push(block.data.cards.slice(i, i + 2));
+  }
+  return (
+    <MajorSection>
+      <SectionLabel index={index} label={block.data.englishLabel} />
+      {rows.map((row, rowIdx) => (
+        <Row key={rowIdx} style={{ marginBottom: rowIdx === rows.length - 1 ? "0" : "14px" }}>
+          {row.map((card, i) => (
+            <Column
+              key={i}
+              style={{
+                verticalAlign: "top",
+                width: "50%",
+                paddingLeft: i === 1 ? "7px" : "0",
+                paddingRight: i === 0 ? "7px" : "0",
+              }}
+            >
+              <Section
+                style={{
+                  border: `1px solid ${colors.borderSoft}`,
+                  borderRadius: "8px",
+                  padding: "18px",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    letterSpacing: "1.5px",
+                    color: colors.brandNavy,
+                    textTransform: "uppercase",
+                    margin: "0 0 8px 0",
+                  }}
+                >
+                  {card.label}
+                </Text>
+                <Heading
+                  as="h4"
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: 700,
+                    color: colors.textHeadline,
+                    lineHeight: 1.4,
+                    letterSpacing: "-0.2px",
+                    margin: "0 0 10px 0",
+                  }}
+                >
+                  {card.title}
+                </Heading>
+                <Text
+                  style={{
+                    fontSize: "12px",
+                    color: colors.textMuted,
+                    lineHeight: 1.7,
+                    fontWeight: 300,
+                    margin: "0 0 12px 0",
+                  }}
+                >
+                  {card.description}
+                </Text>
+                <Link
+                  href={card.linkUrl}
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    color: colors.brandNavy,
+                    textDecoration: "none",
+                    letterSpacing: "0.3px",
+                  }}
+                >
+                  {card.linkText ?? "블로그에서 읽기 →"}
+                </Link>
+              </Section>
+            </Column>
+          ))}
+          {/* Pad trailing empty column if odd count */}
+          {row.length === 1 && (
+            <Column style={{ width: "50%", paddingLeft: "7px" }}>&nbsp;</Column>
+          )}
+        </Row>
+      ))}
+    </MajorSection>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Dispatcher — route each block to its renderer
+// ─────────────────────────────────────────────
+export function BlockRenderer({
+  block,
+  index,
+}: {
+  block: BlockInstance;
+  index: string;
+}) {
+  switch (block.type) {
+    case "opening_lede":
+      return <OpeningLede block={block} />;
+    case "stat_feature":
+      return <StatFeature block={block} index={index} />;
+    case "news_briefing":
+      return <NewsBriefing block={block} index={index} />;
+    case "in_out_comparison":
+      return <InOutComparison block={block} index={index} />;
+    case "tech_signal":
+      return <TechSignal block={block} index={index} />;
+    case "theory_to_field":
+      return <TheoryToField block={block} index={index} />;
+    case "editor_take":
+      return <EditorTake block={block} index={index} />;
+    case "groundk_story":
+      return <GroundkStory block={block} index={index} />;
+    case "consolidated_insight":
+      return <ConsolidatedInsight block={block} index={index} />;
+    case "blog_card_grid":
+      return <BlogCardGrid block={block} index={index} />;
+    default: {
+      const _exhaustive: never = block;
+      void _exhaustive;
+      return null;
+    }
+  }
+}
+
+/** Whether a block type is numbered in the section label */
+export function isNumberedBlock(type: BlockInstance["type"]): boolean {
+  return type !== "opening_lede";
 }
 
 // ─────────────────────────────────────────────
@@ -1163,10 +1439,7 @@ function renderMultiline(s: string): React.ReactNode {
 }
 
 function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function renderInlineMarkdown(s: string): string {
@@ -1179,15 +1452,5 @@ function renderInlineMarkdown(s: string): string {
     .replace(/<br>/g, "<br/>");
 }
 
-function renderInlineMarkdownOnDark(s: string): string {
-  const escaped = escapeHtml(s);
-  return escaped
-    .replace(
-      /\*\*([^*]+)\*\*/g,
-      `<strong style="color:rgba(255,255,255,0.85);font-weight:500;">$1</strong>`
-    )
-    .replace(/<br>/g, "<br/>");
-}
-
-// Re-exports kept for any consumer
-export { Pill, InsightBox, SectionLabelOnDark };
+// Re-export the Pill helper for consumers
+export { Pill };

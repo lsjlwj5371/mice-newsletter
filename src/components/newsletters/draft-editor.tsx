@@ -93,6 +93,13 @@ export function DraftEditor({ newsletter, initialHtml }: Props) {
           · 마지막 초안 생성: {formatDateTime(newsletter.last_drafted_at)}
         </span>
         <div className="ml-auto flex gap-2">
+          <a
+            href={`/api/newsletters/${newsletter.id}/html?download=1`}
+            download
+            className="inline-flex items-center h-9 px-4 rounded-md border border-border bg-background hover:bg-muted text-sm font-medium"
+          >
+            ↓ HTML 다운로드
+          </a>
           <Button
             variant="outline"
             onClick={handleRegenerate}

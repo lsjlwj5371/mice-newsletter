@@ -9,18 +9,12 @@ import {
 } from "@react-email/components";
 import { colors, typography, spacing } from "./tokens";
 import {
-  SpeakHeader,
-  ReferralCtaTop,
-  OpeningHook,
-  NumberOfMonthSection,
-  BriefingMajorSection,
-  MiceInOutTwoColumn,
-  TechSignalDarkSection,
-  TheoryToFieldSection,
-  NowMiceSection,
-  GroundkStoryMajorSection,
-  NewsletterFooter,
-} from "./components/sections";
+  NewsletterHeaderBlock,
+  ReferralCtaBlock,
+  NewsletterFooterBlock,
+  BlockRenderer,
+  isNumberedBlock,
+} from "./components/blocks";
 import type { NewsletterContent } from "@/types/newsletter";
 
 interface Props {
@@ -30,21 +24,30 @@ interface Props {
 }
 
 /**
- * SPEAK newsletter email template — 11 sections in fixed order:
+ * PIK newsletter email template (schema_version = 2 — block-based).
  *
- *  1. Header (SPEAK wordmark)
- *  2. Referral CTA (compact horizontal)
- *  3. Opening Hook (gold left border)
- *  4. 01 / Number of the Month
- *  5. 02 / News Briefing
- *  6. 03 / MICE IN & OUT (2-column: IN / OUT)
- *  7. 04 / TECH SIGNAL (dark inverted)
- *  8. 05 / From Theory to Field (long-form story)
- *  9. 06 / 지금 MICE는 (opinion + pull quote)
- * 10. 07 / GroundK Story (Field Briefing dark + Project Sketch light)
- * 11. Footer (logo + links + unsubscribe)
+ * Structure:
+ *   - Header (fixed)
+ *   - Referral CTA (fixed)
+ *   - [blocks ordered by admin, numbered sequentially]
+ *   - Footer (fixed)
+ *
+ * Block types are dispatched through BlockRenderer in components/blocks.tsx.
  */
 export default function Newsletter({ content, appUrl }: Props) {
+  // Auto-number blocks that opt into numbering.
+  // `opening_lede` is unnumbered; all other blocks get sequential indices
+  // starting from 01 in their own order.
+  let cursor = 1;
+  const indexedBlocks = content.blocks.map((block) => {
+    if (!isNumberedBlock(block.type)) {
+      return { block, index: "" };
+    }
+    const idx = block.indexLabel ?? String(cursor).padStart(2, "0");
+    cursor += 1;
+    return { block, index: idx };
+  });
+
   return (
     <Html lang="ko">
       <Head>
@@ -101,38 +104,14 @@ export default function Newsletter({ content, appUrl }: Props) {
             padding: spacing.wrapperPadding,
           }}
         >
-          {/* 1. Header — SPEAK */}
-          <SpeakHeader content={content.header} />
+          <NewsletterHeaderBlock content={content.header} />
+          <ReferralCtaBlock content={content.referralCta} />
 
-          {/* 2. Referral CTA */}
-          <ReferralCtaTop content={content.referralCta} />
+          {indexedBlocks.map(({ block, index }) => (
+            <BlockRenderer key={block.id} block={block} index={index} />
+          ))}
 
-          {/* 3. Opening Hook */}
-          <OpeningHook content={content.openingHook} />
-
-          {/* 4. 01 — Number of the Month */}
-          <NumberOfMonthSection content={content.numberOfMonth} index="01" />
-
-          {/* 5. 02 — News Briefing */}
-          <BriefingMajorSection content={content.newsBriefing} index="02" />
-
-          {/* 6. 03 — MICE IN & OUT */}
-          <MiceInOutTwoColumn content={content.miceInOut} index="03" />
-
-          {/* 7. 04 — TECH SIGNAL (dark) */}
-          <TechSignalDarkSection content={content.techSignal} index="04" />
-
-          {/* 8. 05 — From Theory to Field */}
-          <TheoryToFieldSection content={content.theoryToField} index="05" />
-
-          {/* 9. 06 — 지금 MICE는 */}
-          <NowMiceSection content={content.nowMice} index="06" />
-
-          {/* 10. 07 — GroundK Story */}
-          <GroundkStoryMajorSection content={content.groundkStory} index="07" />
-
-          {/* 11. Footer */}
-          <NewsletterFooter content={content.footer} appUrl={appUrl} />
+          <NewsletterFooterBlock content={content.footer} appUrl={appUrl} />
         </Container>
       </Body>
     </Html>
