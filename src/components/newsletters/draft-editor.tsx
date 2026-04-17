@@ -11,6 +11,7 @@ import {
   regenerateBlockAction,
 } from "@/app/(admin)/newsletters/actions";
 import { BlockImageSlot } from "./block-image-slot";
+import { SendPanel } from "./send-panel";
 import {
   NEWSLETTER_STATUS_LABELS,
   BLOCK_LABELS,
@@ -39,12 +40,21 @@ interface Props {
   initialHtml: string;
   /** Title/URL lookup for all referencedArticleIds across all blocks. */
   articleMeta: Record<string, ArticleMetaEntry>;
+  /** Count of recipients with status='active' for the send panel. */
+  activeRecipientCount: number;
 }
 
-export function DraftEditor({ newsletter, initialHtml, articleMeta }: Props) {
+export function DraftEditor({
+  newsletter,
+  initialHtml,
+  articleMeta,
+  activeRecipientCount,
+}: Props) {
   const router = useRouter();
   const [mode, setMode] = React.useState<ViewMode>("desktop");
-  const [tab, setTab] = React.useState<"preview" | "blocks" | "json">("preview");
+  const [tab, setTab] = React.useState<"preview" | "blocks" | "send" | "json">(
+    "preview"
+  );
   const [jsonText, setJsonText] = React.useState(
     () => JSON.stringify(newsletter.content_json, null, 2)
   );
@@ -145,6 +155,13 @@ export function DraftEditor({ newsletter, initialHtml, articleMeta }: Props) {
           </Button>
           <Button
             size="sm"
+            variant={tab === "send" ? "primary" : "ghost"}
+            onClick={() => setTab("send")}
+          >
+            발송
+          </Button>
+          <Button
+            size="sm"
             variant={tab === "json" ? "primary" : "ghost"}
             onClick={() => setTab("json")}
           >
@@ -222,6 +239,14 @@ export function DraftEditor({ newsletter, initialHtml, articleMeta }: Props) {
             articleMeta={articleMeta}
             disabled={regeneratePending || savePending}
             onDone={() => router.refresh()}
+          />
+        )}
+
+        {tab === "send" && (
+          <SendPanel
+            newsletterId={newsletter.id}
+            status={newsletter.status}
+            activeRecipientCount={activeRecipientCount}
           />
         )}
 

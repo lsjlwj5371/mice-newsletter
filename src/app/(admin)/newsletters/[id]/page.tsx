@@ -113,6 +113,11 @@ export default async function NewsletterDraftPage({
   }
   const articleMeta = Object.fromEntries(articleMetaMap);
 
+  const { count: activeRecipientCount } = await supabase
+    .from("recipients")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "active");
+
   return (
     <>
       <PageHeader
@@ -123,6 +128,7 @@ export default async function NewsletterDraftPage({
         newsletter={newsletter}
         initialHtml={html}
         articleMeta={articleMeta}
+        activeRecipientCount={activeRecipientCount ?? 0}
       />
     </>
   );
