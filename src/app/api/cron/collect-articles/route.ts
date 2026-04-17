@@ -116,7 +116,10 @@ async function runCollection(): Promise<RunSummary> {
 
         if (existing) continue;
 
-        // Insert raw article first (without analysis)
+        // Insert raw article first (without analysis). Categories are
+        // inherited from the feed — a multi-category feed yields articles
+        // eligible for every one of its sections.
+        const feedCategories = (feed.categories ?? []) as ArticleCategory[];
         const { data: inserted, error: insertErr } = await supabase
           .from("articles")
           .insert({
@@ -125,7 +128,7 @@ async function runCollection(): Promise<RunSummary> {
             url: item.url,
             title: item.title,
             source: feed.name,
-            category: feed.category as ArticleCategory,
+            categories: feedCategories,
             published_at: item.publishedAt?.toISOString() ?? null,
             raw_excerpt: item.rawExcerpt,
           })
@@ -144,12 +147,13 @@ async function runCollection(): Promise<RunSummary> {
         summary.new_articles++;
         detail.new_count++;
 
-        // Analyze with Claude (best-effort; failures don't block insertion)
+        // Analyze with Claude (best-effort; failures don't block insertion).
+        // Pass the first category as the "primary" context for the analyzer.
         try {
           const analysis = await analyzeArticle({
             title: item.title,
             url: item.url,
-            category: feed.category as ArticleCategory,
+            category: (feedCategories[0] ?? "news") as ArticleCategory,
             rawExcerpt: item.rawExcerpt,
             source: feed.name,
           });

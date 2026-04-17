@@ -98,7 +98,7 @@ export async function createDraftNewsletterAction(
     let q = supabase
       .from("articles")
       .select("*")
-      .eq("category", cat)
+      .contains("categories", [cat])
       .order("importance", { ascending: false, nullsFirst: false })
       .order("collected_at", { ascending: false })
       .limit(parsed.data.perCategoryLimit);
@@ -314,7 +314,7 @@ export async function regenerateDraftAction(
     let q = supabase
       .from("articles")
       .select("*")
-      .eq("category", cat)
+      .contains("categories", [cat])
       .order("importance", { ascending: false, nullsFirst: false })
       .order("collected_at", { ascending: false })
       .limit(8);
@@ -465,7 +465,7 @@ export async function createDraftWithBlocksAction(
       let q = supabase
         .from("articles")
         .select("*")
-        .eq("category", cat)
+        .contains("categories", [cat])
         .eq("review_status", "new")
         .order("pinned", { ascending: false })
         .order("importance", { ascending: false, nullsFirst: false })
@@ -494,7 +494,7 @@ export async function createDraftWithBlocksAction(
       const { data, error } = await supabase
         .from("articles")
         .select("*")
-        .eq("category", cat)
+        .contains("categories", [cat])
         .eq("review_status", "new")
         .order("pinned", { ascending: false })
         .order("importance", { ascending: false, nullsFirst: false })
@@ -664,7 +664,7 @@ export async function regenerateBlockAction(
       let q = supabase
         .from("articles")
         .select("*")
-        .eq("category", cat)
+        .contains("categories", [cat])
         .eq("review_status", "new")
         .order("pinned", { ascending: false })
         .order("importance", { ascending: false, nullsFirst: false })

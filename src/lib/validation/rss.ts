@@ -33,7 +33,31 @@ export const rssFeedSchema = z.object({
     .string()
     .min(1, "이름은 필수입니다")
     .transform((v) => v.trim()),
-  category: z.enum(ARTICLE_CATEGORIES),
+  /**
+   * Can be a comma-separated string from multi-select form submission, a
+   * JSON-encoded array, or a real string[]. Normalizes to a validated
+   * ArticleCategory[] with at least one entry.
+   */
+  categories: z
+    .union([z.string(), z.array(z.string())])
+    .transform((v) => {
+      if (Array.isArray(v)) return v;
+      const trimmed = v.trim();
+      if (trimmed.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) return parsed as string[];
+        } catch {
+          // fall through to comma split
+        }
+      }
+      return trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+    })
+    .pipe(
+      z
+        .array(z.enum(ARTICLE_CATEGORIES))
+        .min(1, "카테고리를 최소 1개 선택하세요")
+    ),
   active: z
     .union([z.literal("on"), z.literal("true"), z.boolean()])
     .optional()
@@ -50,7 +74,8 @@ export interface RssFeed {
   id: string;
   url: string;
   name: string;
-  category: ArticleCategory;
+  /** One or more categories this feed contributes to. */
+  categories: ArticleCategory[];
   active: boolean;
   last_fetched_at: string | null;
   last_error: string | null;
@@ -73,7 +98,8 @@ export interface Article {
   url: string;
   title: string;
   source: string | null;
-  category: ArticleCategory;
+  /** Categories inherited from the source feed at collection time. */
+  categories: ArticleCategory[];
   published_at: string | null;
   collected_at: string;
   raw_excerpt: string | null;

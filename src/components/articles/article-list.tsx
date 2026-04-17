@@ -216,7 +216,11 @@ function ArticleRow({
             className="w-full text-left"
           >
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <Badge variant="muted">{CATEGORY_LABELS[article.category]}</Badge>
+              {(article.categories ?? []).map((c) => (
+                <Badge key={c} variant="muted">
+                  {CATEGORY_LABELS[c]}
+                </Badge>
+              ))}
               {article.importance && (
                 <Badge variant={importanceBadgeVariant(article.importance)}>
                   ★ {article.importance}

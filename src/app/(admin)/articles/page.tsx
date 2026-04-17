@@ -51,7 +51,7 @@ export default async function ArticlesPage({
     params.category &&
     (ARTICLE_CATEGORIES as readonly string[]).includes(params.category)
   ) {
-    query = query.eq("category", params.category);
+    query = query.contains("categories", [params.category]);
   }
 
   if (params.min_importance) {

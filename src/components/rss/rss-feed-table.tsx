@@ -81,7 +81,13 @@ export function RssFeedTable({ feeds }: Props) {
                   )}
                 </Td>
                 <Td>
-                  <Badge variant="muted">{CATEGORY_LABELS[f.category]}</Badge>
+                  <div className="flex flex-wrap gap-1">
+                    {(f.categories ?? []).map((c) => (
+                      <Badge key={c} variant="muted">
+                        {CATEGORY_LABELS[c]}
+                      </Badge>
+                    ))}
+                  </div>
                 </Td>
                 <Td>
                   <a

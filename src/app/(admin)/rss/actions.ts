@@ -52,7 +52,7 @@ export async function createRssFeedAction(
     .insert({
       url: parsed.data.url,
       name: parsed.data.name,
-      category: parsed.data.category,
+      categories: parsed.data.categories,
       active: parsed.data.active,
       notes: parsed.data.notes,
     })
@@ -75,7 +75,7 @@ export async function createRssFeedAction(
     action: "rss_feed.create",
     entity: "rss_feed",
     entityId: data.id,
-    metadata: { url: parsed.data.url, category: parsed.data.category },
+    metadata: { url: parsed.data.url, categories: parsed.data.categories },
   });
 
   revalidatePath("/rss");
@@ -106,7 +106,7 @@ export async function updateRssFeedAction(
     .update({
       url: parsed.data.url,
       name: parsed.data.name,
-      category: parsed.data.category,
+      categories: parsed.data.categories,
       active: parsed.data.active,
       notes: parsed.data.notes,
     })
