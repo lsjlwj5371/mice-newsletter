@@ -230,3 +230,191 @@ export async function sendNewsletterAction(
         : ""),
   };
 }
+
+// ─────────────────────────────────────────────
+// RESEND — re-dispatch a newsletter to a chosen audience
+// ─────────────────────────────────────────────
+
+export type ResendAudience =
+  | "specific"    // use `emails` list
+  | "non_openers" // active recipients whose sends.opened_at is null
+  | "failed";     // recipients whose last send for this newsletter failed
+
+export interface ResendInput {
+  newsletterId: string;
+  audience: ResendAudience;
+  /** Required when audience='specific'; comma/newline separated list. */
+  emails?: string;
+}
+
+export async function resendNewsletterAction(
+  input: ResendInput
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const supabase = createAdminClient();
+
+  const { data: nl, error: nlErr } = await supabase
+    .from("newsletters")
+    .select("id, issue_label, status")
+    .eq("id", input.newsletterId)
+    .single();
+  if (nlErr || !nl) {
+    return { ok: false, error: "뉴스레터를 찾을 수 없습니다." };
+  }
+
+  // Build the target recipient list
+  let targets: Array<{
+    email: string;
+    name: string | null;
+    recipient_id: string | null;
+  }> = [];
+
+  if (input.audience === "specific") {
+    const parsed = (input.emails ?? "")
+      .split(/[,\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (parsed.length === 0) {
+      return { ok: false, error: "대상 이메일을 입력해 주세요." };
+    }
+    // Try to attach recipient_id by looking them up
+    const { data: recs } = await supabase
+      .from("recipients")
+      .select("id, email, name")
+      .in("email", parsed);
+    const byEmail = new Map(
+      (recs ?? []).map((r) => [r.email.toLowerCase(), r])
+    );
+    targets = parsed.map((email) => {
+      const r = byEmail.get(email.toLowerCase());
+      return {
+        email,
+        name: r?.name ?? null,
+        recipient_id: r?.id ?? null,
+      };
+    });
+  } else if (input.audience === "non_openers") {
+    // Active recipients with at least one non-test send for this
+    // newsletter whose opened_at is null.
+    const { data: rows, error: rowsErr } = await supabase
+      .from("sends")
+      .select(
+        "recipient_id, recipient_email, recipient_name, opened_at, is_test, status"
+      )
+      .eq("newsletter_id", input.newsletterId)
+      .eq("is_test", false);
+    if (rowsErr) {
+      return { ok: false, error: `발송 이력 조회 실패: ${rowsErr.message}` };
+    }
+    const nonOpeners = (rows ?? []).filter(
+      (r) => r.status === "sent" && !r.opened_at
+    );
+    const seen = new Set<string>();
+    for (const r of nonOpeners) {
+      const key = r.recipient_email.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      targets.push({
+        email: r.recipient_email,
+        name: r.recipient_name,
+        recipient_id: r.recipient_id,
+      });
+    }
+  } else if (input.audience === "failed") {
+    const { data: rows, error: rowsErr } = await supabase
+      .from("sends")
+      .select("recipient_id, recipient_email, recipient_name, status, is_test")
+      .eq("newsletter_id", input.newsletterId)
+      .eq("is_test", false)
+      .eq("status", "failed");
+    if (rowsErr) {
+      return { ok: false, error: `실패 이력 조회 실패: ${rowsErr.message}` };
+    }
+    const seen = new Set<string>();
+    for (const r of rows ?? []) {
+      const key = r.recipient_email.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      targets.push({
+        email: r.recipient_email,
+        name: r.recipient_name,
+        recipient_id: r.recipient_id,
+      });
+    }
+  }
+
+  if (targets.length === 0) {
+    return { ok: false, error: "대상 수신자가 없습니다." };
+  }
+
+  // If audience requires active status, filter out unsubscribed recipients
+  if (input.audience !== "specific") {
+    const recipientIds = targets
+      .map((t) => t.recipient_id)
+      .filter((id): id is string => !!id);
+    if (recipientIds.length > 0) {
+      const { data: activeRows } = await supabase
+        .from("recipients")
+        .select("id, status")
+        .in("id", recipientIds);
+      const activeSet = new Set(
+        (activeRows ?? [])
+          .filter((r) => r.status === "active")
+          .map((r) => r.id)
+      );
+      targets = targets.filter(
+        (t) => !t.recipient_id || activeSet.has(t.recipient_id)
+      );
+    }
+  }
+
+  // Enqueue
+  const rows = targets.map((t) => ({
+    newsletter_id: input.newsletterId,
+    recipient_id: t.recipient_id,
+    recipient_email: t.email,
+    recipient_name: t.name,
+    status: "queued" as const,
+    is_test: false,
+    token: makeQueueToken(),
+    triggered_by: admin.id,
+  }));
+
+  for (let i = 0; i < rows.length; i += 500) {
+    const chunk = rows.slice(i, i + 500);
+    const { error } = await supabase.from("sends").insert(chunk);
+    if (error) {
+      return { ok: false, error: `큐 등록 실패: ${error.message}` };
+    }
+  }
+
+  // Drain synchronously up to the deadline
+  const drain = await processSendQueue({
+    supabase,
+    newsletterId: input.newsletterId,
+    deadlineMs: Date.now() + 55_000,
+  });
+
+  await logAudit({
+    adminId: admin.id,
+    action: "newsletter.resend",
+    entity: "newsletter",
+    entityId: input.newsletterId,
+    metadata: {
+      audience: input.audience,
+      count: rows.length,
+      drained: drain,
+    },
+  });
+
+  revalidatePath(`/newsletters/${input.newsletterId}`);
+  revalidatePath("/history");
+
+  return {
+    ok: true,
+    message:
+      `${rows.length}건 재발송 큐 등록. ` +
+      `즉시 ${drain.sent}건 발송 완료` +
+      (drain.failed > 0 ? ` · ${drain.failed}건 실패` : ""),
+  };
+}

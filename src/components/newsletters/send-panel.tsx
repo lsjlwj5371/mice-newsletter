@@ -7,7 +7,10 @@ import { Input, Textarea, Label } from "@/components/ui/input";
 import {
   sendTestEmailAction,
   sendNewsletterAction,
+  resendNewsletterAction,
+  type ResendAudience,
 } from "@/app/(admin)/newsletters/send-actions";
+import { Select } from "@/components/ui/select";
 import type { NewsletterStatus } from "@/types/newsletter";
 
 interface Props {
@@ -25,6 +28,10 @@ export function SendPanel({
   const [testEmails, setTestEmails] = React.useState("");
   const [testPending, startTest] = React.useTransition();
   const [massPending, startMass] = React.useTransition();
+  const [resendPending, startResend] = React.useTransition();
+  const [resendAudience, setResendAudience] =
+    React.useState<ResendAudience>("non_openers");
+  const [resendEmails, setResendEmails] = React.useState("");
   const [msg, setMsg] = React.useState<{
     type: "success" | "error";
     text: string;
@@ -59,6 +66,36 @@ export function SendPanel({
       const res = await sendNewsletterAction(newsletterId);
       if (res.ok) {
         setMsg({ type: "success", text: res.message ?? "발송 완료" });
+        router.refresh();
+      } else {
+        setMsg({ type: "error", text: res.error });
+      }
+    });
+  }
+
+  function handleResend() {
+    const labelMap: Record<ResendAudience, string> = {
+      non_openers: "미오픈자에게",
+      failed: "발송 실패 수신자에게",
+      specific: "입력한 이메일 주소로",
+    };
+    if (
+      resendAudience === "specific" &&
+      resendEmails.trim().length === 0
+    ) {
+      setMsg({ type: "error", text: "대상 이메일을 입력해 주세요." });
+      return;
+    }
+    if (!confirm(`${labelMap[resendAudience]} 재발송합니다. 계속할까요?`)) return;
+    setMsg(null);
+    startResend(async () => {
+      const res = await resendNewsletterAction({
+        newsletterId,
+        audience: resendAudience,
+        emails: resendAudience === "specific" ? resendEmails : undefined,
+      });
+      if (res.ok) {
+        setMsg({ type: "success", text: res.message ?? "재발송 완료" });
         router.refresh();
       } else {
         setMsg({ type: "error", text: res.error });
@@ -115,8 +152,8 @@ export function SendPanel({
         </div>
         {alreadySent ? (
           <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-            이 호는 이미 발송 완료되었습니다. 다시 보내기는 Phase 5.2에서
-            지원됩니다.
+            이 호는 이미 발송 완료되었습니다. 아래 <strong>재발송</strong> 섹션을
+            사용하세요.
           </div>
         ) : activeRecipientCount === 0 ? (
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -134,6 +171,54 @@ export function SendPanel({
           </Button>
         )}
       </section>
+
+      {/* Resend — visible only once the newsletter has been sent at least once */}
+      {alreadySent && (
+        <section className="rounded-xl border border-border bg-background p-4 space-y-3">
+          <div>
+            <Label className="text-sm font-semibold">재발송</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              이미 발송된 호를 특정 대상에게 다시 보냅니다.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="resend-audience" className="text-xs">
+              대상
+            </Label>
+            <Select
+              id="resend-audience"
+              value={resendAudience}
+              onChange={(e) =>
+                setResendAudience(e.target.value as ResendAudience)
+              }
+              disabled={resendPending}
+              className="max-w-xs"
+            >
+              <option value="non_openers">
+                열어보지 않은 수신자에게만
+              </option>
+              <option value="failed">발송 실패한 수신자에게만</option>
+              <option value="specific">특정 이메일 주소로</option>
+            </Select>
+          </div>
+
+          {resendAudience === "specific" && (
+            <Textarea
+              value={resendEmails}
+              onChange={(e) => setResendEmails(e.target.value)}
+              rows={2}
+              placeholder="groundk21@gmail.com, person2@example.com"
+              className="text-sm"
+              disabled={resendPending}
+            />
+          )}
+
+          <Button onClick={handleResend} disabled={resendPending}>
+            {resendPending ? "재발송 중..." : "재발송"}
+          </Button>
+        </section>
+      )}
 
       {msg && (
         <div

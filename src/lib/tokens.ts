@@ -89,3 +89,18 @@ export function unsubscribeUrl(sendId: string, email: string, appUrl: string): s
   const token = signToken({ sendId, email, kind: "u" });
   return `${appUrl}/u/${token}`;
 }
+
+export function openPixelUrl(sendId: string, email: string, appUrl: string): string {
+  const token = signToken({ sendId, email, kind: "o" });
+  return `${appUrl}/t/open/${token}`;
+}
+
+export function clickTrackingUrl(
+  sendId: string,
+  email: string,
+  appUrl: string,
+  targetUrl: string
+): string {
+  const token = signToken({ sendId, email, kind: "c" });
+  return `${appUrl}/t/click/${token}?to=${encodeURIComponent(targetUrl)}`;
+}

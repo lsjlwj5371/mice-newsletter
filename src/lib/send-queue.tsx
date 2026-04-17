@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import Newsletter from "@/emails/Newsletter";
 import { sendEmail } from "@/lib/gmail/send";
 import { signToken, unsubscribeUrl } from "@/lib/tokens";
+import { injectTracking } from "@/lib/tracking-inject";
 import { newsletterContentSchema } from "@/lib/validation/newsletter-content";
 import type { NewsletterRow } from "@/types/newsletter";
 
@@ -167,6 +168,16 @@ export async function processSendQueue({
       "{{UNSUBSCRIBE_HREF}}",
       unsubscribeUrl(claimed.id, claimed.recipient_email, appUrl)
     );
+    // Wrap all external links for click tracking and append the open
+    // pixel. Skip for test sends so we don't pollute open/click stats.
+    const trackedHtml = claimed.is_test
+      ? personalizedHtml
+      : injectTracking({
+          html: personalizedHtml,
+          sendId: claimed.id,
+          email: claimed.recipient_email,
+          appUrl,
+        });
 
     try {
       const unsubToken = signToken({
@@ -180,7 +191,7 @@ export async function processSendQueue({
         fromEmail,
         fromName,
         subject: cached.subject,
-        html: personalizedHtml,
+        html: trackedHtml,
         unsubscribeUrl: unsubscribeUrl(
           claimed.id,
           claimed.recipient_email,
