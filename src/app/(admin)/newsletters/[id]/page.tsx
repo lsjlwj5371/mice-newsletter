@@ -86,13 +86,44 @@ export default async function NewsletterDraftPage({
     { pretty: false }
   );
 
+  // Collect all referenced article IDs across all blocks, fetch their
+  // titles/urls so the admin can see what Claude picked from.
+  const allRefIds = Array.from(
+    new Set(
+      parsed.data.blocks.flatMap((b) => b.referencedArticleIds ?? [])
+    )
+  );
+  const articleMetaMap = new Map<
+    string,
+    { title: string; url: string; source: string | null; category: string }
+  >();
+  if (allRefIds.length > 0) {
+    const { data: artRows } = await supabase
+      .from("articles")
+      .select("id, title, url, source, category")
+      .in("id", allRefIds);
+    for (const a of artRows ?? []) {
+      articleMetaMap.set(a.id as string, {
+        title: a.title as string,
+        url: a.url as string,
+        source: (a.source as string | null) ?? null,
+        category: a.category as string,
+      });
+    }
+  }
+  const articleMeta = Object.fromEntries(articleMetaMap);
+
   return (
     <>
       <PageHeader
         title={newsletter.issue_label}
         description={newsletter.subject || "제목 없음"}
       />
-      <DraftEditor newsletter={newsletter} initialHtml={html} />
+      <DraftEditor
+        newsletter={newsletter}
+        initialHtml={html}
+        articleMeta={articleMeta}
+      />
     </>
   );
 }

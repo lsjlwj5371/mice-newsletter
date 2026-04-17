@@ -121,6 +121,12 @@ interface BlockBase {
   instructions?: string;
   /** If true, Claude should research/fill this block. If false, use data as-is. */
   autoSearch?: boolean;
+  /**
+   * Article IDs that were in the candidate pool passed to Claude when this
+   * block was generated. Used in the draft editor to let the admin verify
+   * Claude picked reasonable sources and to give per-block feedback.
+   */
+  referencedArticleIds?: string[];
 }
 
 export interface OpeningLedeBlock extends BlockBase {

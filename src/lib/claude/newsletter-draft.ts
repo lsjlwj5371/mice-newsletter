@@ -48,6 +48,33 @@ export const DEFAULT_BLOCK_TYPES: BlockType[] = [
   "groundk_story",
 ];
 
+/**
+ * Canonical English labels per block type. These are enforced server-side
+ * AFTER Claude output so the section headers never drift between
+ * generations (e.g. Claude sometimes wrote "MICE IN APRIL" instead of
+ * "MICE IN & OUT"). opening_lede is unnumbered and has no label.
+ */
+const CANONICAL_ENGLISH_LABELS: Partial<Record<BlockType, string>> = {
+  stat_feature: "Number of the Month",
+  news_briefing: "News Briefing",
+  in_out_comparison: "MICE IN & OUT",
+  tech_signal: "Tech Signal",
+  theory_to_field: "From Theory to Field",
+  editor_take: "지금 MICE는",
+  groundk_story: "GroundK Story",
+  consolidated_insight: "GroundK Insight",
+  blog_card_grid: "GroundK Blog",
+};
+
+function applyCanonicalLabel(type: BlockType, data: unknown): unknown {
+  const canonical = CANONICAL_ENGLISH_LABELS[type];
+  if (!canonical) return data;
+  if (data && typeof data === "object") {
+    return { ...(data as Record<string, unknown>), englishLabel: canonical };
+  }
+  return data;
+}
+
 // ─────────────────────────────────────────────
 // Per-block schemas (for Claude prompt + validation)
 // ─────────────────────────────────────────────
@@ -297,7 +324,7 @@ async function generateBlockData(
 ): Promise<{ ok: true; data: unknown } | { ok: false; error: string }> {
   // Fast path: autoSearch=false with no instructions → skip the API call entirely
   if (!ctx.autoSearch && (!ctx.instructions || ctx.instructions.trim() === "")) {
-    return { ok: true, data: getPlaceholderData(type) };
+    return { ok: true, data: applyCanonicalLabel(type, getPlaceholderData(type)) };
   }
 
   const client = getClaudeClient();
@@ -336,12 +363,54 @@ async function generateBlockData(
       return { ok: false, error: `스키마 검증 실패: ${issues}` };
     }
 
-    return { ok: true, data: result.data };
+    return { ok: true, data: applyCanonicalLabel(type, result.data) };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { ok: false, error: msg };
   }
 }
+
+// ─────────────────────────────────────────────
+// Public per-block generator (used by the "regenerate this block" UX
+// in the draft editor). Returns the data payload for a single block.
+// ─────────────────────────────────────────────
+
+export interface RegenerateBlockInput {
+  type: BlockType;
+  issueLabel: string;
+  articles: Article[];
+  instructions?: string;
+  autoSearch: boolean;
+  referenceNotes?: string;
+}
+
+export interface RegenerateBlockResult {
+  data: unknown;
+  referencedArticleIds: string[];
+}
+
+export async function regenerateSingleBlock(
+  input: RegenerateBlockInput
+): Promise<RegenerateBlockResult> {
+  const ctx: BlockGenContext = {
+    issueLabel: input.issueLabel,
+    referenceNotes: input.referenceNotes,
+    articles: input.autoSearch ? input.articles : [],
+    instructions: input.instructions,
+    autoSearch: input.autoSearch,
+  };
+
+  const result = await generateBlockData(input.type, ctx);
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
+  return {
+    data: result.data,
+    referencedArticleIds: ctx.articles.map((a) => a.id),
+  };
+}
+
+export { getArticlesForBlock, BLOCK_RELEVANT_CATEGORIES };
 
 // ─────────────────────────────────────────────
 // Public API
@@ -399,33 +468,50 @@ export async function generateNewsletterDraft(
     for (const e of input.blockInstructions) instructionMap.set(e.type, e);
   }
 
-  // Kick off per-block generation in parallel
+  // Kick off per-block generation in parallel, remembering the article pool
+  // used per block so it can be stored for the admin to review.
+  const perBlockContexts = blockTypes.map((type) => {
+    const cfg = instructionMap.get(type);
+    const autoSearch = cfg?.autoSearch ?? true;
+    const articles = autoSearch
+      ? getArticlesForBlock(type, input.articlesByCategory)
+      : [];
+    const ctx: BlockGenContext = {
+      issueLabel: input.issueLabel,
+      referenceNotes: input.referenceNotes,
+      articles,
+      instructions: cfg?.instructions,
+      autoSearch,
+    };
+    return { type, ctx, cfg };
+  });
+
   const results = await Promise.all(
-    blockTypes.map((type) => {
-      const cfg = instructionMap.get(type);
-      const ctx: BlockGenContext = {
-        issueLabel: input.issueLabel,
-        referenceNotes: input.referenceNotes,
-        articles: cfg?.autoSearch === false
-          ? []
-          : getArticlesForBlock(type, input.articlesByCategory),
-        instructions: cfg?.instructions,
-        autoSearch: cfg?.autoSearch ?? true,
-      };
-      return generateBlockData(type, ctx);
-    })
+    perBlockContexts.map(({ type, ctx }) => generateBlockData(type, ctx))
   );
 
   // Assemble block instances; placeholder + record error for any failures
   const failedBlocks: Array<{ type: BlockType; error: string }> = [];
   const blocks: BlockInstance[] = blockTypes.map((type, i) => {
     const r = results[i];
+    const { ctx, cfg } = perBlockContexts[i];
     const id = `b${i + 1}`;
+    const referencedArticleIds = ctx.articles.map((a) => a.id);
+    const base = {
+      id,
+      type,
+      referencedArticleIds,
+      instructions: cfg?.instructions,
+      autoSearch: cfg?.autoSearch,
+    };
     if (r.ok) {
-      return { id, type, data: r.data } as BlockInstance;
+      return { ...base, data: r.data } as BlockInstance;
     }
     failedBlocks.push({ type, error: r.error });
-    return { id, type, data: getPlaceholderData(type) } as BlockInstance;
+    return {
+      ...base,
+      data: applyCanonicalLabel(type, getPlaceholderData(type)),
+    } as BlockInstance;
   });
 
   // Build a subject deterministically from the issueLabel

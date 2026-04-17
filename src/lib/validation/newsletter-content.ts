@@ -36,6 +36,7 @@ const blockBase = {
   indexLabel: z.string().optional(),
   instructions: z.string().optional(),
   autoSearch: z.boolean().optional(),
+  referencedArticleIds: z.array(z.string()).optional(),
 };
 
 // ─────────────────────────────────────────────

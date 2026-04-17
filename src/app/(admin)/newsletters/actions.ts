@@ -6,7 +6,12 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { logAudit } from "@/lib/audit";
-import { generateNewsletterDraft } from "@/lib/claude/newsletter-draft";
+import {
+  generateNewsletterDraft,
+  regenerateSingleBlock,
+  getArticlesForBlock,
+  BLOCK_RELEVANT_CATEGORIES,
+} from "@/lib/claude/newsletter-draft";
 import { newsletterContentSchema } from "@/lib/validation/newsletter-content";
 import {
   ARTICLE_CATEGORIES,
@@ -520,4 +525,141 @@ export async function createDraftWithBlocksAction(
     ? ` (경고: ${draftResult.failedBlocks.length}개 블록 생성 실패 — placeholder로 대체됨)`
     : "";
   return { ok: true, id: inserted.id, message: `초안 생성 완료${failedSummary}` };
+}
+
+// ─────────────────────────────────────────────
+// REGENERATE A SINGLE BLOCK (Phase 4.3-D)
+// Admin can refine one block without touching the rest.
+// ─────────────────────────────────────────────
+
+export interface RegenerateBlockInput {
+  newsletterId: string;
+  blockIndex: number;
+  /** New admin instruction for this block. Replaces any previous one. */
+  instructions: string | null;
+  /** Whether to research from articles (true) or emit placeholder (false). */
+  autoSearch: boolean;
+}
+
+export async function regenerateBlockAction(
+  input: RegenerateBlockInput
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const supabase = createAdminClient();
+
+  const { data: row, error: fetchErr } = await supabase
+    .from("newsletters")
+    .select("*")
+    .eq("id", input.newsletterId)
+    .single();
+  if (fetchErr || !row) {
+    return { ok: false, error: "원본 호를 찾을 수 없습니다." };
+  }
+  if (row.status === "sent") {
+    return { ok: false, error: "이미 발송된 호는 수정할 수 없습니다." };
+  }
+
+  const content = row.content_json as NewsletterContent;
+  if (!content.blocks || input.blockIndex < 0 || input.blockIndex >= content.blocks.length) {
+    return { ok: false, error: "해당 블록을 찾을 수 없습니다." };
+  }
+
+  const targetBlock = content.blocks[input.blockIndex];
+  const type = targetBlock.type;
+
+  // Refresh the candidate article pool for this block's categories
+  let articles: Article[] = [];
+  if (input.autoSearch) {
+    const articlesByCategory: Record<ArticleCategory, Article[]> = {
+      news: [],
+      mice_in_out: [],
+      tech: [],
+      theory: [],
+    };
+    const relevantCats = BLOCK_RELEVANT_CATEGORIES[type];
+
+    for (const cat of relevantCats) {
+      let q = supabase
+        .from("articles")
+        .select("*")
+        .eq("category", cat)
+        .order("importance", { ascending: false, nullsFirst: false })
+        .order("collected_at", { ascending: false })
+        .limit(10);
+
+      if (row.collection_period_start) {
+        q = q.gte("collected_at", row.collection_period_start);
+      }
+      if (row.collection_period_end) {
+        const endDate = new Date(row.collection_period_end);
+        endDate.setUTCDate(endDate.getUTCDate() + 1);
+        q = q.lt("collected_at", endDate.toISOString());
+      }
+      const { data, error } = await q;
+      if (error) {
+        return { ok: false, error: `기사 조회 실패: ${error.message}` };
+      }
+      articlesByCategory[cat] = (data ?? []) as Article[];
+    }
+
+    articles = getArticlesForBlock(type, articlesByCategory);
+  }
+
+  // Regenerate just this block
+  let result;
+  try {
+    result = await regenerateSingleBlock({
+      type,
+      issueLabel: row.issue_label,
+      articles,
+      instructions: input.instructions ?? undefined,
+      autoSearch: input.autoSearch,
+      referenceNotes: row.reference_notes ?? undefined,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `블록 재생성 실패: ${msg}` };
+  }
+
+  // Build updated blocks array
+  const updatedBlocks = [...content.blocks];
+  updatedBlocks[input.blockIndex] = {
+    ...targetBlock,
+    data: result.data,
+    instructions: input.instructions ?? undefined,
+    autoSearch: input.autoSearch,
+    referencedArticleIds: result.referencedArticleIds,
+  } as NewsletterContent["blocks"][number];
+
+  const updatedContent: NewsletterContent = {
+    ...content,
+    blocks: updatedBlocks,
+  };
+
+  const { error: updErr } = await supabase
+    .from("newsletters")
+    .update({
+      content_json: updatedContent,
+      status: "review",
+    })
+    .eq("id", input.newsletterId);
+  if (updErr) {
+    return { ok: false, error: `DB 저장 실패: ${updErr.message}` };
+  }
+
+  await logAudit({
+    adminId: admin.id,
+    action: "newsletter.regenerate_block",
+    entity: "newsletter",
+    entityId: input.newsletterId,
+    metadata: {
+      blockIndex: input.blockIndex,
+      blockType: type,
+      instructions: input.instructions ?? null,
+      autoSearch: input.autoSearch,
+    },
+  });
+
+  revalidatePath(`/newsletters/${input.newsletterId}`);
+  return { ok: true, id: input.newsletterId, message: "블록이 재생성되었습니다." };
 }
