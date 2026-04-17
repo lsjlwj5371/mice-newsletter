@@ -13,6 +13,7 @@ const NAV = [
   { href: "/rss", label: "RSS 피드", icon: "📡" },
   { href: "/history", label: "발송 이력", icon: "🗂" },
   { href: "/events", label: "이벤트·의견", icon: "💬" },
+  { href: "/audit", label: "감사 로그", icon: "🧾" },
   { href: "/settings", label: "설정", icon: "⚙" },
 ] as const;
 
