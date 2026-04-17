@@ -11,6 +11,7 @@ import {
   regenerateSingleBlock,
   getArticlesForBlock,
   BLOCK_RELEVANT_CATEGORIES,
+  BLOCK_ARTICLE_POLICY,
 } from "@/lib/claude/newsletter-draft";
 import { newsletterContentSchema } from "@/lib/validation/newsletter-content";
 import {
@@ -430,9 +431,21 @@ export async function createDraftWithBlocksAction(
 
   const supabase = createAdminClient();
 
-  // Load candidate articles by category — only for research-backed blocks
+  // Load candidate articles — both date-filtered (for most blocks) and
+  // all-time (for blocks like theory_to_field that read academic/research
+  // material regardless of when it was collected).
   const needsResearch = input.blocks.some((b) => b.autoSearch);
+  const needsAllTime = input.blocks.some(
+    (b) => b.autoSearch && BLOCK_ARTICLE_POLICY[b.type].ignoreDateFilter
+  );
+
   const articlesByCategory: Record<ArticleCategory, Article[]> = {
+    news: [],
+    mice_in_out: [],
+    tech: [],
+    theory: [],
+  };
+  const articlesByCategoryAllTime: Record<ArticleCategory, Article[]> = {
     news: [],
     mice_in_out: [],
     tech: [],
@@ -466,12 +479,35 @@ export async function createDraftWithBlocksAction(
     }
   }
 
+  if (needsAllTime) {
+    for (const cat of ARTICLE_CATEGORIES) {
+      const { data, error } = await supabase
+        .from("articles")
+        .select("*")
+        .eq("category", cat)
+        .order("importance", { ascending: false, nullsFirst: false })
+        .order("collected_at", { ascending: false })
+        .limit(30);
+
+      if (error) {
+        return {
+          ok: false,
+          error: `전체기간 기사 조회 실패 (${cat}): ${error.message}`,
+        };
+      }
+      articlesByCategoryAllTime[cat] = (data ?? []) as Article[];
+    }
+  }
+
   // Call Claude
   let draftResult;
   try {
     draftResult = await generateNewsletterDraft({
       issueLabel,
       articlesByCategory,
+      articlesByCategoryAllTime: needsAllTime
+        ? articlesByCategoryAllTime
+        : undefined,
       referenceNotes: input.referenceNotes ?? undefined,
       blockTypes: input.blocks.map((b) => b.type),
       blockInstructions: input.blocks.map((b) => ({
@@ -567,42 +603,66 @@ export async function regenerateBlockAction(
   const targetBlock = content.blocks[input.blockIndex];
   const type = targetBlock.type;
 
-  // Refresh the candidate article pool for this block's categories
+  // Refresh the candidate article pool following this block's policy
+  // (primary + fallback categories, optionally ignoring the issue's
+  // stored date filter for blocks like theory_to_field).
   let articles: Article[] = [];
   if (input.autoSearch) {
+    const policy = BLOCK_ARTICLE_POLICY[type];
+    const cats = Array.from(
+      new Set([...policy.primary, ...policy.fallback])
+    );
+
     const articlesByCategory: Record<ArticleCategory, Article[]> = {
       news: [],
       mice_in_out: [],
       tech: [],
       theory: [],
     };
-    const relevantCats = BLOCK_RELEVANT_CATEGORIES[type];
+    const articlesByCategoryAllTime: Record<ArticleCategory, Article[]> = {
+      news: [],
+      mice_in_out: [],
+      tech: [],
+      theory: [],
+    };
 
-    for (const cat of relevantCats) {
+    for (const cat of cats) {
+      // Date-filtered query (used when policy.ignoreDateFilter = false)
       let q = supabase
         .from("articles")
         .select("*")
         .eq("category", cat)
         .order("importance", { ascending: false, nullsFirst: false })
         .order("collected_at", { ascending: false })
-        .limit(10);
+        .limit(policy.ignoreDateFilter ? 30 : 10);
 
-      if (row.collection_period_start) {
-        q = q.gte("collected_at", row.collection_period_start);
+      if (!policy.ignoreDateFilter) {
+        if (row.collection_period_start) {
+          q = q.gte("collected_at", row.collection_period_start);
+        }
+        if (row.collection_period_end) {
+          const endDate = new Date(row.collection_period_end);
+          endDate.setUTCDate(endDate.getUTCDate() + 1);
+          q = q.lt("collected_at", endDate.toISOString());
+        }
       }
-      if (row.collection_period_end) {
-        const endDate = new Date(row.collection_period_end);
-        endDate.setUTCDate(endDate.getUTCDate() + 1);
-        q = q.lt("collected_at", endDate.toISOString());
-      }
+
       const { data, error } = await q;
       if (error) {
         return { ok: false, error: `기사 조회 실패: ${error.message}` };
       }
-      articlesByCategory[cat] = (data ?? []) as Article[];
+      if (policy.ignoreDateFilter) {
+        articlesByCategoryAllTime[cat] = (data ?? []) as Article[];
+      } else {
+        articlesByCategory[cat] = (data ?? []) as Article[];
+      }
     }
 
-    articles = getArticlesForBlock(type, articlesByCategory);
+    articles = getArticlesForBlock(
+      type,
+      articlesByCategory,
+      policy.ignoreDateFilter ? articlesByCategoryAllTime : undefined
+    );
   }
 
   // Regenerate just this block

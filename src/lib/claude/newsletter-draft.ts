@@ -92,18 +92,101 @@ const BLOCK_SCHEMA_PROMPT: Record<BlockType, string> = {
   blog_card_grid: `{ "englishLabel": "GroundK Blog", "cards": [2~6개. 각 card = { "label": "Field Note / Project Story / Industry Insight / Tech & MICE 중 하나", "title": "제목", "description": "2~3줄의 설명", "linkUrl": "https://blog.naver.com/groundk" }] }`,
 };
 
-const BLOCK_RELEVANT_CATEGORIES: Record<BlockType, ArticleCategory[]> = {
-  opening_lede: [], // no articles — narrative
-  stat_feature: ["news", "tech", "mice_in_out"],
-  news_briefing: ["news"],
-  in_out_comparison: ["mice_in_out"],
-  tech_signal: ["tech"],
-  theory_to_field: ["theory"],
-  editor_take: [], // no articles — commentary
-  groundk_story: [], // no articles — internal case
-  consolidated_insight: ["news", "mice_in_out", "tech", "theory"],
-  blog_card_grid: [], // no articles — blog list
+/**
+ * Per-block article sourcing policy.
+ *
+ * - `primary`: preferred categories for this block
+ * - `fallback`: secondary categories used when primary is sparse or empty
+ *   (the admin may only have registered general `news` feeds — we still
+ *   want tech_signal / in_out_comparison to find usable articles)
+ * - `ignoreDateFilter`: when true, load articles regardless of the issue's
+ *   collection period. Useful for theory_to_field where academic research
+ *   is timeless.
+ * - `limit`: hard cap on total articles passed to Claude for this block.
+ */
+interface BlockArticlePolicy {
+  primary: ArticleCategory[];
+  fallback: ArticleCategory[];
+  ignoreDateFilter: boolean;
+  limit: number;
+}
+
+const BLOCK_ARTICLE_POLICY: Record<BlockType, BlockArticlePolicy> = {
+  opening_lede: {
+    primary: [],
+    fallback: [],
+    ignoreDateFilter: false,
+    limit: 0,
+  },
+  stat_feature: {
+    primary: ["news", "tech", "mice_in_out"],
+    fallback: ["theory"],
+    ignoreDateFilter: false,
+    limit: 10,
+  },
+  news_briefing: {
+    primary: ["news"],
+    fallback: ["mice_in_out", "tech"],
+    ignoreDateFilter: false,
+    limit: 10,
+  },
+  in_out_comparison: {
+    primary: ["mice_in_out"],
+    fallback: ["news"],
+    ignoreDateFilter: false,
+    limit: 10,
+  },
+  tech_signal: {
+    primary: ["tech"],
+    fallback: ["news"],
+    ignoreDateFilter: false,
+    limit: 10,
+  },
+  theory_to_field: {
+    // Academic/research material: broaden the pool so Claude has options,
+    // and ignore the issue's date filter because theory is timeless.
+    primary: ["theory"],
+    fallback: ["news", "tech", "mice_in_out"],
+    ignoreDateFilter: true,
+    limit: 15,
+  },
+  editor_take: {
+    primary: [],
+    fallback: [],
+    ignoreDateFilter: false,
+    limit: 0,
+  },
+  groundk_story: {
+    primary: [],
+    fallback: [],
+    ignoreDateFilter: false,
+    limit: 0,
+  },
+  consolidated_insight: {
+    primary: ["news", "mice_in_out", "tech", "theory"],
+    fallback: [],
+    ignoreDateFilter: false,
+    limit: 12,
+  },
+  blog_card_grid: {
+    primary: [],
+    fallback: [],
+    ignoreDateFilter: false,
+    limit: 0,
+  },
 };
+
+// Back-compat re-export (some callers still reference this name)
+const BLOCK_RELEVANT_CATEGORIES: Record<BlockType, ArticleCategory[]> =
+  Object.fromEntries(
+    (Object.keys(BLOCK_ARTICLE_POLICY) as BlockType[]).map((t) => [
+      t,
+      [
+        ...BLOCK_ARTICLE_POLICY[t].primary,
+        ...BLOCK_ARTICLE_POLICY[t].fallback,
+      ],
+    ])
+  ) as Record<BlockType, ArticleCategory[]>;
 
 // ─────────────────────────────────────────────
 // Placeholder data for blocks that skip Claude
@@ -474,7 +557,11 @@ export async function regenerateSingleBlock(
   };
 }
 
-export { getArticlesForBlock, BLOCK_RELEVANT_CATEGORIES };
+export {
+  getArticlesForBlock,
+  BLOCK_RELEVANT_CATEGORIES,
+  BLOCK_ARTICLE_POLICY,
+};
 
 // ─────────────────────────────────────────────
 // Public API
@@ -488,7 +575,15 @@ export interface BlockInstructionEntry {
 
 export interface DraftGenerationInput {
   issueLabel: string;
+  /** Articles already filtered by the issue's collection period. */
   articlesByCategory: Record<ArticleCategory, Article[]>;
+  /**
+   * Optional all-time article pool (no date filter). Supplied by the
+   * caller when any block has ignoreDateFilter=true. When a block's
+   * policy sets ignoreDateFilter, it reads from this pool instead of
+   * articlesByCategory.
+   */
+  articlesByCategoryAllTime?: Record<ArticleCategory, Article[]>;
   referenceNotes?: string;
   blockTypes?: BlockType[];
   blockInstructions?: BlockInstructionEntry[];
@@ -503,18 +598,38 @@ export interface DraftGenerationResult {
 
 function getArticlesForBlock(
   type: BlockType,
-  articlesByCategory: Record<ArticleCategory, Article[]>
+  articlesByCategory: Record<ArticleCategory, Article[]>,
+  articlesByCategoryAllTime?: Record<ArticleCategory, Article[]>
 ): Article[] {
-  const cats = BLOCK_RELEVANT_CATEGORIES[type];
+  const policy = BLOCK_ARTICLE_POLICY[type];
+  const pool =
+    policy.ignoreDateFilter && articlesByCategoryAllTime
+      ? articlesByCategoryAllTime
+      : articlesByCategory;
+
   const seen = new Set<string>();
   const out: Article[] = [];
-  for (const cat of cats) {
-    for (const a of articlesByCategory[cat] ?? []) {
+
+  // Primary categories first
+  for (const cat of policy.primary) {
+    for (const a of pool[cat] ?? []) {
       if (seen.has(a.id)) continue;
       seen.add(a.id);
       out.push(a);
+      if (out.length >= policy.limit) return out;
     }
   }
+
+  // Fallback categories if primary didn't fill
+  for (const cat of policy.fallback) {
+    for (const a of pool[cat] ?? []) {
+      if (seen.has(a.id)) continue;
+      seen.add(a.id);
+      out.push(a);
+      if (out.length >= policy.limit) return out;
+    }
+  }
+
   return out;
 }
 
@@ -538,7 +653,11 @@ export async function generateNewsletterDraft(
     const cfg = instructionMap.get(type);
     const autoSearch = cfg?.autoSearch ?? true;
     const articles = autoSearch
-      ? getArticlesForBlock(type, input.articlesByCategory)
+      ? getArticlesForBlock(
+          type,
+          input.articlesByCategory,
+          input.articlesByCategoryAllTime
+        )
       : [];
     const ctx: BlockGenContext = {
       issueLabel: input.issueLabel,
