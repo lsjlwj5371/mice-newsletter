@@ -333,12 +333,16 @@ function BlockCard({
 
   function handleRegenerate() {
     setMsg(null);
+    // groundk_story is admin-only — always pass autoSearch=false regardless
+    // of UI state so it never pulls from RSS.
+    const effectiveAutoSearch =
+      block.type === "groundk_story" ? false : autoSearch;
     startTransition(async () => {
       const res = await regenerateBlockAction({
         newsletterId,
         blockIndex,
         instructions: instructions.trim() || null,
-        autoSearch,
+        autoSearch: effectiveAutoSearch,
       });
       if (res.ok) {
         setMsg({ type: "success", text: "재생성 완료" });
@@ -432,28 +436,39 @@ function BlockCard({
             <Label className="text-xs font-semibold">
               이 블록만 재생성
             </Label>
-            <div className="flex items-center gap-2">
-              <input
-                id={`auto-${blockIndex}`}
-                type="checkbox"
-                checked={autoSearch}
-                onChange={(e) => setAutoSearch(e.target.checked)}
-                disabled={pending || disabled}
-                className="h-4 w-4 rounded border-border"
-              />
-              <Label
-                htmlFor={`auto-${blockIndex}`}
-                className="cursor-pointer text-xs"
-              >
-                자동 생성 (Claude가 후보 기사 참조)
-              </Label>
-            </div>
+            {block.type === "groundk_story" ? (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                이 블록은 관리자 레퍼런스 전용입니다. 아래 칸에 현장 자료를 붙여
+                넣으면 Claude가 편집자 톤으로 다듬어 재작성합니다.
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <input
+                  id={`auto-${blockIndex}`}
+                  type="checkbox"
+                  checked={autoSearch}
+                  onChange={(e) => setAutoSearch(e.target.checked)}
+                  disabled={pending || disabled}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <Label
+                  htmlFor={`auto-${blockIndex}`}
+                  className="cursor-pointer text-xs"
+                >
+                  자동 생성 (Claude가 후보 기사 참조)
+                </Label>
+              </div>
+            )}
             <Textarea
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              rows={2}
+              rows={block.type === "groundk_story" ? 5 : 2}
               disabled={pending || disabled}
-              placeholder={`예: "2번 기사는 관련 없으니 빼고 다시", "더 짧게 써줘", "금리 인하보단 ESG 얘기로"`}
+              placeholder={
+                block.type === "groundk_story"
+                  ? `예: Field Briefing은 "공항 T2 수하물 판독 15~20분 지연" 이슈. Project Sketch는 COS 패션쇼 (정릉동 브루탈리즘 공간, 40개 룩, 앰버서더+미디어+디너 동선 설계, 2026.03.25)`
+                  : `예: "2번 기사는 관련 없으니 빼고 다시", "더 짧게 써줘", "금리 인하보단 ESG 얘기로"`
+              }
               className="text-xs"
             />
             {msg && (

@@ -6,6 +6,7 @@
 import * as React from "react";
 import { Section, Row, Column, Text, Heading, Hr } from "@react-email/components";
 import { colors, typography, spacing } from "../tokens";
+import { renderInlineHtml } from "../helpers";
 
 // ─────────────────────────────────────────────
 // Section header — "01 / Number of the Month"
@@ -107,9 +108,9 @@ export function ItemGroup({
           color: colors.textBody,
           margin: "0 0 16px 0",
         }}
-      >
-        {body}
-      </Text>
+        dangerouslySetInnerHTML={{ __html: renderInlineHtml(body) }}
+      />
+
       {sourceUrl && (
         <Text
           style={{
@@ -162,9 +163,9 @@ export function InsightBox({
           color: "#555555",
           margin: 0,
         }}
-      >
-        {text}
-      </Text>
+        dangerouslySetInnerHTML={{ __html: renderInlineHtml(text) }}
+      />
+
     </Section>
   );
 }

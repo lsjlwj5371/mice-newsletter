@@ -18,6 +18,7 @@ import {
   Link,
 } from "@react-email/components";
 import { colors, typography, spacing } from "../tokens";
+import { renderInlineHtml } from "../helpers";
 import {
   SectionLabel,
   ItemGroup,
@@ -410,7 +411,7 @@ function StatFeature({
             margin: "0 0 8px 0",
           }}
           dangerouslySetInnerHTML={{
-            __html: renderInlineMarkdown(block.data.caption),
+            __html: renderInlineHtml(block.data.caption),
           }}
         />
         <Text
@@ -672,7 +673,7 @@ function TechSignal({
                 fontWeight: 300,
                 margin: "0 0 16px 0",
               }}
-              dangerouslySetInnerHTML={{ __html: renderInlineMarkdown(p) }}
+              dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
             />
           ))}
           <Section
@@ -706,7 +707,7 @@ function TechSignal({
                 margin: 0,
               }}
               dangerouslySetInnerHTML={{
-                __html: renderInlineMarkdown(block.data.miceInsight),
+                __html: renderInlineHtml(block.data.miceInsight),
               }}
             />
           </Section>
@@ -812,7 +813,7 @@ function TheoryToField({
             fontWeight: 300,
             margin: "0 0 16px 0",
           }}
-          dangerouslySetInnerHTML={{ __html: renderInlineMarkdown(p) }}
+          dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
         />
       ))}
 
@@ -845,7 +846,7 @@ function TheoryToField({
             margin: 0,
           }}
           dangerouslySetInnerHTML={{
-            __html: renderInlineMarkdown(block.data.bridge.text),
+            __html: renderInlineHtml(block.data.bridge.text),
           }}
         />
       </Section>
@@ -860,7 +861,7 @@ function TheoryToField({
             fontWeight: 300,
             margin: "0 0 16px 0",
           }}
-          dangerouslySetInnerHTML={{ __html: renderInlineMarkdown(p) }}
+          dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
         />
       ))}
 
@@ -971,7 +972,7 @@ function EditorTake({
             fontWeight: 300,
             margin: "0 0 16px 0",
           }}
-          dangerouslySetInnerHTML={{ __html: renderInlineMarkdown(p) }}
+          dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
         />
       ))}
       {block.data.closingNote && (
@@ -1057,7 +1058,7 @@ function GroundkStory({
               whiteSpace: "pre-line",
             }}
             dangerouslySetInnerHTML={{
-              __html: renderInlineMarkdown(
+              __html: renderInlineHtml(
                 block.data.fieldBriefing.body.replace(/\n/g, "<br>")
               ),
             }}
@@ -1240,7 +1241,7 @@ function ConsolidatedInsight({
                 fontWeight: 300,
                 margin: "0 0 14px 0",
               }}
-              dangerouslySetInnerHTML={{ __html: renderInlineMarkdown(p) }}
+              dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
             />
           ))}
           {part.insight && (
@@ -1272,7 +1273,7 @@ function ConsolidatedInsight({
                   margin: 0,
                 }}
                 dangerouslySetInnerHTML={{
-                  __html: renderInlineMarkdown(part.insight.text),
+                  __html: renderInlineHtml(part.insight.text),
                 }}
               />
             </Section>
@@ -1436,20 +1437,6 @@ function renderMultiline(s: string): React.ReactNode {
       {i < parts.length - 1 && <br />}
     </React.Fragment>
   ));
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function renderInlineMarkdown(s: string): string {
-  const escaped = escapeHtml(s);
-  return escaped
-    .replace(
-      /\*\*([^*]+)\*\*/g,
-      `<strong style="color:#1A1A2E;font-weight:600;">$1</strong>`
-    )
-    .replace(/<br>/g, "<br/>");
 }
 
 // Re-export the Pill helper for consumers

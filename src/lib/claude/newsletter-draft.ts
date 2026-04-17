@@ -80,16 +80,16 @@ function applyCanonicalLabel(type: BlockType, data: unknown): unknown {
 // ─────────────────────────────────────────────
 
 const BLOCK_SCHEMA_PROMPT: Record<BlockType, string> = {
-  opening_lede: `{ "hook": "2~4줄 한 호 테마 압축. \\n으로 줄바꿈", "subtext": "1~2문장 부연 (선택)" }`,
-  stat_feature: `{ "englishLabel": "Number of the Month", "number": "숫자만 (예: 73)", "suffix": "% 또는 단위 (선택)", "caption": "**bold** 가능, 1~2문장", "source": "출처 + 비교 수치" }`,
-  news_briefing: `{ "englishLabel": "News Briefing", "items": [정확히 3개. 각 item = { "categoryTag": "경제 · 산업 등", "title": "14~28자", "body": "2~3문장", "insight": { "label": "MICE 연결", "text": "1~2문장 MICE 산업 함의" } }] }`,
-  in_out_comparison: `{ "englishLabel": "MICE IN & OUT", "inItem": { "categoryTag": "IN · 국내", "title": "한국 관련 소식", "body": "2~3문장", "source": "출처" }, "outItem": { "categoryTag": "OUT · 글로벌", "title": "해외 관련 소식", "body": "2~3문장", "source": "출처" } }`,
-  tech_signal: `{ "englishLabel": "Tech Signal", "topicLabel": "Agentic AI 등 키워드", "topicMeta": "YYYY.MM · 이번 달 가장 뜨거운 기술 이슈", "title": "헤드라인", "paragraphs": ["1~2개 단락, **bold** 가능"], "miceInsight": "1~2문장" }`,
-  theory_to_field: `{ "englishLabel": "From Theory to Field", "sourceYear": "1990", "sourceAuthor": "저자명 / 소속", "sourceMeta": "영문 부제", "title": "호기심 자극 헤드라인", "introParagraphs": ["1~2단락"], "bridge": { "label": "→ 현장에서는", "text": "1~2문장" }, "outroParagraphs": ["1단락"], "closingNote": "1문장 italic" }`,
-  editor_take: `{ "englishLabel": "지금 MICE는", "eyebrow": "이달의 이슈", "title": "\\n 가능", "leadParagraph": "진입 1문장", "pullQuote": "짧고 강렬한 인용", "paragraphs": ["2~3단락"], "closingNote": "1문장 italic" }`,
-  groundk_story: `{ "englishLabel": "GroundK Story", "fieldBriefing": { "eyebrow": "이달의 현장 브리핑", "categoryTag": "공항 운영 등", "body": "1~2단락. \\n\\n 구분, **bold** 가능" }, "projectSketch": { "projectMeta": "Project · 이름", "dateMeta": "YYYY.MM.DD", "eyebrow": "그라운드케이 프로젝트 스케치", "title": "타이틀", "paragraphs": ["정확히 3개 단락"], "tags": ["태그 3개 정도"] } }`,
+  opening_lede: `{ "hook": "2~4줄의 한 호 테마 압축 메시지. \\n으로 줄바꿈", "subtext": "1~2문장의 보충 설명 (선택)" }`,
+  stat_feature: `{ "englishLabel": "Number of the Month", "number": "숫자만 (예: 73)", "suffix": "% 또는 단위 (선택)", "caption": "1~2문장. 수치의 의미를 설명합니다.", "source": "제공된 기사의 실제 출처 + 비교 수치가 있다면 함께" }`,
+  news_briefing: `{ "englishLabel": "News Briefing", "items": [정확히 3개. 각 item = { "categoryTag": "경제 · 산업 등", "title": "14~28자의 헤드라인", "body": "2~3문장", "insight": { "label": "MICE 연결", "text": "1~2문장의 MICE 산업 함의" }, "sourceUrl": "제공된 기사의 실제 URL" }] }`,
+  in_out_comparison: `{ "englishLabel": "MICE IN & OUT", "inItem": { "categoryTag": "IN · 국내", "title": "한국 관련 소식 제목", "body": "2~3문장", "source": "제공된 기사의 실제 출처명 (예: 한국관광공사 보도자료, 2026.04)" }, "outItem": { "categoryTag": "OUT · 글로벌", "title": "해외 관련 소식 제목", "body": "2~3문장", "source": "제공된 기사의 실제 출처명" } }`,
+  tech_signal: `{ "englishLabel": "Tech Signal", "topicLabel": "Agentic AI 등 키워드", "topicMeta": "YYYY.MM · 이번 달 가장 뜨거운 기술 이슈", "title": "헤드라인", "paragraphs": ["1~2개의 단락"], "miceInsight": "1~2문장" }`,
+  theory_to_field: `{ "englishLabel": "From Theory to Field", "sourceYear": "제공된 기사에 명시된 연도 (예: 1990). 없으면 빈 문자열", "sourceAuthor": "제공된 기사에 명시된 저자 / 소속. 없으면 빈 문자열", "sourceMeta": "영문 부제가 있다면. 없으면 빈 문자열", "title": "호기심을 자극하는 헤드라인", "introParagraphs": ["1~2단락"], "bridge": { "label": "→ 현장에서는", "text": "1~2문장" }, "outroParagraphs": ["1단락"], "closingNote": "1문장의 마무리" }`,
+  editor_take: `{ "englishLabel": "지금 MICE는", "eyebrow": "이달의 이슈", "title": "\\n으로 줄바꿈 가능한 제목", "leadParagraph": "진입 1문장", "pullQuote": "짧고 강렬한 인용구", "paragraphs": ["2~3단락"], "closingNote": "1문장의 마무리" }`,
+  groundk_story: `{ "englishLabel": "GroundK Story", "fieldBriefing": { "eyebrow": "이달의 현장 브리핑", "categoryTag": "공항 운영 등", "body": "1~2단락. 줄바꿈은 \\n\\n 로 구분" }, "projectSketch": { "projectMeta": "Project · 이름", "dateMeta": "YYYY.MM.DD", "eyebrow": "그라운드케이 프로젝트 스케치", "title": "프로젝트 타이틀", "paragraphs": ["정확히 3개의 단락"], "tags": ["태그 3개 정도"] } }`,
   consolidated_insight: `{ "englishLabel": "GroundK Insight", "parts": [2~4개. 각 part = { "categoryTag": "테마 카테고리", "title": "타이틀", "paragraphs": ["2~4단락"], "insight": { "text": "1~2문장" } }] }`,
-  blog_card_grid: `{ "englishLabel": "GroundK Blog", "cards": [2~6개. 각 card = { "label": "Field Note / Project Story / Industry Insight / Tech & MICE 중 하나", "title": "제목", "description": "2~3줄 설명", "linkUrl": "https://blog.naver.com/groundk" }] }`,
+  blog_card_grid: `{ "englishLabel": "GroundK Blog", "cards": [2~6개. 각 card = { "label": "Field Note / Project Story / Industry Insight / Tech & MICE 중 하나", "title": "제목", "description": "2~3줄의 설명", "linkUrl": "https://blog.naver.com/groundk" }] }`,
 };
 
 const BLOCK_RELEVANT_CATEGORIES: Record<BlockType, ArticleCategory[]> = {
@@ -245,18 +245,34 @@ function formatArticleForPrompt(a: Article, idx: number): string {
 }
 
 function buildBlockSystemPrompt(type: BlockType): string {
-  return `당신은 "PIK" 뉴스레터 편집자입니다. 한국 MICE 산업 종사자 대상의 인사이트 레터입니다.
+  return `당신은 "PIK" 뉴스레터의 전문 에디터입니다. 한국 MICE 산업 종사자를 대상으로 하는 격식 있는 인사이트 레터입니다.
 
 ## 역할
 단 하나의 블록(${type}) 콘텐츠를 JSON으로 생성합니다.
 
-## 톤앤매너
-- 한국어 평어체 (~다 / ~입니다 혼용 자연스럽게)
-- 정보 전달 + MICE 산업 함의 균형
-- 근거 약한 추측은 "~로 보인다" 형태
-- 본문 안 \`**굵게**\` 마크업으로 핵심 키워드 강조 가능
+## 톤앤매너 (매우 중요)
+- 전문 에디터가 독자에게 말하듯, **격식 있는 문어체**로 작성합니다.
+- 종결어미는 "~합니다 / ~입니다 / ~됩니다 / ~하겠습니다" 중심으로 통일합니다.
+- "~다 / ~이다 / ~된다" 같은 평어체 단정형은 사용하지 않습니다.
+- 정보 전달과 MICE 산업 관점의 인사이트를 균형 있게 담습니다.
+- 근거가 약한 내용은 "~로 보입니다 / ~로 판단됩니다 / ~라는 관측이 있습니다" 형태로 완곡하게 표현합니다.
+- 문장은 명료하고 간결하게. 불필요한 수식·형용사·부사는 덜어냅니다.
 
-## 출력 스키마 (이 JSON 객체만 출력, 마크다운 코드블록 금지)
+## 마크업 규칙 (매우 중요)
+- **Markdown을 절대 사용하지 마십시오.** \`**bold**\`, \`*italic*\`, \`_강조_\` 같은 인라인 마크업 금지.
+- 강조가 필요한 경우 **문장 구조**(짧은 단문 배치, 단락 첫 문장에 핵심 메시지)로 처리합니다. 디자인(글자색·굵기)은 서버의 렌더러가 담당하므로 텍스트에는 아무 마크업도 넣지 않습니다.
+- 따옴표는 한국어 따옴표(" ")를 사용합니다. 영문 인용은 원문 그대로.
+
+## 출력 규약
+- 단일 JSON 객체만 출력. 마크다운 코드블록·설명·인사말 금지.
+- 모든 문자열 값은 위 톤을 따릅니다.
+
+## 출처 규칙 (매우 중요)
+- 출처(URL, 연구자, 연도 등)는 제공된 후보 기사의 실제 정보에서만 가져옵니다.
+- 제공되지 않은 출처를 **지어내지 마십시오**. 없으면 빈 문자열로 둡니다.
+- 본문에 포함한 주장·수치·인용이 있다면, 그 근거는 반드시 제공된 기사 중 하나여야 합니다.
+
+## 출력 스키마
 ${BLOCK_SCHEMA_PROMPT[type]}`;
 }
 
@@ -270,17 +286,16 @@ function buildBlockUserMessage(
   parts.push("");
 
   if (ctx.autoSearch && ctx.articles.length > 0) {
-    parts.push(`# 후보 기사 (이 중에서 선택/재구성)`);
+    parts.push(
+      `# 후보 기사 (반드시 이 중 하나 이상을 근거로 작성. 출처/URL은 이 기사들에서만 가져올 것)`
+    );
     ctx.articles.forEach((a, i) =>
       parts.push(formatArticleForPrompt(a, i))
     );
     parts.push("");
-  } else if (ctx.autoSearch) {
-    parts.push(`# 후보 기사 없음 — 합리적인 내용으로 작성`);
-    parts.push("");
-  } else {
+  } else if (!ctx.autoSearch) {
     parts.push(
-      `# 자동 검색 OFF — 후보 기사를 참조하지 말고, 아래 "관리자 지시"와 일반 지식으로 작성. 지시가 없다면 의미 있는 placeholder 텍스트로 채워 관리자가 나중에 편집할 수 있도록.`
+      `# 자동 검색 OFF — 후보 기사를 참조하지 않습니다. 아래 "관리자 지시"를 바탕으로, 전문 에디터가 현장 노트를 다듬어 원고를 완성한다는 느낌으로 작성하십시오. 출처 필드는 빈 문자열로 둡니다.`
     );
     parts.push("");
   }
@@ -318,10 +333,59 @@ function extractJson(raw: string): unknown {
   return JSON.parse(jsonString);
 }
 
+/**
+ * Blocks that MUST have real article references when auto-generated.
+ * When the candidate article pool is empty for these types, we emit a
+ * placeholder with a clear notice rather than letting Claude fabricate
+ * content.
+ */
+const REFERENCE_REQUIRED_BLOCKS: Set<BlockType> = new Set([
+  "news_briefing",
+  "in_out_comparison",
+  "tech_signal",
+  "theory_to_field",
+  "stat_feature",
+  "consolidated_insight",
+]);
+
+/**
+ * Blocks that should ONLY be generated from admin-provided input (never
+ * auto-searched from the article pool). groundk_story is first-party
+ * GroundK content, so Claude rewrites the admin's notes rather than
+ * inventing the event.
+ */
+const ADMIN_ONLY_BLOCKS: Set<BlockType> = new Set(["groundk_story"]);
+
 async function generateBlockData(
   type: BlockType,
   ctx: BlockGenContext
 ): Promise<{ ok: true; data: unknown } | { ok: false; error: string }> {
+  // Admin-only blocks require admin instructions. Without them, return a
+  // placeholder so the user knows to supply source material.
+  if (ADMIN_ONLY_BLOCKS.has(type)) {
+    if (!ctx.instructions || ctx.instructions.trim() === "") {
+      return {
+        ok: true,
+        data: applyCanonicalLabel(type, getPlaceholderData(type)),
+      };
+    }
+    // Force autoSearch off so Claude never pulls from RSS for this block.
+    ctx = { ...ctx, autoSearch: false, articles: [] };
+  }
+
+  // Reference-required blocks need at least one article when autoSearch is on.
+  // Without references, we refuse to fabricate and return placeholder.
+  if (
+    ctx.autoSearch &&
+    REFERENCE_REQUIRED_BLOCKS.has(type) &&
+    ctx.articles.length === 0
+  ) {
+    return {
+      ok: true,
+      data: applyCanonicalLabel(type, getPlaceholderData(type)),
+    };
+  }
+
   // Fast path: autoSearch=false with no instructions → skip the API call entirely
   if (!ctx.autoSearch && (!ctx.instructions || ctx.instructions.trim() === "")) {
     return { ok: true, data: applyCanonicalLabel(type, getPlaceholderData(type)) };

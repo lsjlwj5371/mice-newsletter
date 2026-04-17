@@ -43,7 +43,8 @@ export function BlockPicker({ blocks, onChange }: Props) {
     const newBlock: BlockConfig = {
       type,
       instructions: "",
-      autoSearch: BLOCK_NEEDS_RESEARCH[type],
+      // groundk_story is admin-only — force autoSearch off
+      autoSearch: type === "groundk_story" ? false : BLOCK_NEEDS_RESEARCH[type],
     };
     onChange([...blocks, newBlock]);
   }
@@ -234,35 +235,46 @@ export function BlockPicker({ blocks, onChange }: Props) {
                     {BLOCK_DESCRIPTIONS[block.type]}
                   </p>
 
-                  <div className="flex items-center gap-2">
-                    <input
-                      id={`auto-${i}`}
-                      type="checkbox"
-                      checked={block.autoSearch}
-                      onChange={(e) =>
-                        updateBlock(i, { autoSearch: e.target.checked })
-                      }
-                      className="h-4 w-4 rounded border-border"
-                    />
-                    <Label
-                      htmlFor={`auto-${i}`}
-                      className="cursor-pointer text-xs"
-                    >
-                      자동 생성 (Claude가 후보 기사로 작성)
-                      {!block.autoSearch && (
-                        <span className="text-amber-700 ml-1">
-                          — placeholder만 생성, 수동 입력 필요
-                        </span>
-                      )}
-                    </Label>
-                  </div>
+                  {block.type === "groundk_story" ? (
+                    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      이 블록은 <strong>관리자 레퍼런스 전용</strong>입니다. 자동
+                      검색이 적용되지 않으며, 아래 "추가 지시" 칸에 현장 브리핑과
+                      프로젝트 자료를 직접 제공해 주세요. Claude는 제공된 자료를
+                      분석하여 편집자 톤으로 다듬어 드립니다.
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        id={`auto-${i}`}
+                        type="checkbox"
+                        checked={block.autoSearch}
+                        onChange={(e) =>
+                          updateBlock(i, { autoSearch: e.target.checked })
+                        }
+                        className="h-4 w-4 rounded border-border"
+                      />
+                      <Label
+                        htmlFor={`auto-${i}`}
+                        className="cursor-pointer text-xs"
+                      >
+                        자동 생성 (Claude가 후보 기사로 작성)
+                        {!block.autoSearch && (
+                          <span className="text-amber-700 ml-1">
+                            — placeholder만 생성, 수동 입력 필요
+                          </span>
+                        )}
+                      </Label>
+                    </div>
+                  )}
 
                   <div>
                     <Label
                       htmlFor={`inst-${i}`}
                       className="text-xs text-muted-foreground"
                     >
-                      추가 지시 (선택, Claude에게 자연어로 전달)
+                      {block.type === "groundk_story"
+                        ? "현장 자료 / 프로젝트 설명 (필수)"
+                        : "추가 지시 (선택, Claude에게 자연어로 전달)"}
                     </Label>
                     <Textarea
                       id={`inst-${i}`}
@@ -270,7 +282,7 @@ export function BlockPicker({ blocks, onChange }: Props) {
                       onChange={(e) =>
                         updateBlock(i, { instructions: e.target.value })
                       }
-                      rows={2}
+                      rows={block.type === "groundk_story" ? 5 : 2}
                       className="text-xs mt-1"
                       placeholder={instructionPlaceholder(block.type)}
                     />
