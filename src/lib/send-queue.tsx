@@ -4,6 +4,7 @@ import Newsletter from "@/emails/Newsletter";
 import { sendEmail } from "@/lib/gmail/send";
 import { signToken, unsubscribeUrl } from "@/lib/tokens";
 import { injectTracking } from "@/lib/tracking-inject";
+import { inlineStorageImages } from "@/lib/image-inline";
 import { newsletterContentSchema } from "@/lib/validation/newsletter-content";
 import type { NewsletterRow } from "@/types/newsletter";
 
@@ -179,6 +180,27 @@ export async function processSendQueue({
           appUrl,
         });
 
+    // Inline Storage-hosted images as base64 data URIs so the email is
+    // self-contained and we can later delete the Storage originals. The
+    // external logo on /public stays as a URL (served by Vercel forever).
+    let finalHtml = trackedHtml;
+    let inlinedStoragePaths: string[] = [];
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (supabaseUrl && !claimed.is_test) {
+      try {
+        const inlineResult = await inlineStorageImages({
+          html: trackedHtml,
+          supabaseUrl,
+          bucket: "newsletter-images",
+        });
+        finalHtml = inlineResult.html;
+        inlinedStoragePaths = inlineResult.inlinedStoragePaths;
+      } catch (err) {
+        // Inlining is best-effort — fall through to the URL-linked HTML
+        console.error("[send-queue] image inline failed", err);
+      }
+    }
+
     try {
       const unsubToken = signToken({
         sendId: claimed.id,
@@ -191,7 +213,7 @@ export async function processSendQueue({
         fromEmail,
         fromName,
         subject: cached.subject,
-        html: trackedHtml,
+        html: finalHtml,
         unsubscribeUrl: unsubscribeUrl(
           claimed.id,
           claimed.recipient_email,
@@ -210,6 +232,17 @@ export async function processSendQueue({
           error: null,
         })
         .eq("id", claimed.id);
+
+      // Mark storage images as inlined so the cleanup cron knows it's
+      // safe to delete the original blobs after a 7-day retention.
+      if (inlinedStoragePaths.length > 0) {
+        await supabase
+          .from("image_assets")
+          .update({ inlined_at: new Date().toISOString() })
+          .in("path", inlinedStoragePaths)
+          .is("inlined_at", null);
+      }
+
       stats.sent++;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
