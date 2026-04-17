@@ -153,7 +153,7 @@ async function runCollection(): Promise<RunSummary> {
           const analysis = await analyzeArticle({
             title: item.title,
             url: item.url,
-            category: (feedCategories[0] ?? "news") as ArticleCategory,
+            category: (feedCategories[0] ?? "news_briefing") as ArticleCategory,
             rawExcerpt: item.rawExcerpt,
             source: feed.name,
           });

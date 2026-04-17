@@ -48,7 +48,7 @@ export function RssFeedFormDialog({ open, onOpenChange, feed }: Props) {
       setSelectedCategories(
         feed?.categories && feed.categories.length > 0
           ? feed.categories
-          : ["news"]
+          : ["news_briefing"]
       );
     }
   }, [open, feed]);

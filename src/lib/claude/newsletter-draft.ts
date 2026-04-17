@@ -122,56 +122,71 @@ const BLOCK_ARTICLE_POLICY: Record<BlockType, BlockArticlePolicy> = {
     // "이달의 숫자" — good stat can come from any time period, so we
     // read all-time like theory_to_field. Keeps statistic quality high
     // even for issues with a narrow collection window.
-    primary: ["news", "tech", "mice_in_out"],
-    fallback: ["theory"],
+    primary: ["stat_feature", "news_briefing", "tech_signal", "in_out_comparison"],
+    fallback: ["theory_to_field", "consolidated_insight"],
     ignoreDateFilter: true,
     limit: 10,
   },
   news_briefing: {
-    primary: ["news"],
-    fallback: ["mice_in_out", "tech"],
+    primary: ["news_briefing"],
+    fallback: ["in_out_comparison", "tech_signal"],
     ignoreDateFilter: false,
     limit: 10,
   },
   in_out_comparison: {
-    primary: ["mice_in_out"],
-    fallback: ["news"],
+    primary: ["in_out_comparison"],
+    fallback: ["news_briefing"],
     ignoreDateFilter: false,
     limit: 10,
   },
   tech_signal: {
-    primary: ["tech"],
-    fallback: ["news"],
+    primary: ["tech_signal"],
+    fallback: ["news_briefing"],
     ignoreDateFilter: false,
     limit: 10,
   },
   theory_to_field: {
     // Academic/research material: broaden the pool so Claude has options,
     // and ignore the issue's date filter because theory is timeless.
-    primary: ["theory"],
-    fallback: ["news", "tech", "mice_in_out"],
+    primary: ["theory_to_field"],
+    fallback: [
+      "news_briefing",
+      "tech_signal",
+      "in_out_comparison",
+      "consolidated_insight",
+    ],
     ignoreDateFilter: true,
     limit: 15,
   },
   editor_take: {
+    // Admin-authored column. Category exists for organization but block
+    // itself doesn't auto-search.
     primary: [],
     fallback: [],
     ignoreDateFilter: false,
     limit: 0,
   },
   groundk_story: {
+    // Admin-only content. Category tag is optional for organization.
     primary: [],
     fallback: [],
     ignoreDateFilter: false,
     limit: 0,
   },
   consolidated_insight: {
-    primary: ["news", "mice_in_out", "tech", "theory"],
+    primary: [
+      "consolidated_insight",
+      "news_briefing",
+      "in_out_comparison",
+      "tech_signal",
+      "theory_to_field",
+    ],
     fallback: [],
     ignoreDateFilter: false,
     limit: 12,
   },
   blog_card_grid: {
+    // Admin-curated external blog cards — no article pool.
     primary: [],
     fallback: [],
     ignoreDateFilter: false,

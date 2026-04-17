@@ -1,27 +1,33 @@
 import { z } from "zod";
+import {
+  BLOCK_TYPES,
+  BLOCK_LABELS,
+  BLOCK_DESCRIPTIONS,
+  type BlockType,
+} from "@/types/newsletter";
 
-export const ARTICLE_CATEGORIES = [
-  "news",
-  "mice_in_out",
-  "tech",
-  "theory",
-] as const;
+/**
+ * Article categories are now derived from block slugs (excluding
+ * opening_lede which is pure narrative). Adding a new block type to
+ * BLOCK_TYPES automatically makes it available as a category option
+ * in the RSS feed form — no schema migration required because the
+ * underlying columns are text[].
+ */
+export type ArticleCategory = Exclude<BlockType, "opening_lede">;
 
-export type ArticleCategory = (typeof ARTICLE_CATEGORIES)[number];
+export const ARTICLE_CATEGORIES = BLOCK_TYPES.filter(
+  (t) => t !== "opening_lede"
+) as readonly ArticleCategory[];
 
-export const CATEGORY_LABELS: Record<ArticleCategory, string> = {
-  news: "News Briefing",
-  mice_in_out: "MICE IN & OUT",
-  tech: "TECH SIGNAL",
-  theory: "이론에서 현장으로",
-};
+export const CATEGORY_LABELS: Record<ArticleCategory, string> =
+  Object.fromEntries(
+    ARTICLE_CATEGORIES.map((c) => [c, BLOCK_LABELS[c]])
+  ) as Record<ArticleCategory, string>;
 
-export const CATEGORY_DESCRIPTIONS: Record<ArticleCategory, string> = {
-  news: "MICE 산업 관련 일반 뉴스 (행사, 정책, 업계 소식)",
-  mice_in_out: "행사·연사·기업 동향 (weekly briefing 피드 활용 가능)",
-  tech: "이벤트테크·디지털·에듀테크 등 기술 트렌드",
-  theory: "학술·전문지·심층 분석 콘텐츠",
-};
+export const CATEGORY_DESCRIPTIONS: Record<ArticleCategory, string> =
+  Object.fromEntries(
+    ARTICLE_CATEGORIES.map((c) => [c, BLOCK_DESCRIPTIONS[c]])
+  ) as Record<ArticleCategory, string>;
 
 export const rssFeedSchema = z.object({
   url: z
@@ -55,7 +61,12 @@ export const rssFeedSchema = z.object({
     })
     .pipe(
       z
-        .array(z.enum(ARTICLE_CATEGORIES))
+        .array(
+          z.custom<ArticleCategory>(
+            (v) => typeof v === "string" && (ARTICLE_CATEGORIES as readonly string[]).includes(v),
+            { message: "알 수 없는 카테고리입니다" }
+          )
+        )
         .min(1, "카테고리를 최소 1개 선택하세요")
     ),
   active: z

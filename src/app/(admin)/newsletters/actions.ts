@@ -25,6 +25,15 @@ export type ActionResult =
   | { ok: true; id?: string; message?: string }
   | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
 
+/** Build an empty { [category]: [] } map that covers every current article
+ *  category — derived from ARTICLE_CATEGORIES so new block types get keys
+ *  automatically. */
+function emptyArticlesByCategory(): Record<ArticleCategory, Article[]> {
+  const out: Partial<Record<ArticleCategory, Article[]>> = {};
+  for (const c of ARTICLE_CATEGORIES) out[c] = [];
+  return out as Record<ArticleCategory, Article[]>;
+}
+
 const newDraftSchema = z.object({
   issueLabel: z
     .string()
@@ -87,12 +96,8 @@ export async function createDraftNewsletterAction(
   const supabase = createAdminClient();
 
   // 1. Load candidate articles by category, filtered by period
-  const articlesByCategory: Record<ArticleCategory, Article[]> = {
-    news: [],
-    mice_in_out: [],
-    tech: [],
-    theory: [],
-  };
+  const articlesByCategory: Record<ArticleCategory, Article[]> =
+    emptyArticlesByCategory();
 
   for (const cat of ARTICLE_CATEGORIES) {
     let q = supabase
@@ -303,12 +308,8 @@ export async function regenerateDraftAction(
   }
 
   // Reload articles
-  const articlesByCategory: Record<ArticleCategory, Article[]> = {
-    news: [],
-    mice_in_out: [],
-    tech: [],
-    theory: [],
-  };
+  const articlesByCategory: Record<ArticleCategory, Article[]> =
+    emptyArticlesByCategory();
 
   for (const cat of ARTICLE_CATEGORIES) {
     let q = supabase
@@ -439,18 +440,10 @@ export async function createDraftWithBlocksAction(
     (b) => b.autoSearch && BLOCK_ARTICLE_POLICY[b.type].ignoreDateFilter
   );
 
-  const articlesByCategory: Record<ArticleCategory, Article[]> = {
-    news: [],
-    mice_in_out: [],
-    tech: [],
-    theory: [],
-  };
-  const articlesByCategoryAllTime: Record<ArticleCategory, Article[]> = {
-    news: [],
-    mice_in_out: [],
-    tech: [],
-    theory: [],
-  };
+  const articlesByCategory: Record<ArticleCategory, Article[]> =
+    emptyArticlesByCategory();
+  const articlesByCategoryAllTime: Record<ArticleCategory, Article[]> =
+    emptyArticlesByCategory();
 
   // Loading rules:
   //  - exclude articles with review_status='archived' (admin said "not needed")
@@ -647,18 +640,10 @@ export async function regenerateBlockAction(
       new Set([...policy.primary, ...policy.fallback])
     );
 
-    const articlesByCategory: Record<ArticleCategory, Article[]> = {
-      news: [],
-      mice_in_out: [],
-      tech: [],
-      theory: [],
-    };
-    const articlesByCategoryAllTime: Record<ArticleCategory, Article[]> = {
-      news: [],
-      mice_in_out: [],
-      tech: [],
-      theory: [],
-    };
+    const articlesByCategory: Record<ArticleCategory, Article[]> =
+      emptyArticlesByCategory();
+    const articlesByCategoryAllTime: Record<ArticleCategory, Article[]> =
+      emptyArticlesByCategory();
 
     for (const cat of cats) {
       let q = supabase
