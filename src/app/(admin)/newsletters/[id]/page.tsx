@@ -4,6 +4,7 @@ import { render } from "@react-email/render";
 import { PageHeader } from "@/components/admin/page-header";
 import { Button } from "@/components/ui/button";
 import { DraftEditor } from "@/components/newsletters/draft-editor";
+import { SendHistory } from "@/components/newsletters/send-history";
 import Newsletter from "@/emails/Newsletter";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth-helpers";
@@ -129,6 +130,7 @@ export default async function NewsletterDraftPage({
         initialHtml={html}
         articleMeta={articleMeta}
         activeRecipientCount={activeRecipientCount ?? 0}
+        sendHistorySlot={<SendHistory newsletterId={newsletter.id} />}
       />
     </>
   );

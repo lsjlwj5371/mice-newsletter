@@ -42,6 +42,8 @@ interface Props {
   articleMeta: Record<string, ArticleMetaEntry>;
   /** Count of recipients with status='active' for the send panel. */
   activeRecipientCount: number;
+  /** Server-rendered SendHistory component passed through as a slot. */
+  sendHistorySlot: React.ReactNode;
 }
 
 export function DraftEditor({
@@ -49,6 +51,7 @@ export function DraftEditor({
   initialHtml,
   articleMeta,
   activeRecipientCount,
+  sendHistorySlot,
 }: Props) {
   const router = useRouter();
   const [mode, setMode] = React.useState<ViewMode>("desktop");
@@ -243,11 +246,14 @@ export function DraftEditor({
         )}
 
         {tab === "send" && (
-          <SendPanel
-            newsletterId={newsletter.id}
-            status={newsletter.status}
-            activeRecipientCount={activeRecipientCount}
-          />
+          <div className="space-y-6">
+            <SendPanel
+              newsletterId={newsletter.id}
+              status={newsletter.status}
+              activeRecipientCount={activeRecipientCount}
+            />
+            {sendHistorySlot}
+          </div>
         )}
 
         {tab === "json" && (
