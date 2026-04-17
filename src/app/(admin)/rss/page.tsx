@@ -11,10 +11,12 @@ export default async function RssPage() {
   await requireAdmin();
   const supabase = createAdminClient();
 
+  // Note: we used to order by rss_feeds.category but that column was dropped
+  // in migration 0007 in favor of categories (array). Array columns aren't
+  // directly sortable in a meaningful way, so sort by name only.
   const { data, error } = await supabase
     .from("rss_feeds")
     .select("*")
-    .order("category", { ascending: true })
     .order("name", { ascending: true });
 
   if (error) {
