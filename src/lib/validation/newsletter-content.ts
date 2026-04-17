@@ -38,172 +38,209 @@ const blockBase = {
   autoSearch: z.boolean().optional(),
 };
 
-// Per-block data payloads ───────────────────────────────
+// ─────────────────────────────────────────────
+// Per-block DATA payload schemas (exported so the per-block Claude
+// generator can validate individual block outputs without needing the
+// full NewsletterContent envelope).
+// ─────────────────────────────────────────────
 
-const openingLedeBlock = z.object({
-  ...blockBase,
-  type: z.literal("opening_lede"),
-  data: z.object({
-    hook: z.string(),
-    subtext: z.string().optional(),
-  }),
+export const openingLedeDataSchema = z.object({
+  hook: z.string(),
+  subtext: z.string().optional(),
 });
 
-const statFeatureBlock = z.object({
-  ...blockBase,
-  type: z.literal("stat_feature"),
-  data: z.object({
-    englishLabel: z.string(),
-    number: z.string(),
-    suffix: z.string().optional(),
-    caption: z.string(),
-    source: z.string(),
-  }),
+export const statFeatureDataSchema = z.object({
+  englishLabel: z.string(),
+  number: z.string(),
+  suffix: z.string().optional(),
+  caption: z.string(),
+  source: z.string(),
 });
 
-const insightSchema = z
+const insightSchemaExported = z
   .object({
     label: z.string().optional(),
     text: z.string(),
   })
   .optional();
 
-const briefingItemSchema = z.object({
+const briefingItemSchemaExported = z.object({
   categoryTag: z.string(),
   title: z.string(),
   body: z.string(),
-  insight: insightSchema,
+  insight: insightSchemaExported,
   sourceUrl: z.string().optional(),
 });
 
-const newsBriefingBlock = z.object({
-  ...blockBase,
-  type: z.literal("news_briefing"),
-  data: z.object({
-    englishLabel: z.string(),
-    items: z.array(briefingItemSchema).min(1),
-  }),
+export const newsBriefingDataSchema = z.object({
+  englishLabel: z.string(),
+  items: z.array(briefingItemSchemaExported).min(1),
 });
 
-const inOutCardSchema = z.object({
+const inOutCardSchemaExported = z.object({
   categoryTag: z.string(),
   title: z.string(),
   body: z.string(),
   source: z.string().optional(),
 });
 
+export const inOutComparisonDataSchema = z.object({
+  englishLabel: z.string(),
+  inItem: inOutCardSchemaExported,
+  outItem: inOutCardSchemaExported,
+});
+
+export const techSignalDataSchema = z.object({
+  englishLabel: z.string(),
+  topicLabel: z.string(),
+  topicMeta: z.string().optional(),
+  title: z.string(),
+  paragraphs: z.array(z.string()).min(1),
+  miceInsight: z.string(),
+});
+
+export const theoryToFieldDataSchema = z.object({
+  englishLabel: z.string(),
+  sourceYear: z.string().optional(),
+  sourceAuthor: z.string().optional(),
+  sourceMeta: z.string().optional(),
+  title: z.string(),
+  introParagraphs: z.array(z.string()).min(1),
+  bridge: z.object({
+    label: z.string().optional(),
+    text: z.string(),
+  }),
+  outroParagraphs: z.array(z.string()).min(1),
+  closingNote: z.string().optional(),
+});
+
+export const editorTakeDataSchema = z.object({
+  englishLabel: z.string(),
+  eyebrow: z.string().optional(),
+  title: z.string(),
+  leadParagraph: z.string().optional(),
+  pullQuote: z.string().optional(),
+  paragraphs: z.array(z.string()).min(1),
+  closingNote: z.string().optional(),
+});
+
+export const groundkStoryDataSchema = z.object({
+  englishLabel: z.string(),
+  fieldBriefing: z.object({
+    eyebrow: z.string(),
+    categoryTag: z.string(),
+    body: z.string(),
+  }),
+  projectSketch: z.object({
+    projectMeta: z.string(),
+    dateMeta: z.string(),
+    eyebrow: z.string(),
+    title: z.string(),
+    paragraphs: z.array(z.string()).min(1),
+    tags: z.array(z.string()),
+  }),
+});
+
+export const consolidatedInsightDataSchema = z.object({
+  englishLabel: z.string(),
+  parts: z.array(
+    z.object({
+      categoryTag: z.string(),
+      title: z.string(),
+      paragraphs: z.array(z.string()).min(1),
+      insight: insightSchemaExported,
+    })
+  ).min(1),
+});
+
+export const blogCardGridDataSchema = z.object({
+  englishLabel: z.string(),
+  cards: z.array(
+    z.object({
+      label: z.string(),
+      title: z.string(),
+      description: z.string(),
+      linkText: z.string().optional(),
+      linkUrl: z.string(),
+    })
+  ).min(1),
+});
+
+/** Block data schema lookup — indexed by block type. */
+export const BLOCK_DATA_SCHEMAS = {
+  opening_lede: openingLedeDataSchema,
+  stat_feature: statFeatureDataSchema,
+  news_briefing: newsBriefingDataSchema,
+  in_out_comparison: inOutComparisonDataSchema,
+  tech_signal: techSignalDataSchema,
+  theory_to_field: theoryToFieldDataSchema,
+  editor_take: editorTakeDataSchema,
+  groundk_story: groundkStoryDataSchema,
+  consolidated_insight: consolidatedInsightDataSchema,
+  blog_card_grid: blogCardGridDataSchema,
+} as const;
+
+// Per-block wrappers (unchanged contract, but now built on the exported
+// data schemas above so there's a single source of truth)
+
+const openingLedeBlock = z.object({
+  ...blockBase,
+  type: z.literal("opening_lede"),
+  data: openingLedeDataSchema,
+});
+
+const statFeatureBlock = z.object({
+  ...blockBase,
+  type: z.literal("stat_feature"),
+  data: statFeatureDataSchema,
+});
+
+const newsBriefingBlock = z.object({
+  ...blockBase,
+  type: z.literal("news_briefing"),
+  data: newsBriefingDataSchema,
+});
+
 const inOutComparisonBlock = z.object({
   ...blockBase,
   type: z.literal("in_out_comparison"),
-  data: z.object({
-    englishLabel: z.string(),
-    inItem: inOutCardSchema,
-    outItem: inOutCardSchema,
-  }),
+  data: inOutComparisonDataSchema,
 });
 
 const techSignalBlock = z.object({
   ...blockBase,
   type: z.literal("tech_signal"),
-  data: z.object({
-    englishLabel: z.string(),
-    topicLabel: z.string(),
-    topicMeta: z.string().optional(),
-    title: z.string(),
-    paragraphs: z.array(z.string()).min(1),
-    miceInsight: z.string(),
-  }),
+  data: techSignalDataSchema,
 });
 
 const theoryToFieldBlock = z.object({
   ...blockBase,
   type: z.literal("theory_to_field"),
-  data: z.object({
-    englishLabel: z.string(),
-    sourceYear: z.string().optional(),
-    sourceAuthor: z.string().optional(),
-    sourceMeta: z.string().optional(),
-    title: z.string(),
-    introParagraphs: z.array(z.string()).min(1),
-    bridge: z.object({
-      label: z.string().optional(),
-      text: z.string(),
-    }),
-    outroParagraphs: z.array(z.string()).min(1),
-    closingNote: z.string().optional(),
-  }),
+  data: theoryToFieldDataSchema,
 });
 
 const editorTakeBlock = z.object({
   ...blockBase,
   type: z.literal("editor_take"),
-  data: z.object({
-    englishLabel: z.string(),
-    eyebrow: z.string().optional(),
-    title: z.string(),
-    leadParagraph: z.string().optional(),
-    pullQuote: z.string().optional(),
-    paragraphs: z.array(z.string()).min(1),
-    closingNote: z.string().optional(),
-  }),
-});
-
-const fieldBriefingPart = z.object({
-  eyebrow: z.string(),
-  categoryTag: z.string(),
-  body: z.string(),
-});
-
-const projectSketchPart = z.object({
-  projectMeta: z.string(),
-  dateMeta: z.string(),
-  eyebrow: z.string(),
-  title: z.string(),
-  paragraphs: z.array(z.string()).min(1),
-  tags: z.array(z.string()),
+  data: editorTakeDataSchema,
 });
 
 const groundkStoryBlock = z.object({
   ...blockBase,
   type: z.literal("groundk_story"),
-  data: z.object({
-    englishLabel: z.string(),
-    fieldBriefing: fieldBriefingPart,
-    projectSketch: projectSketchPart,
-  }),
-});
-
-const consolidatedPart = z.object({
-  categoryTag: z.string(),
-  title: z.string(),
-  paragraphs: z.array(z.string()).min(1),
-  insight: insightSchema,
+  data: groundkStoryDataSchema,
 });
 
 const consolidatedInsightBlock = z.object({
   ...blockBase,
   type: z.literal("consolidated_insight"),
-  data: z.object({
-    englishLabel: z.string(),
-    parts: z.array(consolidatedPart).min(1),
-  }),
-});
-
-const blogCardSchema = z.object({
-  label: z.string(),
-  title: z.string(),
-  description: z.string(),
-  linkText: z.string().optional(),
-  linkUrl: z.string(),
+  data: consolidatedInsightDataSchema,
 });
 
 const blogCardGridBlock = z.object({
   ...blockBase,
   type: z.literal("blog_card_grid"),
-  data: z.object({
-    englishLabel: z.string(),
-    cards: z.array(blogCardSchema).min(1),
-  }),
+  data: blogCardGridDataSchema,
 });
 
 export const blockInstanceSchema = z.discriminatedUnion("type", [

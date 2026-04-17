@@ -511,9 +511,13 @@ export async function createDraftWithBlocksAction(
       issueLabel,
       blockCount: input.blocks.length,
       blockTypes: input.blocks.map((b) => b.type),
+      failedBlocks: draftResult.failedBlocks,
     },
   });
 
   revalidatePath("/newsletters");
-  return { ok: true, id: inserted.id };
+  const failedSummary = draftResult.failedBlocks.length > 0
+    ? ` (경고: ${draftResult.failedBlocks.length}개 블록 생성 실패 — placeholder로 대체됨)`
+    : "";
+  return { ok: true, id: inserted.id, message: `초안 생성 완료${failedSummary}` };
 }
