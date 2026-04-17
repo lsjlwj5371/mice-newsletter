@@ -4,32 +4,60 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea, Label } from "@/components/ui/input";
-import { createDraftNewsletterAction } from "@/app/(admin)/newsletters/actions";
+import { BlockPicker, DEFAULT_BLOCK_CONFIGS, type BlockConfig } from "./block-picker";
+import { createDraftWithBlocksAction } from "@/app/(admin)/newsletters/actions";
 
 export function NewDraftForm() {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
+
+  // Form state
+  const today = new Date();
+  const defaultIssueLabel = `VOL · ${today.getFullYear()}년 ${today.getMonth() + 1}월호`;
+  const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const todayStr = formatDateForInput(today);
+  const thirtyAgoStr = formatDateForInput(thirtyDaysAgo);
+
+  const [issueLabel, setIssueLabel] = React.useState(defaultIssueLabel);
   const [usePeriod, setUsePeriod] = React.useState(true);
+  const [periodStart, setPeriodStart] = React.useState(thirtyAgoStr);
+  const [periodEnd, setPeriodEnd] = React.useState(todayStr);
+  const [referenceNotes, setReferenceNotes] = React.useState("");
+  const [perCategoryLimit, setPerCategoryLimit] = React.useState(8);
+  const [blocks, setBlocks] = React.useState<BlockConfig[]>(DEFAULT_BLOCK_CONFIGS);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setStatusMessage(
-      "Claude가 후보 기사를 분석하고 11개 섹션 초안을 작성하는 중입니다… (20~45초 소요)"
-    );
 
-    const formData = new FormData(e.currentTarget);
-    // Strip period if user opted out
-    if (!usePeriod) {
-      formData.delete("periodStart");
-      formData.delete("periodEnd");
+    if (blocks.length === 0) {
+      setError("최소 하나 이상의 블록을 선택해 주세요.");
+      return;
     }
+
+    const autoSearchCount = blocks.filter((b) => b.autoSearch).length;
+    const statusMsg = autoSearchCount > 0
+      ? `Claude가 ${autoSearchCount}개 블록의 내용을 후보 기사로 작성하는 중입니다… (블록 수에 따라 20~50초)`
+      : "블록 구조 생성 중입니다…";
+    setStatusMessage(statusMsg);
 
     startTransition(async () => {
       try {
-        const result = await createDraftNewsletterAction(formData);
+        const result = await createDraftWithBlocksAction({
+          issueLabel,
+          periodStart: usePeriod ? periodStart : null,
+          periodEnd: usePeriod ? periodEnd : null,
+          perCategoryLimit,
+          referenceNotes: referenceNotes.trim() || null,
+          blocks: blocks.map((b) => ({
+            type: b.type,
+            instructions: b.instructions.trim() || null,
+            autoSearch: b.autoSearch,
+          })),
+        });
+
         if (result.ok && result.id) {
           router.push(`/newsletters/${result.id}` as never);
         } else if (!result.ok) {
@@ -37,130 +65,126 @@ export function NewDraftForm() {
           setStatusMessage(null);
         }
       } catch (err) {
-        // Server action threw before returning JSON (most commonly a Vercel
-        // function timeout at 60s → proxy 504 → client sees unexpected response)
         const msg = err instanceof Error ? err.message : String(err);
         setError(
           `서버 응답 오류: ${msg}\n\n` +
-            "보통 Claude 생성이 60초 함수 한도를 넘어서 발생합니다. 잠시 기다렸다가 " +
-            "'카테고리당 후보 기사 수'를 더 낮춰서(예: 4) 다시 시도해 보세요."
+            "보통 Claude 생성이 60초 함수 한도를 넘어서 발생합니다. " +
+            "블록 수를 줄이거나 '카테고리당 후보 기사 수'를 낮춰서(예: 4) 다시 시도해 보세요."
         );
         setStatusMessage(null);
       }
     });
   }
 
-  // Default period: last 30 days
-  const today = new Date();
-  const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const todayStr = formatDateForInput(today);
-  const thirtyAgoStr = formatDateForInput(thirtyDaysAgo);
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
-      <div className="space-y-1">
-        <Label htmlFor="issueLabel">호 이름 *</Label>
-        <Input
-          id="issueLabel"
-          name="issueLabel"
-          required
-          placeholder="VOL.02 · 2026년 5월호"
-          defaultValue={`VOL · ${today.getFullYear()}년 ${
-            today.getMonth() + 1
-          }월호`}
-          autoFocus
-          disabled={pending}
-        />
-        <p className="text-xs text-muted-foreground">
-          뉴스레터 상단·관리 화면에 표시되는 호 식별 라벨
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <input
-            id="usePeriod"
-            type="checkbox"
-            checked={usePeriod}
-            onChange={(e) => setUsePeriod(e.target.checked)}
+    <form onSubmit={handleSubmit} className="space-y-8 max-w-3xl">
+      {/* ── Basics ─────────────────────── */}
+      <section className="space-y-4">
+        <div className="space-y-1">
+          <Label htmlFor="issueLabel">호 이름 *</Label>
+          <Input
+            id="issueLabel"
+            value={issueLabel}
+            onChange={(e) => setIssueLabel(e.target.value)}
+            required
+            placeholder="VOL.02 · 2026년 5월호"
             disabled={pending}
-            className="h-4 w-4 rounded border-border"
           />
-          <Label htmlFor="usePeriod" className="cursor-pointer">
-            기간으로 후보 기사 필터링
-          </Label>
+          <p className="text-xs text-muted-foreground">
+            뉴스레터 상단·관리 화면에 표시되는 호 식별 라벨
+          </p>
         </div>
-        {usePeriod && (
-          <div className="grid grid-cols-2 gap-4 pl-6">
-            <div className="space-y-1">
-              <Label htmlFor="periodStart">시작</Label>
-              <Input
-                id="periodStart"
-                name="periodStart"
-                type="date"
-                defaultValue={thirtyAgoStr}
-                disabled={pending}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="periodEnd">종료</Label>
-              <Input
-                id="periodEnd"
-                name="periodEnd"
-                type="date"
-                defaultValue={todayStr}
-                disabled={pending}
-              />
-            </div>
-          </div>
-        )}
-        <p className="text-xs text-muted-foreground">
-          {usePeriod
-            ? "이 기간 안에 수집된 기사만 사용. 종료일은 그 날 끝까지 포함됩니다."
-            : "체크 해제 — 수집된 모든 기사 중에서 Claude가 선택합니다."}
-        </p>
-      </div>
 
-      <div className="space-y-1">
-        <Label htmlFor="referenceNotes">사전 레퍼런스 / 인사이트 (선택)</Label>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <input
+              id="usePeriod"
+              type="checkbox"
+              checked={usePeriod}
+              onChange={(e) => setUsePeriod(e.target.checked)}
+              disabled={pending}
+              className="h-4 w-4 rounded border-border"
+            />
+            <Label htmlFor="usePeriod" className="cursor-pointer">
+              기간으로 후보 기사 필터링
+            </Label>
+          </div>
+          {usePeriod && (
+            <div className="grid grid-cols-2 gap-4 pl-6">
+              <div className="space-y-1">
+                <Label htmlFor="periodStart">시작</Label>
+                <Input
+                  id="periodStart"
+                  type="date"
+                  value={periodStart}
+                  onChange={(e) => setPeriodStart(e.target.value)}
+                  disabled={pending}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="periodEnd">종료</Label>
+                <Input
+                  id="periodEnd"
+                  type="date"
+                  value={periodEnd}
+                  onChange={(e) => setPeriodEnd(e.target.value)}
+                  disabled={pending}
+                />
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            {usePeriod
+              ? "이 기간 안에 수집된 기사만 사용. 종료일은 그 날 끝까지 포함됩니다."
+              : "체크 해제 — 수집된 모든 기사 중에서 Claude가 선택합니다."}
+          </p>
+        </div>
+
+        <div className="space-y-1">
+          <Label htmlFor="perCategoryLimit">카테고리당 후보 기사 수</Label>
+          <Input
+            id="perCategoryLimit"
+            type="number"
+            min="3"
+            max="20"
+            value={perCategoryLimit}
+            onChange={(e) => setPerCategoryLimit(parseInt(e.target.value, 10))}
+            disabled={pending}
+            className="max-w-[120px]"
+          />
+          <p className="text-xs text-muted-foreground">
+            각 카테고리에서 중요도 순으로 N개 기사를 Claude에게 전달. 블록 수가
+            많으면 8 이상도 OK, 빠른 생성이 필요하면 4~5 추천.
+          </p>
+        </div>
+      </section>
+
+      {/* ── Block picker ──────────────── */}
+      <section className="border-t border-border pt-6">
+        <BlockPicker blocks={blocks} onChange={setBlocks} />
+      </section>
+
+      {/* ── Global references ─────────── */}
+      <section className="border-t border-border pt-6 space-y-1">
+        <Label htmlFor="referenceNotes">
+          전체 사전 레퍼런스 / 인사이트 (선택)
+        </Label>
         <Textarea
           id="referenceNotes"
-          name="referenceNotes"
+          value={referenceNotes}
+          onChange={(e) => setReferenceNotes(e.target.value)}
           rows={6}
-          placeholder={`이번 호에 꼭 포함했으면 하는 내용을 자유롭게 적어주세요.\n\n예시:\n- 그라운드케이가 지난 주 진행한 'COS 패션쇼' 프로젝트를 GROUNDK STORY > Project Sketch에 넣어줘\n- 인천공항 T2 수하물 지연 이슈는 Field Briefing에 반영\n- Editor's Take는 '이벤트 산업의 ESG 압박' 주제로`}
+          placeholder={`이번 호 전체에 공통으로 적용할 맥락이나 강조할 주제를 적어주세요.\n(특정 블록 전용 지시는 블록 카드의 "추가 지시" 칸에 적으세요)\n\n예시:\n- 이번 호 전체 테마는 "인바운드 MICE 변곡점"\n- 그라운드케이가 지난 주 진행한 COS 패션쇼는 Project Sketch에 포함`}
           disabled={pending}
         />
-        <p className="text-xs text-muted-foreground">
-          여기 적은 내용은 GROUNDK STORY 섹션을 우선 채우는 데 사용되며, 다른
-          섹션에도 관련 있다면 반영됩니다.
-        </p>
-      </div>
+      </section>
 
-      <div className="space-y-1">
-        <Label htmlFor="perCategoryLimit">카테고리당 후보 기사 수</Label>
-        <Input
-          id="perCategoryLimit"
-          name="perCategoryLimit"
-          type="number"
-          min="3"
-          max="20"
-          defaultValue="8"
-          disabled={pending}
-          className="max-w-[120px]"
-        />
-        <p className="text-xs text-muted-foreground">
-          각 카테고리(news/mice_in_out/tech/theory)에서 중요도 순으로 N개 기사를
-          Claude에게 전달합니다. 너무 많으면 토큰 비용 증가, 너무 적으면 선택지
-          부족.
-        </p>
-      </div>
-
+      {/* ── Errors / Status ───────────── */}
       {error && (
         <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 whitespace-pre-wrap">
           {error}
         </div>
       )}
-
       {statusMessage && pending && (
         <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700 flex items-start gap-3">
           <div className="h-4 w-4 mt-0.5 rounded-full border-2 border-amber-700 border-t-transparent animate-spin shrink-0" />
@@ -168,8 +192,9 @@ export function NewDraftForm() {
         </div>
       )}
 
-      <div className="flex gap-2 pt-2">
-        <Button type="submit" disabled={pending}>
+      {/* ── Submit ────────────────────── */}
+      <div className="flex gap-2 pt-2 border-t border-border">
+        <Button type="submit" disabled={pending || blocks.length === 0}>
           {pending ? "초안 생성 중..." : "초안 생성하기"}
         </Button>
         <Button

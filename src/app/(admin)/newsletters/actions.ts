@@ -13,7 +13,7 @@ import {
   type Article,
   type ArticleCategory,
 } from "@/lib/validation/rss";
-import type { NewsletterContent } from "@/types/newsletter";
+import { BLOCK_TYPES, type BlockType, type NewsletterContent } from "@/types/newsletter";
 
 export type ActionResult =
   | { ok: true; id?: string; message?: string }
@@ -376,4 +376,144 @@ export async function createDraftAndRedirect(formData: FormData) {
     throw new Error(result.ok ? "Unknown error" : result.error);
   }
   redirect(`/newsletters/${result.id}`);
+}
+
+// ─────────────────────────────────────────────
+// CREATE DRAFT WITH BLOCK CONFIGURATION (Phase 4.3-B)
+// Accepts typed block picker payload from the new-draft-form and passes
+// per-block instructions + autoSearch flags to Claude.
+// ─────────────────────────────────────────────
+
+export interface BlockConfigInput {
+  type: BlockType;
+  instructions: string | null;
+  autoSearch: boolean;
+}
+
+export interface CreateDraftWithBlocksInput {
+  issueLabel: string;
+  periodStart: string | null;
+  periodEnd: string | null;
+  perCategoryLimit: number;
+  referenceNotes: string | null;
+  blocks: BlockConfigInput[];
+}
+
+export async function createDraftWithBlocksAction(
+  input: CreateDraftWithBlocksInput
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+
+  // Validation
+  const issueLabel = input.issueLabel.trim();
+  if (!issueLabel) {
+    return { ok: false, error: "호 이름은 필수입니다." };
+  }
+  if (!input.blocks || input.blocks.length === 0) {
+    return { ok: false, error: "최소 하나 이상의 블록이 필요합니다." };
+  }
+  for (const b of input.blocks) {
+    if (!(BLOCK_TYPES as readonly string[]).includes(b.type)) {
+      return { ok: false, error: `알 수 없는 블록 타입: ${b.type}` };
+    }
+  }
+
+  const perCategoryLimit = Math.max(
+    3,
+    Math.min(20, input.perCategoryLimit || 8)
+  );
+
+  const supabase = createAdminClient();
+
+  // Load candidate articles by category — only for research-backed blocks
+  const needsResearch = input.blocks.some((b) => b.autoSearch);
+  const articlesByCategory: Record<ArticleCategory, Article[]> = {
+    news: [],
+    mice_in_out: [],
+    tech: [],
+    theory: [],
+  };
+
+  if (needsResearch) {
+    for (const cat of ARTICLE_CATEGORIES) {
+      let q = supabase
+        .from("articles")
+        .select("*")
+        .eq("category", cat)
+        .order("importance", { ascending: false, nullsFirst: false })
+        .order("collected_at", { ascending: false })
+        .limit(perCategoryLimit);
+
+      if (input.periodStart) {
+        q = q.gte("collected_at", input.periodStart);
+      }
+      if (input.periodEnd) {
+        const endDate = new Date(input.periodEnd);
+        endDate.setUTCDate(endDate.getUTCDate() + 1);
+        q = q.lt("collected_at", endDate.toISOString());
+      }
+
+      const { data, error } = await q;
+      if (error) {
+        return { ok: false, error: `기사 조회 실패 (${cat}): ${error.message}` };
+      }
+      articlesByCategory[cat] = (data ?? []) as Article[];
+    }
+  }
+
+  // Call Claude
+  let draftResult;
+  try {
+    draftResult = await generateNewsletterDraft({
+      issueLabel,
+      articlesByCategory,
+      referenceNotes: input.referenceNotes ?? undefined,
+      blockTypes: input.blocks.map((b) => b.type),
+      blockInstructions: input.blocks.map((b) => ({
+        type: b.type,
+        instructions: b.instructions ?? undefined,
+        autoSearch: b.autoSearch,
+      })),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `Claude 초안 생성 실패: ${msg}` };
+  }
+
+  // Save
+  const { data: inserted, error: insertErr } = await supabase
+    .from("newsletters")
+    .insert({
+      issue_label: issueLabel,
+      subject: draftResult.content.subject,
+      status: "draft",
+      schema_version: 2,
+      content_json: draftResult.content,
+      collection_period_start: input.periodStart,
+      collection_period_end: input.periodEnd,
+      reference_notes: input.referenceNotes,
+      used_article_ids: draftResult.usedArticleIds,
+      created_by: admin.id,
+    })
+    .select("id")
+    .single();
+
+  if (insertErr) {
+    return { ok: false, error: `DB 저장 실패: ${insertErr.message}` };
+  }
+
+  await logAudit({
+    adminId: admin.id,
+    action: "newsletter.create_draft",
+    entity: "newsletter",
+    entityId: inserted.id,
+    metadata: {
+      issueLabel,
+      blockCount: input.blocks.length,
+      blockTypes: input.blocks.map((b) => b.type),
+    },
+  });
+
+  revalidatePath("/newsletters");
+  return { ok: true, id: inserted.id };
 }

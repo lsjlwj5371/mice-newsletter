@@ -43,6 +43,13 @@ export const DEFAULT_BLOCK_TYPES: BlockType[] = [
   "groundk_story",
 ];
 
+export interface BlockInstructionEntry {
+  type: BlockType;
+  instructions?: string;
+  /** If false, Claude emits a minimal placeholder for admin to edit later. */
+  autoSearch: boolean;
+}
+
 export interface DraftGenerationInput {
   issueLabel: string;
   articlesByCategory: Record<ArticleCategory, Article[]>;
@@ -52,6 +59,12 @@ export interface DraftGenerationInput {
    * DEFAULT_BLOCK_TYPES.
    */
   blockTypes?: BlockType[];
+  /**
+   * Per-block configuration (instructions + autoSearch). If provided, must
+   * be 1:1 with blockTypes. If omitted, all blocks default to autoSearch=true
+   * with no custom instructions.
+   */
+  blockInstructions?: BlockInstructionEntry[];
 }
 
 export interface DraftGenerationResult {
@@ -72,15 +85,38 @@ const BLOCK_GUIDANCE: Record<BlockType, string> = {
   blog_card_grid: `blog_card_grid: { englishLabel: "GroundK Blog", cards: [2~6개. 각 card = { label: "Field Note / Project Story / Industry Insight / Tech & MICE 중 하나", title, description: "2~3줄", linkUrl: "https://blog.naver.com/groundk" }] }`,
 };
 
-function buildSystemPrompt(blockTypes: BlockType[]): string {
+function buildSystemPrompt(
+  blockTypes: BlockType[],
+  blockInstructions: BlockInstructionEntry[] | undefined
+): string {
+  const lookup = new Map<BlockType, BlockInstructionEntry>();
+  if (blockInstructions) {
+    for (const e of blockInstructions) lookup.set(e.type, e);
+  }
+
   const blockGuidance = blockTypes
-    .map((t, i) => `  ${i + 1}. ${BLOCK_GUIDANCE[t]}`)
+    .map((t, i) => {
+      const cfg = lookup.get(t);
+      const lines: string[] = [];
+      lines.push(`  ${i + 1}. ${BLOCK_GUIDANCE[t]}`);
+      if (cfg?.instructions && cfg.instructions.trim().length > 0) {
+        lines.push(`     [관리자 지시] ${cfg.instructions.trim()}`);
+      }
+      if (cfg && !cfg.autoSearch) {
+        lines.push(
+          `     [자동 생성 OFF] 이 블록은 관리자가 직접 입력할 예정이므로 최소한의 placeholder 콘텐츠만 채우세요. 모든 주요 텍스트 필드에 "{{ADMIN_FILL}}"를 넣거나, "여기에 관리자가 내용을 직접 작성할 예정입니다" 같은 안내 문구로 채울 것. 후보 기사를 참조하지 말 것.`
+        );
+      } else {
+        lines.push(`     [자동 생성 ON] 후보 기사와 레퍼런스를 활용해 본문 생성.`);
+      }
+      return lines.join("\n");
+    })
     .join("\n");
 
   return `당신은 "PIK" 뉴스레터의 편집장입니다. 한국 MICE 산업 종사자를 대상으로 하는 인사이트 뉴스레터입니다.
 
 ## 역할
-주어진 후보 기사들과 관리자 사전 레퍼런스를 바탕으로 요청된 블록 순서대로 한 호의 콘텐츠를 JSON으로 생성합니다.
+주어진 후보 기사들과 관리자 사전 레퍼런스, 그리고 **블록별 지시사항**을 바탕으로 요청된 블록 순서대로 한 호의 콘텐츠를 JSON으로 생성합니다.
 
 ## 톤앤매너
 - 한국어 평어체 (~다, ~입니다 혼용 자연스럽게)
@@ -105,7 +141,9 @@ ${blockGuidance}
 
 - id는 "b1", "b2", ... 식으로 순서대로 부여
 - type은 반드시 위 지정 타입
-- instructions, autoSearch 필드는 생성하지 말 것 (그건 admin이 나중에 추가)
+- [자동 생성 OFF] 블록은 placeholder만 채울 것. 후보 기사를 참조하지 말 것.
+- 블록별 [관리자 지시]가 있으면 그 지시를 최우선으로 반영.
+- instructions, autoSearch 필드는 생성하지 말 것 (서버에서 추가)
 
 ## 추가 규칙
 - subject는 "[PIK] {호 이름} — {핵심 키워드 1~2개}" 형태로
@@ -185,7 +223,7 @@ export async function generateNewsletterDraft(
   const response = await client.messages.create({
     model: DRAFT_MODEL,
     max_tokens: 8000,
-    system: buildSystemPrompt(blockTypes),
+    system: buildSystemPrompt(blockTypes, input.blockInstructions),
     messages: [{ role: "user", content: userMessage }],
   });
 
