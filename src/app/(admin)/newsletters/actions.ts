@@ -591,6 +591,101 @@ export async function createDraftWithBlocksAction(
 }
 
 // ─────────────────────────────────────────────
+// SET / CLEAR IMAGE on a specific block
+// Updates content_json.blocks[i].data.imageUrl. For groundk_story it
+// can target either fieldBriefing or projectSketch via `slot`.
+// ─────────────────────────────────────────────
+
+export interface SetBlockImageInput {
+  newsletterId: string;
+  blockIndex: number;
+  imageUrl: string | null;
+  /** For compound blocks like groundk_story: which sub-part to target. */
+  slot?: "fieldBriefing" | "projectSketch";
+}
+
+export async function setBlockImageAction(
+  input: SetBlockImageInput
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const supabase = createAdminClient();
+
+  const { data: row, error: fetchErr } = await supabase
+    .from("newsletters")
+    .select("*")
+    .eq("id", input.newsletterId)
+    .single();
+  if (fetchErr || !row) {
+    return { ok: false, error: "원본 호를 찾을 수 없습니다." };
+  }
+  if (row.status === "sent") {
+    return { ok: false, error: "이미 발송된 호는 수정할 수 없습니다." };
+  }
+
+  const content = row.content_json as NewsletterContent;
+  if (
+    !content.blocks ||
+    input.blockIndex < 0 ||
+    input.blockIndex >= content.blocks.length
+  ) {
+    return { ok: false, error: "해당 블록을 찾을 수 없습니다." };
+  }
+
+  const block = content.blocks[input.blockIndex];
+  const nextValue = input.imageUrl ?? undefined;
+
+  // Build the updated block depending on its type.
+  let updatedBlock = block as NewsletterContent["blocks"][number];
+  const data = block.data as Record<string, unknown>;
+
+  if (block.type === "groundk_story" && input.slot) {
+    const sub = (data[input.slot] ?? {}) as Record<string, unknown>;
+    updatedBlock = {
+      ...block,
+      data: {
+        ...data,
+        [input.slot]: { ...sub, imageUrl: nextValue },
+      },
+    } as NewsletterContent["blocks"][number];
+  } else {
+    updatedBlock = {
+      ...block,
+      data: { ...data, imageUrl: nextValue },
+    } as NewsletterContent["blocks"][number];
+  }
+
+  const updatedBlocks = [...content.blocks];
+  updatedBlocks[input.blockIndex] = updatedBlock;
+  const updatedContent: NewsletterContent = {
+    ...content,
+    blocks: updatedBlocks,
+  };
+
+  const { error: updErr } = await supabase
+    .from("newsletters")
+    .update({ content_json: updatedContent })
+    .eq("id", input.newsletterId);
+  if (updErr) {
+    return { ok: false, error: `DB 저장 실패: ${updErr.message}` };
+  }
+
+  await logAudit({
+    adminId: admin.id,
+    action: input.imageUrl ? "newsletter.set_image" : "newsletter.clear_image",
+    entity: "newsletter",
+    entityId: input.newsletterId,
+    metadata: {
+      blockIndex: input.blockIndex,
+      blockType: block.type,
+      slot: input.slot ?? null,
+    },
+  });
+
+  revalidatePath(`/newsletters/${input.newsletterId}`);
+  return { ok: true, id: input.newsletterId };
+}
+
+// ─────────────────────────────────────────────
 // REGENERATE A SINGLE BLOCK (Phase 4.3-D)
 // Admin can refine one block without touching the rest.
 // ─────────────────────────────────────────────

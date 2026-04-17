@@ -336,6 +336,7 @@ function OpeningLede({ block }: { block: OpeningLedeBlock }) {
       noBorder
       style={{ paddingTop: "8px", paddingBottom: "20px" }}
     >
+      <BlockImage src={block.data.imageUrl} />
       <Section
         style={{
           borderLeft: `4px solid ${colors.accentGold}`,
@@ -449,6 +450,7 @@ function NewsBriefing({
           body={item.body}
           insight={item.insight}
           sourceUrl={item.sourceUrl}
+          imageUrl={item.imageUrl}
           isLast={i === block.data.items.length - 1}
         />
       ))}
@@ -663,6 +665,7 @@ function TechSignal({
           >
             {block.data.title}
           </Heading>
+          <BlockImage src={block.data.imageUrl} />
           {block.data.paragraphs.map((p, i) => (
             <Text
               key={i}
@@ -962,6 +965,7 @@ function EditorTake({
           </Text>
         </Section>
       )}
+      <BlockImage src={block.data.imageUrl} />
       {block.data.paragraphs.map((p, i) => (
         <Text
           key={i}
@@ -1130,6 +1134,7 @@ function GroundkStory({
         >
           {block.data.projectSketch.title}
         </Heading>
+        <BlockImage src={block.data.projectSketch.imageUrl} />
         {block.data.projectSketch.paragraphs.map((p, i) => (
           <Text
             key={i}
@@ -1439,5 +1444,37 @@ function renderMultiline(s: string): React.ReactNode {
   ));
 }
 
+/**
+ * Inline image renderer for newsletter blocks.
+ * Keeps consistent styling (rounded corners, responsive width) and
+ * only renders when `src` is a non-empty string.
+ */
+function BlockImage({
+  src,
+  alt = "",
+  style,
+}: {
+  src?: string;
+  alt?: string;
+  style?: React.CSSProperties;
+}) {
+  if (!src) return null;
+  return (
+    <Img
+      src={src}
+      alt={alt}
+      style={{
+        display: "block",
+        width: "100%",
+        maxWidth: "100%",
+        height: "auto",
+        borderRadius: "8px",
+        margin: "0 0 16px 0",
+        ...style,
+      }}
+    />
+  );
+}
+
 // Re-export the Pill helper for consumers
-export { Pill };
+export { Pill, BlockImage };

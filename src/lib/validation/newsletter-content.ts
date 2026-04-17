@@ -48,6 +48,7 @@ const blockBase = {
 export const openingLedeDataSchema = z.object({
   hook: z.string(),
   subtext: z.string().optional(),
+  imageUrl: z.string().optional(),
 });
 
 export const statFeatureDataSchema = z.object({
@@ -56,6 +57,7 @@ export const statFeatureDataSchema = z.object({
   suffix: z.string().optional(),
   caption: z.string(),
   source: z.string(),
+  imageUrl: z.string().optional(),
 });
 
 const insightSchemaExported = z
@@ -71,6 +73,7 @@ const briefingItemSchemaExported = z.object({
   body: z.string(),
   insight: insightSchemaExported,
   sourceUrl: z.string().optional(),
+  imageUrl: z.string().optional(),
 });
 
 export const newsBriefingDataSchema = z.object({
@@ -83,6 +86,7 @@ const inOutCardSchemaExported = z.object({
   title: z.string(),
   body: z.string(),
   source: z.string().optional(),
+  imageUrl: z.string().optional(),
 });
 
 export const inOutComparisonDataSchema = z.object({
@@ -98,6 +102,7 @@ export const techSignalDataSchema = z.object({
   title: z.string(),
   paragraphs: z.array(z.string()).min(1),
   miceInsight: z.string(),
+  imageUrl: z.string().optional(),
 });
 
 export const theoryToFieldDataSchema = z.object({
@@ -113,6 +118,7 @@ export const theoryToFieldDataSchema = z.object({
   }),
   outroParagraphs: z.array(z.string()).min(1),
   closingNote: z.string().optional(),
+  imageUrl: z.string().optional(),
 });
 
 export const editorTakeDataSchema = z.object({
@@ -123,6 +129,7 @@ export const editorTakeDataSchema = z.object({
   pullQuote: z.string().optional(),
   paragraphs: z.array(z.string()).min(1),
   closingNote: z.string().optional(),
+  imageUrl: z.string().optional(),
 });
 
 export const groundkStoryDataSchema = z.object({
@@ -131,6 +138,7 @@ export const groundkStoryDataSchema = z.object({
     eyebrow: z.string(),
     categoryTag: z.string(),
     body: z.string(),
+    imageUrl: z.string().optional(),
   }),
   projectSketch: z.object({
     projectMeta: z.string(),
@@ -139,6 +147,7 @@ export const groundkStoryDataSchema = z.object({
     title: z.string(),
     paragraphs: z.array(z.string()).min(1),
     tags: z.array(z.string()),
+    imageUrl: z.string().optional(),
   }),
 });
 
@@ -150,6 +159,7 @@ export const consolidatedInsightDataSchema = z.object({
       title: z.string(),
       paragraphs: z.array(z.string()).min(1),
       insight: insightSchemaExported,
+      imageUrl: z.string().optional(),
     })
   ).min(1),
 });
@@ -163,6 +173,7 @@ export const blogCardGridDataSchema = z.object({
       description: z.string(),
       linkText: z.string().optional(),
       linkUrl: z.string(),
+      imageUrl: z.string().optional(),
     })
   ).min(1),
 });

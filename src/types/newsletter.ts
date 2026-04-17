@@ -134,6 +134,7 @@ export interface OpeningLedeBlock extends BlockBase {
   data: {
     hook: string;
     subtext?: string;
+    imageUrl?: string;
   };
 }
 
@@ -145,6 +146,7 @@ export interface StatFeatureBlock extends BlockBase {
     suffix?: string;
     caption: string;
     source: string;
+    imageUrl?: string;
   };
 }
 
@@ -154,6 +156,7 @@ export interface BriefingItem {
   body: string;
   insight?: { label?: string; text: string };
   sourceUrl?: string;
+  imageUrl?: string;
 }
 
 export interface NewsBriefingBlock extends BlockBase {
@@ -169,6 +172,7 @@ export interface MiceInOutCard {
   title: string;
   body: string;
   source?: string;
+  imageUrl?: string;
 }
 
 export interface InOutComparisonBlock extends BlockBase {
@@ -189,6 +193,7 @@ export interface TechSignalBlock extends BlockBase {
     title: string;
     paragraphs: string[];
     miceInsight: string;
+    imageUrl?: string;
   };
 }
 
@@ -204,6 +209,7 @@ export interface TheoryToFieldBlock extends BlockBase {
     bridge: { label?: string; text: string };
     outroParagraphs: string[];
     closingNote?: string;
+    imageUrl?: string;
   };
 }
 
@@ -217,6 +223,7 @@ export interface EditorTakeBlock extends BlockBase {
     pullQuote?: string;
     paragraphs: string[];
     closingNote?: string;
+    imageUrl?: string;
   };
 }
 
@@ -224,6 +231,7 @@ export interface FieldBriefingPart {
   eyebrow: string;
   categoryTag: string;
   body: string;
+  imageUrl?: string;
 }
 
 export interface ProjectSketchPart {
@@ -233,6 +241,7 @@ export interface ProjectSketchPart {
   title: string;
   paragraphs: string[];
   tags: string[];
+  imageUrl?: string;
 }
 
 export interface GroundkStoryBlock extends BlockBase {
@@ -249,6 +258,7 @@ export interface ConsolidatedInsightPart {
   title: string;
   paragraphs: string[];
   insight?: { label?: string; text: string };
+  imageUrl?: string;
 }
 
 export interface ConsolidatedInsightBlock extends BlockBase {
@@ -265,6 +275,7 @@ export interface BlogCard {
   description: string;
   linkText?: string;
   linkUrl: string;
+  imageUrl?: string;
 }
 
 export interface BlogCardGridBlock extends BlockBase {

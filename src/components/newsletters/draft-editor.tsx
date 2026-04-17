@@ -10,6 +10,7 @@ import {
   regenerateDraftAction,
   regenerateBlockAction,
 } from "@/app/(admin)/newsletters/actions";
+import { BlockImageSlot } from "./block-image-slot";
 import {
   NEWSLETTER_STATUS_LABELS,
   BLOCK_LABELS,
@@ -430,6 +431,50 @@ function BlockCard({
               </ul>
             )}
           </section>
+
+          {/* Image upload slot(s) */}
+          {block.type === "groundk_story" ? (
+            <div className="space-y-4">
+              <BlockImageSlot
+                newsletterId={newsletterId}
+                blockIndex={blockIndex}
+                slot="fieldBriefing"
+                label="현장 브리핑 이미지 (선택)"
+                currentUrl={
+                  (
+                    (block.data as {
+                      fieldBriefing?: { imageUrl?: string };
+                    }).fieldBriefing?.imageUrl ?? undefined
+                  ) || null
+                }
+                disabled={pending || disabled}
+              />
+              <BlockImageSlot
+                newsletterId={newsletterId}
+                blockIndex={blockIndex}
+                slot="projectSketch"
+                label="프로젝트 스케치 이미지 (선택)"
+                currentUrl={
+                  (
+                    (block.data as {
+                      projectSketch?: { imageUrl?: string };
+                    }).projectSketch?.imageUrl ?? undefined
+                  ) || null
+                }
+                disabled={pending || disabled}
+              />
+            </div>
+          ) : (
+            <BlockImageSlot
+              newsletterId={newsletterId}
+              blockIndex={blockIndex}
+              label="이미지 (선택)"
+              currentUrl={
+                ((block.data as { imageUrl?: string }).imageUrl ?? null) || null
+              }
+              disabled={pending || disabled}
+            />
+          )}
 
           {/* Regenerate controls */}
           <section className="space-y-2">

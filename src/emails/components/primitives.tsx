@@ -4,7 +4,7 @@
  */
 
 import * as React from "react";
-import { Section, Row, Column, Text, Heading, Hr } from "@react-email/components";
+import { Section, Row, Column, Text, Heading, Hr, Img } from "@react-email/components";
 import { colors, typography, spacing } from "../tokens";
 import { renderInlineHtml } from "../helpers";
 
@@ -58,7 +58,7 @@ export function SectionLabelOnDark({
 }
 
 // ─────────────────────────────────────────────
-// Item group: category tag + title + body + optional insight
+// Item group: category tag + title + body + optional insight + optional image
 // ─────────────────────────────────────────────
 export function ItemGroup({
   categoryTag,
@@ -66,6 +66,7 @@ export function ItemGroup({
   body,
   insight,
   sourceUrl,
+  imageUrl,
   isLast = false,
 }: {
   categoryTag?: string;
@@ -73,6 +74,7 @@ export function ItemGroup({
   body: string;
   insight?: { label?: string; text: string };
   sourceUrl?: string;
+  imageUrl?: string;
   isLast?: boolean;
 }) {
   return (
@@ -102,6 +104,20 @@ export function ItemGroup({
       >
         {title}
       </Heading>
+      {imageUrl && (
+        <Img
+          src={imageUrl}
+          alt=""
+          style={{
+            display: "block",
+            width: "100%",
+            maxWidth: "100%",
+            height: "auto",
+            borderRadius: "8px",
+            margin: "0 0 14px 0",
+          }}
+        />
+      )}
       <Text
         style={{
           ...typography.bodyText,
