@@ -311,7 +311,7 @@ export function TemplateEditor({ initial }: Props) {
           {pending ? "저장 중..." : "템플릿 저장"}
         </Button>
         <p className="text-xs text-muted-foreground self-center">
-          저장 후 새로 만드는 뉴스레터부터 반영됩니다. 기존 초안에는 영향 없음.
+          저장 시 아직 발송되지 않은 초안에도 자동 반영됩니다. (각 호의 &quot;호 번호&quot;는 유지. 발송 완료된 호는 변경되지 않음)
         </p>
       </div>
     </form>

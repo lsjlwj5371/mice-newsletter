@@ -23,9 +23,10 @@ export default async function SettingsPage() {
         <section>
           <h2 className="text-base font-semibold mb-2">뉴스레터 템플릿</h2>
           <p className="text-xs text-muted-foreground mb-4">
-            새로 만드는 뉴스레터의 헤더·추천 CTA·푸터 기본값입니다. 여기서
-            저장한 값은 다음 호 생성부터 적용되고, 이미 만들어둔 초안은
-            개별 호의 JSON 탭에서 수정해야 합니다.
+            모든 뉴스레터의 헤더·추천 CTA·푸터 기본값입니다. 저장하면 아직
+            발송되지 않은 초안에도 자동으로 반영됩니다 (각 호의 호 번호는
+            그대로 유지). 이미 발송 완료된 호는 보관 목적으로 그 시점의
+            템플릿을 유지합니다.
           </p>
           <TemplateEditor
             initial={{

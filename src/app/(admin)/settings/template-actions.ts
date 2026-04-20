@@ -83,6 +83,13 @@ export async function updateTemplateSettingsAction(
     return { ok: false, error: error.message };
   }
 
+  // Propagate the new template to every non-sent draft so admins don't
+  // have to re-create drafts after tweaking the template. We preserve
+  // per-issue fields (header.issueMeta) — everything else is swapped to
+  // the new template values. Sent issues are left untouched so the
+  // archive reflects the template at send time.
+  const propagated = await propagateTemplateToDrafts(supabase, input);
+
   await logAudit({
     adminId: admin.id,
     action: "template.update",
@@ -91,11 +98,81 @@ export async function updateTemplateSettingsAction(
     metadata: {
       industryTag: input.header.industryTag,
       linkCount: input.footer.links.length,
+      propagatedDrafts: propagated.count,
+      propagationError: propagated.error,
     },
   });
 
   revalidatePath("/settings");
-  return { ok: true, message: "저장되었습니다." };
+  revalidatePath("/newsletters");
+  revalidatePath("/preview/newsletter");
+
+  const msg =
+    propagated.count > 0
+      ? `저장되었습니다. 발송 전 초안 ${propagated.count}건에도 새 템플릿이 적용되었습니다.`
+      : "저장되었습니다.";
+  return { ok: true, message: msg };
+}
+
+/**
+ * Rewrite `header` / `referralCta` / `footer` on every newsletter row
+ * that hasn't been sent yet. Returns the updated count so the caller
+ * can surface a "N건 반영됨" message. Swallows errors and returns 0 +
+ * error message so the template save itself still succeeds.
+ */
+async function propagateTemplateToDrafts(
+  supabase: ReturnType<typeof createAdminClient>,
+  input: UpdateTemplateInput
+): Promise<{ count: number; error?: string }> {
+  try {
+    const { data: drafts, error: fetchErr } = await supabase
+      .from("newsletters")
+      .select("id, content_json, status")
+      .neq("status", "sent");
+    if (fetchErr) {
+      return { count: 0, error: fetchErr.message };
+    }
+    if (!drafts || drafts.length === 0) return { count: 0 };
+
+    let updated = 0;
+    for (const d of drafts) {
+      const content = d.content_json as {
+        header?: { issueMeta?: string } & Record<string, unknown>;
+        referralCta?: Record<string, unknown>;
+        footer?: Record<string, unknown>;
+      } | null;
+      if (!content) continue;
+
+      // Preserve this draft's issueMeta (per-issue label like "VOL.01 …").
+      // Everything else in the fixed sections is replaced.
+      const issueMeta = content.header?.issueMeta ?? "";
+      const nextContent = {
+        ...content,
+        header: {
+          ...input.header,
+          issueMeta,
+        },
+        referralCta: {
+          ...input.referralCta,
+        },
+        footer: {
+          ...input.footer,
+          // Preserve any admin-customised per-draft logoSrc if present.
+          logoSrc: (content.footer as { logoSrc?: string } | undefined)?.logoSrc,
+        },
+      };
+
+      const { error: updErr } = await supabase
+        .from("newsletters")
+        .update({ content_json: nextContent })
+        .eq("id", d.id);
+      if (!updErr) updated++;
+    }
+    return { count: updated };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { count: 0, error: msg };
+  }
 }
 
 /**
