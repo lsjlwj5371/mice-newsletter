@@ -70,14 +70,14 @@ const BLOCK_SCHEMA_PROMPT: Record<BlockType, string> = {
   theory_to_field: `{ "englishLabel": "From Theory to Field", "sourceYear": "제공된 기사에 명시된 연도 (예: 1990). 없으면 빈 문자열", "sourceAuthor": "제공된 기사에 명시된 저자 / 소속. 없으면 빈 문자열", "sourceMeta": "영문 부제가 있다면. 없으면 빈 문자열", "title": "호기심을 자극하는 헤드라인", "introParagraphs": ["1~2단락"], "bridge": { "label": "→ 현장에서는", "text": "1~2문장" }, "outroParagraphs": ["1단락"], "closingNote": "1문장의 마무리" }`,
   editor_take: `{ "englishLabel": "지금 MICE는", "eyebrow": "이달의 이슈", "title": "\\n으로 줄바꿈 가능한 제목", "leadParagraph": "진입 1문장", "pullQuote": "짧고 강렬한 인용구", "paragraphs": ["2~3단락"], "closingNote": "1문장의 마무리" }`,
   groundk_story: `{ "englishLabel": "GroundK Story", "fieldBriefing": { "eyebrow": "이달의 현장 브리핑", "categoryTag": "공항 운영 등", "body": "1~2단락. 줄바꿈은 \\n\\n 로 구분" }, "projectSketch": { "projectMeta": "Project · 이름", "dateMeta": "YYYY.MM.DD", "eyebrow": "그라운드케이 프로젝트 스케치", "title": "프로젝트 타이틀", "paragraphs": ["정확히 3개의 단락"], "tags": ["태그 3개 정도"] } }`,
-  consolidated_insight: `{ "englishLabel": "GroundK Insight", "topicLabel": "주제 태그 (예: Agentic AI · MICE 운영)", "topicMeta": "YYYY.MM · 심층 분석", "title": "이 호에서 다루는 하나의 심층 주제 제목 (24~40자)", "leadParagraph": "이 주제를 왜 지금 다루는지 설명하는 도입 단락 2~4문장", "chapters": [정확히 3~5개. 각 chapter = { "chapterLabel": "01 · 배경", "heading": "이 챕터에서 밝힐 질문/포인트 (14~28자)", "paragraphs": ["2~4개의 두터운 단락. 문장은 문어체 ~습니다 끝맺음."], "pullQuote": "(선택) 이 챕터에서 가장 강조하고 싶은 1문장. 생략 가능" }], "closingInsight": { "label": "GroundK Take", "text": "선택한 기사 한 건에서 도출한 결론 2~4문장. 단순 요약 금지, 실무자가 당장 취할 수 있는 의미까지 짚을 것." } }
+  consolidated_insight: `{ "englishLabel": "GroundK Insight", "topicLabel": "주제 태그 (예: Agentic AI · MICE 운영)", "topicMeta": "YYYY.MM · 심층 분석", "title": "이 호에서 다루는 하나의 심층 주제 제목 (24~40자)", "leadParagraph": "이 주제를 왜 지금 다루는지 설명하는 도입 단락 2~4문장", "chapters": [정확히 3~5개. 각 chapter = { "chapterLabel": "01 · 배경", "heading": "이 챕터에서 밝힐 질문/포인트 (14~28자)", "paragraphs": ["2~4개의 두터운 단락. 문장은 문어체 ~습니다 끝맺음."], "pullQuote": "(선택) 이 챕터에서 가장 강조하고 싶은 1문장. 생략 가능" }] }
 
 ## consolidated_insight 전용 지침 (매우 중요)
 - 이 블록은 **여러 기사를 짜깁기하는 섹션이 아닙니다.** 후보 기사 중 **단 하나**(가장 MICE 업계에 파급력 있고 다층적으로 풀어낼 수 있는 기사)를 고르고, 그 **하나의 기사만을 심층 분석**합니다.
 - 다른 후보 기사는 읽되 **본문에는 직접 인용하지 마십시오.** 배경 이해용 참고일 뿐입니다.
 - 3~5개의 챕터는 **서로 다른 주제를 병렬 나열하는 것이 아니라**, 선택한 하나의 주제를 기승전결(배경 → 전개 → 파급 → 현장 적용) 흐름으로 심층 전개합니다.
 - 각 챕터 본문은 **2~4개의 두터운 단락**으로 충분히 깊이 있게 씁니다. 분량이 길어지는 것은 환영합니다 — 얕은 설명을 여러 챕터에 흩뿌리는 것보다 한 챕터를 깊게 파는 편이 낫습니다.
-- closingInsight(\`GroundK Take\`)는 **그 하나의 기사에서 GroundK가 직접 도출한 관점**입니다. 기사 요약 재진술이 아니라, "이 한 건의 소식이 MICE 실무에 어떤 결정을 요구하는가"까지 짚어야 합니다.
+- **최종 결론은 마지막 챕터(예: "05 · 정리" 또는 "04 · 실무 의미")에서 직접 마무리하십시오.** 별도의 "GroundK Take" 박스는 생성하지 않습니다. 마지막 챕터의 본문이 읽는 사람에게 "이 한 건의 소식이 MICE 실무에 어떤 결정을 요구하는가"까지 자연스럽게 전달되어야 합니다.
 - \`_citedIndices\`는 본문에서 실제로 근거로 삼은 기사 **한 건의 번호**만 담습니다 (예: \`[3]\`). 배경 참고만 한 다른 기사는 포함하지 않습니다.`,
   event_radar: `{ "englishLabel": "Event Radar", "events": [정확히 2~4개. 각 event = { "categoryTag": "Conference · 아시아 / Expo · 국내 / Workshop · 글로벌 등 (분류 + 지역)", "title": "행사 공식 명칭", "dateMeta": "개최일과 장소를 한 줄로 (예: 2026.06.12 – 14 · 서울 COEX)", "body": "2~3문장. 어떤 행사인지, 누가 주최하는지, 일반 업계인이 왜 놓치기 쉬운지.", "whyItMatters": "(선택) 1문장으로 MICE 실무자가 이 행사를 알아야 할 이유. 생략 가능.", "sourceUrl": "관리자가 제공한 URL 그대로. 없으면 빈 문자열." }] }
 
@@ -347,10 +347,6 @@ function getPlaceholderData(type: BlockType): unknown {
             paragraphs: ["챕터 본문 단락을 작성하세요."],
           },
         ],
-        closingInsight: {
-          label: "GroundK Take",
-          text: "우리 관점에서 도출한 결론을 작성하세요.",
-        },
       };
     case "event_radar":
       return {

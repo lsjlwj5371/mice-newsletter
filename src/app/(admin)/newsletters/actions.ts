@@ -33,6 +33,60 @@ export type ActionResult =
   | { ok: true; id?: string; message?: string }
   | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
 
+/**
+ * When regenerating a single block, Claude returns fresh content but has
+ * no idea about the admin's prior manual edits (uploaded images, layout
+ * choices, visibility toggles for compound blocks). Copy those fields
+ * over from the OLD data onto the NEW data so they survive the swap.
+ *
+ * Everything else — text content, paragraph arrays, chapter lists — is
+ * replaced, because that's what the admin asked Claude to redo.
+ */
+function mergePreservedBlockFields(
+  type: BlockType,
+  oldData: Record<string, unknown>,
+  newData: Record<string, unknown>
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...newData };
+
+  // Every image-bearing block has a top-level imageUrl / imageLayout.
+  if (oldData.imageUrl !== undefined && merged.imageUrl === undefined) {
+    merged.imageUrl = oldData.imageUrl;
+  }
+  if (oldData.imageLayout !== undefined && merged.imageLayout === undefined) {
+    merged.imageLayout = oldData.imageLayout;
+  }
+
+  if (type === "groundk_story") {
+    // Preserve per-part image + layout + the admin's show/hide choices
+    // for Field Briefing and Project Sketch.
+    const oldFB = (oldData.fieldBriefing as Record<string, unknown>) ?? {};
+    const newFB = (merged.fieldBriefing as Record<string, unknown>) ?? {};
+    merged.fieldBriefing = {
+      ...newFB,
+      imageUrl: newFB.imageUrl ?? oldFB.imageUrl,
+      imageLayout: newFB.imageLayout ?? oldFB.imageLayout,
+    };
+
+    const oldPS = (oldData.projectSketch as Record<string, unknown>) ?? {};
+    const newPS = (merged.projectSketch as Record<string, unknown>) ?? {};
+    merged.projectSketch = {
+      ...newPS,
+      imageUrl: newPS.imageUrl ?? oldPS.imageUrl,
+      imageLayout: newPS.imageLayout ?? oldPS.imageLayout,
+    };
+
+    if (oldData.showFieldBriefing !== undefined) {
+      merged.showFieldBriefing = oldData.showFieldBriefing;
+    }
+    if (oldData.showProjectSketch !== undefined) {
+      merged.showProjectSketch = oldData.showProjectSketch;
+    }
+  }
+
+  return merged;
+}
+
 /** Build an empty { [category]: [] } map that covers every current article
  *  category — derived from ARTICLE_CATEGORIES so new block types get keys
  *  automatically. */
@@ -1095,11 +1149,19 @@ export async function regenerateBlockAction(
     return { ok: false, error: `블록 재생성 실패: ${msg}` };
   }
 
-  // Build updated blocks array
+  // Build updated blocks array. Merge admin-managed fields from the
+  // previous block's data into Claude's fresh output so uploaded images,
+  // layout choices, and visibility toggles survive a regenerate.
+  const mergedData = mergePreservedBlockFields(
+    targetBlock.type,
+    targetBlock.data as Record<string, unknown>,
+    result.data as Record<string, unknown>
+  );
+
   const updatedBlocks = [...content.blocks];
   updatedBlocks[input.blockIndex] = {
     ...targetBlock,
-    data: result.data,
+    data: mergedData,
     instructions: input.instructions ?? undefined,
     autoSearch: input.autoSearch,
     referencedArticleIds: result.referencedArticleIds,

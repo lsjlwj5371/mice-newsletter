@@ -1374,40 +1374,10 @@ function ConsolidatedInsightSingleTopic({
         </Section>
       ))}
 
-      {block.data.closingInsight && (
-        <Section
-          style={{
-            backgroundColor: colors.bgInsight,
-            padding: "22px 24px",
-            borderRadius: "8px",
-            marginTop: "12px",
-          }}
-        >
-          <Text
-            style={{
-              fontSize: "11px",
-              fontWeight: 700,
-              letterSpacing: "2px",
-              color: colors.textHeadline,
-              textTransform: "uppercase",
-              margin: "0 0 10px 0",
-            }}
-          >
-            {block.data.closingInsight.label ?? "GroundK Take"}
-          </Text>
-          <Text
-            style={{
-              fontSize: "14px",
-              color: colors.textBody,
-              lineHeight: 1.85,
-              margin: 0,
-            }}
-            dangerouslySetInnerHTML={{
-              __html: renderInlineHtml(block.data.closingInsight.text),
-            }}
-          />
-        </Section>
-      )}
+      {/* closingInsight (GROUNDK TAKE) is intentionally NOT rendered.
+          The final chapter now carries the takeaway itself — a separate
+          closing box duplicated the conclusion. Field is kept in the
+          schema so older drafts don't fail validation. */}
     </MajorSection>
   );
 }
@@ -1651,24 +1621,9 @@ function EventRadar({
               />
             </Section>
           )}
-          {ev.sourceUrl && (
-            <Text
-              style={{
-                fontSize: "11px",
-                margin: "10px 0 0 0",
-              }}
-            >
-              <Link
-                href={ev.sourceUrl}
-                style={{
-                  color: colors.brandNavy,
-                  textDecoration: "underline",
-                }}
-              >
-                행사 상세 보기 →
-              </Link>
-            </Text>
-          )}
+          {/* sourceUrl is intentionally NOT rendered. Admins verify the
+              URL in the draft editor; recipients see only the curated
+              copy. Field is retained in the schema for internal use. */}
         </Section>
       ))}
     </MajorSection>

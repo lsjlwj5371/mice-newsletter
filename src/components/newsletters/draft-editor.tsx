@@ -782,6 +782,12 @@ function BlockCard({
           </section>
 
           {/* Image upload slot(s) */}
+          <div className="rounded-md border border-border bg-background px-3 py-2 text-[11px] text-muted-foreground">
+            💡 <strong className="text-foreground">이미지만</strong> 추가·교체하고 싶다면 아래 이미지 영역의
+            &quot;이미지 업로드&quot;만 사용하세요. 본문은 그대로 유지됩니다.
+            하단의 &quot;이 블록만 재생성&quot;은 Claude가 본문 전체를 다시 작성하므로
+            이미지만 바꾸려는 목적으로는 사용하지 마세요.
+          </div>
           {block.type === "groundk_story" ? (
             <div className="space-y-4">
               <GroundkStoryVisibilityToggles
