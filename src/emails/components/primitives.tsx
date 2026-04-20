@@ -127,19 +127,9 @@ export function ItemGroup({
         dangerouslySetInnerHTML={{ __html: renderInlineHtml(body) }}
       />
 
-      {sourceUrl && (
-        <Text
-          style={{
-            fontSize: "12px",
-            color: colors.textSoft,
-            margin: "0 0 8px 0",
-          }}
-        >
-          <a href={sourceUrl} style={{ color: colors.textSoft }}>
-            원문 보기 →
-          </a>
-        </Text>
-      )}
+      {/* NOTE: sourceUrl is intentionally NOT rendered in the email body.
+          Admins verify references in the draft editor; recipients see only
+          the curated article without a public link back to the source. */}
       {insight && <InsightBox label={insight.label} text={insight.text} />}
     </Section>
   );

@@ -109,6 +109,14 @@ interface BlockArticlePolicy {
   fallback: ArticleCategory[];
   ignoreDateFilter: boolean;
   limit: number;
+  /**
+   * If true, this block pulls from the shared article pool WITHOUT claiming
+   * articles away from other blocks. Used for synthesis blocks (e.g.
+   * consolidated_insight) which should be allowed to re-draw from the same
+   * sources other blocks reference, since their job is to synthesize across
+   * topics rather than introduce distinct ones.
+   */
+  sharesPool?: boolean;
 }
 
 const BLOCK_ARTICLE_POLICY: Record<BlockType, BlockArticlePolicy> = {
@@ -184,6 +192,10 @@ const BLOCK_ARTICLE_POLICY: Record<BlockType, BlockArticlePolicy> = {
     fallback: [],
     ignoreDateFilter: false,
     limit: 12,
+    // Synthesis block — share the pool so it still has articles to work
+    // with when combined with individual deep-dive blocks that would
+    // otherwise claim all its primary categories first.
+    sharesPool: true,
   },
   blog_card_grid: {
     // Admin-curated external blog cards — no article pool.
@@ -632,7 +644,10 @@ function getArticlesForBlock(
       ? articlesByCategoryAllTime
       : articlesByCategory;
 
-  const claimed = alreadyClaimed ?? new Set<string>();
+  // sharesPool blocks (e.g. consolidated_insight) ignore the claimed set —
+  // they read the full pool so synthesis blocks still find articles even
+  // when other blocks have partitioned their primary categories away.
+  const claimed = policy.sharesPool ? new Set<string>() : (alreadyClaimed ?? new Set<string>());
   const out: Article[] = [];
 
   function consume(cat: ArticleCategory, pinnedOnly: boolean) {
@@ -697,6 +712,20 @@ export function partitionArticlePools(
       // Article-less block (opening_lede, editor_take, groundk_story, etc.)
       continue;
     }
+
+    if (policy.sharesPool) {
+      // Synthesis block: draw from the full pool WITHOUT consuming — its
+      // articles may overlap with other blocks' references. getArticlesForBlock
+      // itself ignores the claimed set for these policies, so just read
+      // without mutating claimedDate/claimedAllTime.
+      pools[type] = getArticlesForBlock(
+        type,
+        articlesByCategory,
+        articlesByCategoryAllTime
+      );
+      continue;
+    }
+
     const claimed = policy.ignoreDateFilter ? claimedAllTime : claimedDate;
     pools[type] = getArticlesForBlock(
       type,
