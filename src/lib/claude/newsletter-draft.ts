@@ -397,6 +397,42 @@ interface BlockGenContext {
    * admin-supplied links instead of fabricating content.
    */
   fetchedReferencesBlock?: string;
+  /**
+   * Existing block data being edited. When present, Claude runs in
+   * "edit mode": it copies the previous data verbatim and only touches
+   * fields that the admin's instruction explicitly asks to change.
+   *
+   * Absent = initial generation (new draft / new block), where Claude
+   * writes from scratch.
+   */
+  previousData?: unknown;
+}
+
+/**
+ * Strip fields that shouldn't influence Claude's edit — uploaded image
+ * URLs, layout choices, part-visibility flags, and per-run meta like
+ * _citedIndices. The server re-applies them via mergePreservedBlockFields
+ * after generation. Recurses one level into nested objects (e.g.
+ * groundk_story.fieldBriefing) so those are cleaned too.
+ */
+function stripMetaForPrompt(data: unknown): unknown {
+  const META_KEYS = new Set([
+    "imageUrl",
+    "imageLayout",
+    "showFieldBriefing",
+    "showProjectSketch",
+    "_citedIndices",
+  ]);
+  if (data === null || typeof data !== "object") return data;
+  if (Array.isArray(data)) {
+    return data.map((v) => stripMetaForPrompt(v));
+  }
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data as Record<string, unknown>)) {
+    if (META_KEYS.has(k)) continue;
+    out[k] = stripMetaForPrompt(v);
+  }
+  return out;
 }
 
 function formatArticleForPrompt(a: Article, idx: number): string {
@@ -411,11 +447,36 @@ function formatArticleForPrompt(a: Article, idx: number): string {
   return parts.join("\n");
 }
 
-function buildBlockSystemPrompt(type: BlockType): string {
+function buildBlockSystemPrompt(
+  type: BlockType,
+  isEdit: boolean
+): string {
+  const roleLine = isEdit
+    ? `이미 작성되어 있는 블록(${type})을 관리자 지시에 따라 **최소 수정**합니다. 본문에서 지시가 명시하지 않은 부분은 절대로 다시 쓰지 마십시오.`
+    : `단 하나의 블록(${type}) 콘텐츠를 JSON으로 생성합니다.`;
+
+  const editModeBlock = isEdit
+    ? `
+## 편집 모드 (매우 중요)
+이것은 "처음부터 생성"이 아니라 **기존 블록의 부분 수정**입니다. 아래 규칙을 엄격히 지키십시오.
+
+1. **기본 원칙 — 수정 최소화**. 아래 "현재 블록 내용"의 모든 필드를 그대로 유지하고, 관리자 지시가 **명시적으로 바꾸라고 요구한 부분만** 변경합니다.
+2. **변경하지 않는 필드는 현재 값을 글자 그대로 복사**합니다. 문장 다듬기·문체 개선·단어 교체 같은 "개선" 목적의 자의적 수정은 금지입니다.
+3. **전체 재작성 스위치**: 관리자 지시가 아래 표현 중 하나를 명시적으로 포함할 때에만 전체를 새로 작성합니다.
+   - "아예 새롭게 생성" / "완전히 새로" / "처음부터 다시"
+   - "전체 다시 써" / "다 갈아엎어" / "다른 방향으로 다시"
+   이외에 "좀 더 나은 느낌", "자연스럽게", "개선", "매끄럽게"는 **전체 재작성 신호가 아닙니다** — 최소 수정 원칙을 유지하십시오.
+4. 관리자 지시가 범위를 명시한 경우(예: "2번째 문단만", "제목만", "첫 문장만") 정확히 그 부분만 건드립니다.
+5. 지시가 모호하거나 범위가 불명확할 때는 가장 좁게 해석합니다. 불확실하면 아무것도 바꾸지 말고 가장 관련 깊은 필드 하나만 최소 수정합니다.
+6. 출력은 **여전히 전체 스키마를 채운 완전한 JSON**입니다. 변경이 없는 필드도 기존 값을 그대로 다시 적어 돌려주십시오.
+`
+    : "";
+
   return `당신은 "PIK" 뉴스레터의 전문 에디터입니다. 한국 MICE 산업 종사자를 대상으로 하는 격식 있는 인사이트 레터입니다.
 
 ## 역할
-단 하나의 블록(${type}) 콘텐츠를 JSON으로 생성합니다.
+${roleLine}
+${editModeBlock}
 
 ## 톤앤매너 (매우 중요)
 - 전문 에디터가 독자에게 말하듯, **격식 있는 문어체**로 작성합니다.
@@ -462,6 +523,20 @@ function buildBlockUserMessage(
   parts.push(`# 호 정보`);
   parts.push(`issueLabel: ${ctx.issueLabel}`);
   parts.push("");
+
+  // Edit-mode: include the full prior data so Claude can copy most of it
+  // verbatim and only change what the admin's instruction specifies.
+  // Fields stripped from the prompt copy: runtime meta (_citedIndices,
+  // imageUrl, imageLayout, show* flags). The server re-merges media and
+  // visibility flags via mergePreservedBlockFields after generation.
+  if (ctx.previousData) {
+    const cleaned = stripMetaForPrompt(ctx.previousData);
+    parts.push(`# 현재 블록 내용 (편집 대상 — 아래 "관리자 지시"가 명시한 부분만 바꾸고 나머지는 그대로 두십시오)`);
+    parts.push("```json");
+    parts.push(JSON.stringify(cleaned, null, 2));
+    parts.push("```");
+    parts.push("");
+  }
 
   if (ctx.autoSearch && ctx.articles.length > 0) {
     parts.push(
@@ -630,7 +705,7 @@ async function generateBlockData(
     const response = await client.messages.create({
       model: DRAFT_MODEL,
       max_tokens: maxTokens,
-      system: buildBlockSystemPrompt(type),
+      system: buildBlockSystemPrompt(type, Boolean(ctx.previousData)),
       messages: [{ role: "user", content: buildBlockUserMessage(type, ctx) }],
     });
 
@@ -696,6 +771,13 @@ export interface RegenerateBlockInput {
   instructions?: string;
   autoSearch: boolean;
   referenceNotes?: string;
+  /**
+   * When provided, switches Claude into "edit mode": the existing block
+   * data is shown in the prompt and Claude is told to only touch fields
+   * the instruction names. Absent = full regenerate from scratch (used
+   * by `addBlockAction` for brand-new blocks).
+   */
+  previousData?: unknown;
 }
 
 export interface RegenerateBlockResult {
@@ -720,6 +802,7 @@ export async function regenerateSingleBlock(
     instructions: input.instructions,
     autoSearch: input.autoSearch,
     fetchedReferencesBlock,
+    previousData: input.previousData,
   };
 
   const result = await generateBlockData(input.type, ctx);

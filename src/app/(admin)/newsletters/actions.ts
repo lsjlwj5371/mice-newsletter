@@ -1133,7 +1133,11 @@ export async function regenerateBlockAction(
     }
   }
 
-  // Regenerate just this block
+  // Regenerate just this block. Passing previousData switches Claude into
+  // edit-mode: the existing block content is shown in-prompt and Claude is
+  // told to copy it verbatim except where the admin instruction explicitly
+  // asks to change something. Full rewrites are opt-in via phrases the
+  // admin types ("아예 새롭게 생성해줘" etc.).
   let result;
   try {
     result = await regenerateSingleBlock({
@@ -1143,6 +1147,7 @@ export async function regenerateBlockAction(
       instructions: input.instructions ?? undefined,
       autoSearch: input.autoSearch,
       referenceNotes: row.reference_notes ?? undefined,
+      previousData: targetBlock.data,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

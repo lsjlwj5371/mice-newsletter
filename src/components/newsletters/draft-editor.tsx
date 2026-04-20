@@ -785,8 +785,6 @@ function BlockCard({
           <div className="rounded-md border border-border bg-background px-3 py-2 text-[11px] text-muted-foreground">
             💡 <strong className="text-foreground">이미지만</strong> 추가·교체하고 싶다면 아래 이미지 영역의
             &quot;이미지 업로드&quot;만 사용하세요. 본문은 그대로 유지됩니다.
-            하단의 &quot;이 블록만 재생성&quot;은 Claude가 본문 전체를 다시 작성하므로
-            이미지만 바꾸려는 목적으로는 사용하지 마세요.
           </div>
           {block.type === "groundk_story" ? (
             <div className="space-y-4">
@@ -861,12 +859,18 @@ function BlockCard({
           {/* Regenerate controls */}
           <section className="space-y-2">
             <Label className="text-xs font-semibold">
-              이 블록만 재생성
+              이 블록 수정
             </Label>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              기본은 <strong className="text-foreground">편집 모드</strong>입니다. 지시 내용이 가리키는 부분만 수정되고,
+              나머지 본문은 그대로 유지됩니다. 전체를 처음부터 다시 쓰고 싶다면
+              지시에 <code className="px-1 py-0.5 rounded bg-muted font-mono">&quot;아예 새롭게 생성해줘&quot;</code>
+              또는 <code className="px-1 py-0.5 rounded bg-muted font-mono">&quot;전체 다시 써줘&quot;</code> 같이 명시하세요.
+            </p>
             {block.type === "groundk_story" ? (
               <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 이 블록은 관리자 레퍼런스 전용입니다. 아래 칸에 현장 자료를 붙여
-                넣으면 Claude가 편집자 톤으로 다듬어 재작성합니다.
+                넣으면 Claude가 편집자 톤으로 다듬어 반영합니다.
               </div>
             ) : (
               <div className="flex items-center gap-2">
@@ -910,7 +914,8 @@ function BlockCard({
               placeholder={
                 block.type === "groundk_story"
                   ? `예: Field Briefing은 "공항 T2 수하물 판독 15~20분 지연" 이슈. Project Sketch는 COS 패션쇼 (정릉동 브루탈리즘 공간, 40개 룩, 앰버서더+미디어+디너 동선 설계, 2026.03.25)`
-                  : `예: "2번 기사는 관련 없으니 빼고 다시", "더 짧게 써줘", "금리 인하보단 ESG 얘기로"`
+                  : `예 (부분 수정): "제목만 더 짧게", "두 번째 문단의 수치를 삭제", "첫 문장만 좀 더 단정적으로"
+예 (전체 재작성): "아예 새롭게 생성해줘 — 이번엔 ESG 주제로"`
               }
               className="text-xs"
             />
@@ -931,7 +936,7 @@ function BlockCard({
                 onClick={handleRegenerate}
                 disabled={pending || disabled}
               >
-                {pending ? "재생성 중..." : "이 블록만 재생성"}
+                {pending ? "수정 중..." : "이 블록 수정"}
               </Button>
             </div>
           </section>
