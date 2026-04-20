@@ -16,6 +16,8 @@ import {
 import {
   setArticleStatusAction,
   toggleArticlePinAction,
+  applyBulkArticleAction,
+  type BulkArticleAction,
 } from "@/app/(admin)/articles/actions";
 
 interface Counts {
@@ -51,6 +53,55 @@ export function ArticleList({ articles, counts, currentView }: Props) {
 
   const [searchValue, setSearchValue] = React.useState(currentSearch);
   const [selected, setSelected] = React.useState<Article | null>(null);
+  const [checkedIds, setCheckedIds] = React.useState<Set<string>>(new Set());
+  const [bulkPending, startBulk] = React.useTransition();
+  const [bulkMsg, setBulkMsg] = React.useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  // Clear selection when the visible article list changes (e.g. tab switch,
+  // filter change, or refresh after a bulk action succeeds).
+  const articlesSignature = articles.map((a) => a.id).join("|");
+  React.useEffect(() => {
+    setCheckedIds(new Set());
+  }, [articlesSignature, currentView]);
+
+  function toggleOne(id: string, next: boolean) {
+    setCheckedIds((prev) => {
+      const out = new Set(prev);
+      if (next) out.add(id);
+      else out.delete(id);
+      return out;
+    });
+  }
+
+  const allVisibleIds = articles.map((a) => a.id);
+  const allChecked =
+    allVisibleIds.length > 0 &&
+    allVisibleIds.every((id) => checkedIds.has(id));
+  const someChecked =
+    allVisibleIds.some((id) => checkedIds.has(id)) && !allChecked;
+
+  function toggleAll(next: boolean) {
+    setCheckedIds(next ? new Set(allVisibleIds) : new Set());
+  }
+
+  function handleBulk(action: BulkArticleAction) {
+    const ids = Array.from(checkedIds);
+    if (ids.length === 0) return;
+    setBulkMsg(null);
+    startBulk(async () => {
+      const res = await applyBulkArticleAction(ids, action);
+      if (res.ok) {
+        setBulkMsg({ type: "success", text: res.message ?? "적용됨" });
+        setCheckedIds(new Set());
+        router.refresh();
+      } else {
+        setBulkMsg({ type: "error", text: res.error });
+      }
+    });
+  }
 
   React.useEffect(() => {
     const handle = setTimeout(() => {
@@ -149,6 +200,70 @@ export function ArticleList({ articles, counts, currentView }: Props) {
         </span>
       </div>
 
+      {/* Bulk toolbar — appears only when some rows are selected */}
+      {checkedIds.size > 0 && (
+        <div className="sticky top-0 z-20 rounded-xl border border-border bg-background/95 backdrop-blur px-4 py-3 flex items-center gap-2 flex-wrap shadow-sm">
+          <span className="text-sm font-medium">
+            {checkedIds.size}건 선택됨
+          </span>
+          <div className="w-px h-5 bg-border mx-1" />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleBulk("archive")}
+            disabled={bulkPending}
+            className="text-rose-600"
+          >
+            불필요로 분류
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleBulk("unarchive")}
+            disabled={bulkPending}
+          >
+            검토 대기로 되돌리기
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleBulk("pin")}
+            disabled={bulkPending}
+          >
+            📌 다음 호 예약
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleBulk("unpin")}
+            disabled={bulkPending}
+          >
+            예약 해제
+          </Button>
+          <button
+            type="button"
+            onClick={() => setCheckedIds(new Set())}
+            className="ml-auto text-xs text-muted-foreground hover:text-foreground underline"
+            disabled={bulkPending}
+          >
+            선택 해제
+          </button>
+        </div>
+      )}
+
+      {bulkMsg && (
+        <div
+          className={cn(
+            "rounded-md border px-3 py-2 text-xs",
+            bulkMsg.type === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-rose-200 bg-rose-50 text-rose-700"
+          )}
+        >
+          {bulkMsg.text}
+        </div>
+      )}
+
       {articles.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-background p-12 text-center">
           <p className="text-sm text-muted-foreground">
@@ -160,12 +275,35 @@ export function ArticleList({ articles, counts, currentView }: Props) {
         </div>
       ) : (
         <div className="space-y-2">
+          {/* Select-all header row */}
+          <div className="flex items-center gap-3 px-4 py-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={allChecked}
+              ref={(el) => {
+                if (el) el.indeterminate = someChecked;
+              }}
+              onChange={(e) => toggleAll(e.target.checked)}
+              className="h-4 w-4 rounded border-border cursor-pointer"
+              aria-label="전체 선택"
+            />
+            <span>
+              {allChecked
+                ? `${articles.length}건 전체 선택됨`
+                : someChecked
+                ? `${checkedIds.size} / ${articles.length} 선택됨`
+                : "전체 선택"}
+            </span>
+          </div>
+
           {articles.map((a) => (
             <ArticleRow
               key={a.id}
               article={a}
               currentView={currentView}
               onOpen={() => setSelected(a)}
+              checked={checkedIds.has(a.id)}
+              onCheckedChange={(next) => toggleOne(a.id, next)}
             />
           ))}
         </div>
@@ -183,11 +321,16 @@ function ArticleRow({
   article,
   currentView,
   onOpen,
+  checked,
+  onCheckedChange,
 }: {
   article: Article;
   currentView: string;
   onOpen: () => void;
+  checked: boolean;
+  onCheckedChange: (next: boolean) => void;
 }) {
+  void currentView;
   const [pending, startTransition] = React.useTransition();
   const router = useRouter();
   const isUsed = !!article.used_in_newsletter_id;
@@ -207,8 +350,21 @@ function ArticleRow({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-background p-4 hover:bg-muted/40 transition-colors">
+    <div
+      className={cn(
+        "rounded-xl border bg-background p-4 hover:bg-muted/40 transition-colors",
+        checked ? "border-primary/60 bg-primary/5" : "border-border"
+      )}
+    >
       <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onCheckedChange(e.target.checked)}
+          className="h-4 w-4 mt-1 rounded border-border cursor-pointer shrink-0"
+          aria-label="선택"
+          onClick={(e) => e.stopPropagation()}
+        />
         <div className="flex-1 min-w-0">
           <button
             type="button"

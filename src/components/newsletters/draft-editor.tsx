@@ -15,6 +15,7 @@ import {
 } from "@/app/(admin)/newsletters/actions";
 import { BlockImageSlot } from "./block-image-slot";
 import { SendPanel } from "./send-panel";
+import { ArticlePicker } from "@/components/articles/article-picker";
 import {
   NEWSLETTER_STATUS_LABELS,
   BLOCK_LABELS,
@@ -379,6 +380,7 @@ function AddBlockInsertionPoint({
   const [blockType, setBlockType] = React.useState<BlockType>("news_briefing");
   const [autoSearch, setAutoSearch] = React.useState(true);
   const [instructions, setInstructions] = React.useState("");
+  const [forcedArticleIds, setForcedArticleIds] = React.useState<string[]>([]);
   const [pending, startTransition] = React.useTransition();
   const [msg, setMsg] = React.useState<{
     type: "success" | "error";
@@ -399,10 +401,13 @@ function AddBlockInsertionPoint({
         blockType,
         instructions: instructions.trim() || null,
         autoSearch: blockType === "groundk_story" ? false : autoSearch,
+        forcedArticleIds:
+          forcedArticleIds.length > 0 ? forcedArticleIds : undefined,
       });
       if (res.ok) {
         setMsg({ type: "success", text: res.message ?? "추가됨" });
         setInstructions("");
+        setForcedArticleIds([]);
         setOpen(false);
         onDone();
       } else {
@@ -464,19 +469,39 @@ function AddBlockInsertionPoint({
       </div>
 
       {blockType !== "groundk_story" && (
-        <div className="flex items-center gap-2">
-          <input
-            id={`as-${position}`}
-            type="checkbox"
-            checked={autoSearch}
-            onChange={(e) => setAutoSearch(e.target.checked)}
-            disabled={pending}
-            className="h-4 w-4 rounded border-border"
-          />
-          <Label htmlFor={`as-${position}`} className="cursor-pointer text-xs">
-            자동 생성 (Claude가 후보 기사 참조)
-          </Label>
-        </div>
+        <>
+          <div className="flex items-center gap-2">
+            <input
+              id={`as-${position}`}
+              type="checkbox"
+              checked={autoSearch}
+              onChange={(e) => setAutoSearch(e.target.checked)}
+              disabled={pending}
+              className="h-4 w-4 rounded border-border"
+            />
+            <Label
+              htmlFor={`as-${position}`}
+              className="cursor-pointer text-xs"
+            >
+              자동 생성 (Claude가 후보 기사 참조)
+            </Label>
+          </div>
+          {autoSearch && (
+            <div>
+              <Label className="text-xs">이 블록에서 사용할 기사 (선택)</Label>
+              <div className="mt-1">
+                <ArticlePicker
+                  value={forcedArticleIds}
+                  onChange={setForcedArticleIds}
+                  disabled={pending}
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                직접 지정하면 카테고리·기간 필터를 무시하고 이 기사들만 Claude에 전달합니다. 비워두면 자동 선별됩니다.
+              </p>
+            </div>
+          )}
+        </>
       )}
 
       <div>
@@ -541,6 +566,7 @@ function BlockCard({
   const [autoSearch, setAutoSearch] = React.useState(
     block.autoSearch ?? BLOCK_NEEDS_RESEARCH[block.type]
   );
+  const [forcedArticleIds, setForcedArticleIds] = React.useState<string[]>([]);
   const [pending, startTransition] = React.useTransition();
   const [msg, setMsg] = React.useState<{
     type: "success" | "error";
@@ -589,6 +615,8 @@ function BlockCard({
         blockIndex,
         instructions: instructions.trim() || null,
         autoSearch: effectiveAutoSearch,
+        forcedArticleIds:
+          forcedArticleIds.length > 0 ? forcedArticleIds : undefined,
       });
       if (res.ok) {
         setMsg({ type: "success", text: "재생성 완료" });
@@ -781,6 +809,22 @@ function BlockCard({
                 >
                   자동 생성 (Claude가 후보 기사 참조)
                 </Label>
+              </div>
+            )}
+            {block.type !== "groundk_story" && autoSearch && (
+              <div>
+                <Label className="text-xs">이 블록에서 사용할 기사 (선택)</Label>
+                <div className="mt-1">
+                  <ArticlePicker
+                    value={forcedArticleIds}
+                    onChange={setForcedArticleIds}
+                    disabled={pending || disabled}
+                    excludeIds={[]}
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  지정하면 이 기사들만 Claude에 전달합니다. 비워두면 카테고리·기간 기반 자동 선별로 동작합니다.
+                </p>
               </div>
             )}
             <Textarea

@@ -705,6 +705,12 @@ export interface RegenerateBlockInput {
   instructions: string | null;
   /** Whether to research from articles (true) or emit placeholder (false). */
   autoSearch: boolean;
+  /**
+   * If set (and non-empty), these exact article IDs are used as the candidate
+   * pool — the normal category/date/partition filtering is bypassed. Admin's
+   * explicit pick always wins. Ignored when autoSearch is false.
+   */
+  forcedArticleIds?: string[];
 }
 
 export async function regenerateBlockAction(
@@ -738,64 +744,84 @@ export async function regenerateBlockAction(
   // newsletter so regeneration doesn't stomp on their references.
   let articles: Article[] = [];
   if (input.autoSearch) {
-    const policy = BLOCK_ARTICLE_POLICY[type];
-    const cats = Array.from(
-      new Set([...policy.primary, ...policy.fallback])
-    );
-
-    const articlesByCategory: Record<ArticleCategory, Article[]> =
-      emptyArticlesByCategory();
-    const articlesByCategoryAllTime: Record<ArticleCategory, Article[]> =
-      emptyArticlesByCategory();
-
-    for (const cat of cats) {
-      let q = supabase
+    const forced = (input.forcedArticleIds ?? []).filter(Boolean);
+    if (forced.length > 0) {
+      // Admin explicitly picked these — bypass the category/date filters and
+      // feed Claude exactly the chosen set. Category mismatch is respected
+      // (the admin knows best). Preserve the order they were picked in.
+      const { data, error } = await supabase
         .from("articles")
         .select("*")
-        .contains("categories", [cat])
-        .eq("review_status", "new")
-        .order("pinned", { ascending: false })
-        .order("importance", { ascending: false, nullsFirst: false })
-        .order("collected_at", { ascending: false })
-        .limit(policy.ignoreDateFilter ? 40 : 15);
-
-      if (!policy.ignoreDateFilter) {
-        if (row.collection_period_start) {
-          q = q.gte("collected_at", row.collection_period_start);
-        }
-        if (row.collection_period_end) {
-          const endDate = new Date(row.collection_period_end);
-          endDate.setUTCDate(endDate.getUTCDate() + 1);
-          q = q.lt("collected_at", endDate.toISOString());
-        }
-      }
-
-      const { data, error } = await q;
+        .in("id", forced);
       if (error) {
         return { ok: false, error: `기사 조회 실패: ${error.message}` };
       }
-      if (policy.ignoreDateFilter) {
-        articlesByCategoryAllTime[cat] = (data ?? []) as Article[];
-      } else {
-        articlesByCategory[cat] = (data ?? []) as Article[];
+      const byId = new Map<string, Article>(
+        (data ?? []).map((a) => [a.id as string, a as Article])
+      );
+      articles = forced
+        .map((id) => byId.get(id))
+        .filter((a): a is Article => !!a);
+    } else {
+      const policy = BLOCK_ARTICLE_POLICY[type];
+      const cats = Array.from(
+        new Set([...policy.primary, ...policy.fallback])
+      );
+
+      const articlesByCategory: Record<ArticleCategory, Article[]> =
+        emptyArticlesByCategory();
+      const articlesByCategoryAllTime: Record<ArticleCategory, Article[]> =
+        emptyArticlesByCategory();
+
+      for (const cat of cats) {
+        let q = supabase
+          .from("articles")
+          .select("*")
+          .contains("categories", [cat])
+          .eq("review_status", "new")
+          .order("pinned", { ascending: false })
+          .order("importance", { ascending: false, nullsFirst: false })
+          .order("collected_at", { ascending: false })
+          .limit(policy.ignoreDateFilter ? 40 : 15);
+
+        if (!policy.ignoreDateFilter) {
+          if (row.collection_period_start) {
+            q = q.gte("collected_at", row.collection_period_start);
+          }
+          if (row.collection_period_end) {
+            const endDate = new Date(row.collection_period_end);
+            endDate.setUTCDate(endDate.getUTCDate() + 1);
+            q = q.lt("collected_at", endDate.toISOString());
+          }
+        }
+
+        const { data, error } = await q;
+        if (error) {
+          return { ok: false, error: `기사 조회 실패: ${error.message}` };
+        }
+        if (policy.ignoreDateFilter) {
+          articlesByCategoryAllTime[cat] = (data ?? []) as Article[];
+        } else {
+          articlesByCategory[cat] = (data ?? []) as Article[];
+        }
       }
+
+      // Articles already claimed by other blocks of this same newsletter
+      const otherBlocksUsed = new Set<string>();
+      content.blocks.forEach((b, i) => {
+        if (i === input.blockIndex) return;
+        for (const id of b.referencedArticleIds ?? []) {
+          otherBlocksUsed.add(id);
+        }
+      });
+
+      articles = getArticlesForBlock(
+        type,
+        articlesByCategory,
+        policy.ignoreDateFilter ? articlesByCategoryAllTime : undefined,
+        otherBlocksUsed
+      );
     }
-
-    // Articles already claimed by other blocks of this same newsletter
-    const otherBlocksUsed = new Set<string>();
-    content.blocks.forEach((b, i) => {
-      if (i === input.blockIndex) return;
-      for (const id of b.referencedArticleIds ?? []) {
-        otherBlocksUsed.add(id);
-      }
-    });
-
-    articles = getArticlesForBlock(
-      type,
-      articlesByCategory,
-      policy.ignoreDateFilter ? articlesByCategoryAllTime : undefined,
-      otherBlocksUsed
-    );
   }
 
   // Regenerate just this block
@@ -870,6 +896,9 @@ export interface AddBlockInput {
   blockType: BlockType;
   instructions: string | null;
   autoSearch: boolean;
+  /** Admin-picked article IDs. When set, bypass category/date filters and
+   *  use these exact articles as the candidate pool. */
+  forcedArticleIds?: string[];
 }
 
 export async function addBlockAction(
@@ -905,61 +934,78 @@ export async function addBlockAction(
 
   let articles: Article[] = [];
   if (effectiveAutoSearch) {
-    const policy = BLOCK_ARTICLE_POLICY[input.blockType];
-    const cats = Array.from(
-      new Set([...policy.primary, ...policy.fallback])
-    );
-
-    const articlesByCategory: Record<ArticleCategory, Article[]> =
-      emptyArticlesByCategory();
-    const articlesByCategoryAllTime: Record<ArticleCategory, Article[]> =
-      emptyArticlesByCategory();
-
-    for (const cat of cats) {
-      let q = supabase
+    const forced = (input.forcedArticleIds ?? []).filter(Boolean);
+    if (forced.length > 0) {
+      const { data, error } = await supabase
         .from("articles")
         .select("*")
-        .contains("categories", [cat])
-        .eq("review_status", "new")
-        .order("pinned", { ascending: false })
-        .order("importance", { ascending: false, nullsFirst: false })
-        .order("collected_at", { ascending: false })
-        .limit(policy.ignoreDateFilter ? 40 : 15);
-
-      if (!policy.ignoreDateFilter) {
-        if (row.collection_period_start) {
-          q = q.gte("collected_at", row.collection_period_start);
-        }
-        if (row.collection_period_end) {
-          const endDate = new Date(row.collection_period_end);
-          endDate.setUTCDate(endDate.getUTCDate() + 1);
-          q = q.lt("collected_at", endDate.toISOString());
-        }
-      }
-
-      const { data, error } = await q;
+        .in("id", forced);
       if (error) {
         return { ok: false, error: `기사 조회 실패: ${error.message}` };
       }
-      if (policy.ignoreDateFilter) {
-        articlesByCategoryAllTime[cat] = (data ?? []) as Article[];
-      } else {
-        articlesByCategory[cat] = (data ?? []) as Article[];
+      const byId = new Map<string, Article>(
+        (data ?? []).map((a) => [a.id as string, a as Article])
+      );
+      articles = forced
+        .map((id) => byId.get(id))
+        .filter((a): a is Article => !!a);
+    } else {
+      const policy = BLOCK_ARTICLE_POLICY[input.blockType];
+      const cats = Array.from(
+        new Set([...policy.primary, ...policy.fallback])
+      );
+
+      const articlesByCategory: Record<ArticleCategory, Article[]> =
+        emptyArticlesByCategory();
+      const articlesByCategoryAllTime: Record<ArticleCategory, Article[]> =
+        emptyArticlesByCategory();
+
+      for (const cat of cats) {
+        let q = supabase
+          .from("articles")
+          .select("*")
+          .contains("categories", [cat])
+          .eq("review_status", "new")
+          .order("pinned", { ascending: false })
+          .order("importance", { ascending: false, nullsFirst: false })
+          .order("collected_at", { ascending: false })
+          .limit(policy.ignoreDateFilter ? 40 : 15);
+
+        if (!policy.ignoreDateFilter) {
+          if (row.collection_period_start) {
+            q = q.gte("collected_at", row.collection_period_start);
+          }
+          if (row.collection_period_end) {
+            const endDate = new Date(row.collection_period_end);
+            endDate.setUTCDate(endDate.getUTCDate() + 1);
+            q = q.lt("collected_at", endDate.toISOString());
+          }
+        }
+
+        const { data, error } = await q;
+        if (error) {
+          return { ok: false, error: `기사 조회 실패: ${error.message}` };
+        }
+        if (policy.ignoreDateFilter) {
+          articlesByCategoryAllTime[cat] = (data ?? []) as Article[];
+        } else {
+          articlesByCategory[cat] = (data ?? []) as Article[];
+        }
       }
-    }
 
-    // Exclude articles already claimed by existing blocks
-    const alreadyUsed = new Set<string>();
-    for (const b of existingBlocks) {
-      for (const id of b.referencedArticleIds ?? []) alreadyUsed.add(id);
-    }
+      // Exclude articles already claimed by existing blocks
+      const alreadyUsed = new Set<string>();
+      for (const b of existingBlocks) {
+        for (const id of b.referencedArticleIds ?? []) alreadyUsed.add(id);
+      }
 
-    articles = getArticlesForBlock(
-      input.blockType,
-      articlesByCategory,
-      policy.ignoreDateFilter ? articlesByCategoryAllTime : undefined,
-      alreadyUsed
-    );
+      articles = getArticlesForBlock(
+        input.blockType,
+        articlesByCategory,
+        policy.ignoreDateFilter ? articlesByCategoryAllTime : undefined,
+        alreadyUsed
+      );
+    }
   }
 
   let result;
