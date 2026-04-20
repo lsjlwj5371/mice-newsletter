@@ -129,12 +129,41 @@ interface BlockBase {
   referencedArticleIds?: string[];
 }
 
+/**
+ * How a block's top-level image is visually arranged relative to the body:
+ *   - "full" (default)      : 100%-width hero above the body. Classic banner.
+ *   - "small-top"           : centered, 320px max width, above the body.
+ *   - "small-bottom"        : centered, 320px max width, below the body.
+ *   - "left"                : 2-col side-by-side, image 40% on left.
+ *   - "right"               : 2-col side-by-side, image 40% on right.
+ *
+ * Falsy / missing value is treated as "full" for backward compatibility
+ * with drafts created before this control existed.
+ */
+export const IMAGE_LAYOUTS = [
+  "full",
+  "small-top",
+  "small-bottom",
+  "left",
+  "right",
+] as const;
+export type ImageLayout = (typeof IMAGE_LAYOUTS)[number];
+
+export const IMAGE_LAYOUT_LABELS: Record<ImageLayout, string> = {
+  full: "크게 (기본)",
+  "small-top": "작게 · 위",
+  "small-bottom": "작게 · 아래",
+  left: "왼쪽 배치 (글과 나란히)",
+  right: "오른쪽 배치 (글과 나란히)",
+};
+
 export interface OpeningLedeBlock extends BlockBase {
   type: "opening_lede";
   data: {
     hook: string;
     subtext?: string;
     imageUrl?: string;
+    imageLayout?: ImageLayout;
   };
 }
 
@@ -147,6 +176,7 @@ export interface StatFeatureBlock extends BlockBase {
     caption: string;
     source: string;
     imageUrl?: string;
+    imageLayout?: ImageLayout;
   };
 }
 
@@ -194,6 +224,7 @@ export interface TechSignalBlock extends BlockBase {
     paragraphs: string[];
     miceInsight: string;
     imageUrl?: string;
+    imageLayout?: ImageLayout;
   };
 }
 
@@ -210,6 +241,7 @@ export interface TheoryToFieldBlock extends BlockBase {
     outroParagraphs: string[];
     closingNote?: string;
     imageUrl?: string;
+    imageLayout?: ImageLayout;
   };
 }
 
@@ -224,6 +256,7 @@ export interface EditorTakeBlock extends BlockBase {
     paragraphs: string[];
     closingNote?: string;
     imageUrl?: string;
+    imageLayout?: ImageLayout;
   };
 }
 
@@ -232,6 +265,7 @@ export interface FieldBriefingPart {
   categoryTag: string;
   body: string;
   imageUrl?: string;
+  imageLayout?: ImageLayout;
 }
 
 export interface ProjectSketchPart {
@@ -242,6 +276,7 @@ export interface ProjectSketchPart {
   paragraphs: string[];
   tags: string[];
   imageUrl?: string;
+  imageLayout?: ImageLayout;
 }
 
 export interface GroundkStoryBlock extends BlockBase {
@@ -285,6 +320,7 @@ export interface ConsolidatedInsightBlock extends BlockBase {
     chapters?: ConsolidatedInsightChapter[];
     closingInsight?: { label?: string; text: string };
     imageUrl?: string;
+    imageLayout?: ImageLayout;
     // ── Legacy multi-theme field (renderer falls back to this if chapters absent) ──
     parts?: ConsolidatedInsightPart[];
   };

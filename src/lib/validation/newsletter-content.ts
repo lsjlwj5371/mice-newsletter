@@ -1,5 +1,7 @@
 import { z } from "zod";
-import { BLOCK_TYPES } from "@/types/newsletter";
+import { BLOCK_TYPES, IMAGE_LAYOUTS } from "@/types/newsletter";
+
+const imageLayoutSchema = z.enum(IMAGE_LAYOUTS).optional();
 
 /**
  * Zod schema for the block-based newsletter content (schema_version = 2).
@@ -49,6 +51,7 @@ export const openingLedeDataSchema = z.object({
   hook: z.string(),
   subtext: z.string().optional(),
   imageUrl: z.string().optional(),
+  imageLayout: imageLayoutSchema,
 });
 
 export const statFeatureDataSchema = z.object({
@@ -58,6 +61,7 @@ export const statFeatureDataSchema = z.object({
   caption: z.string(),
   source: z.string(),
   imageUrl: z.string().optional(),
+  imageLayout: imageLayoutSchema,
 });
 
 const insightSchemaExported = z
@@ -103,6 +107,7 @@ export const techSignalDataSchema = z.object({
   paragraphs: z.array(z.string()).min(1),
   miceInsight: z.string(),
   imageUrl: z.string().optional(),
+  imageLayout: imageLayoutSchema,
 });
 
 export const theoryToFieldDataSchema = z.object({
@@ -119,6 +124,7 @@ export const theoryToFieldDataSchema = z.object({
   outroParagraphs: z.array(z.string()).min(1),
   closingNote: z.string().optional(),
   imageUrl: z.string().optional(),
+  imageLayout: imageLayoutSchema,
 });
 
 export const editorTakeDataSchema = z.object({
@@ -130,6 +136,7 @@ export const editorTakeDataSchema = z.object({
   paragraphs: z.array(z.string()).min(1),
   closingNote: z.string().optional(),
   imageUrl: z.string().optional(),
+  imageLayout: imageLayoutSchema,
 });
 
 export const groundkStoryDataSchema = z.object({
@@ -139,6 +146,7 @@ export const groundkStoryDataSchema = z.object({
     categoryTag: z.string(),
     body: z.string(),
     imageUrl: z.string().optional(),
+    imageLayout: imageLayoutSchema,
   }),
   projectSketch: z.object({
     projectMeta: z.string(),
@@ -148,6 +156,7 @@ export const groundkStoryDataSchema = z.object({
     paragraphs: z.array(z.string()).min(1),
     tags: z.array(z.string()),
     imageUrl: z.string().optional(),
+    imageLayout: imageLayoutSchema,
   }),
 });
 
@@ -173,6 +182,7 @@ export const consolidatedInsightDataSchema = z
       .object({ label: z.string().optional(), text: z.string() })
       .optional(),
     imageUrl: z.string().optional(),
+    imageLayout: imageLayoutSchema,
     // ── Legacy multi-theme shape (kept so older drafts still validate) ──
     parts: z
       .array(

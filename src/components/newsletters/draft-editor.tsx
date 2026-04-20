@@ -25,6 +25,7 @@ import {
   type BlockType,
   type NewsletterRow,
   type BlockInstance,
+  type ImageLayout,
 } from "@/types/newsletter";
 
 type ViewMode = "desktop" | "mobile" | "dark";
@@ -794,6 +795,11 @@ function BlockCard({
                     }).fieldBriefing?.imageUrl ?? undefined
                   ) || null
                 }
+                currentLayout={
+                  (block.data as {
+                    fieldBriefing?: { imageLayout?: ImageLayout };
+                  }).fieldBriefing?.imageLayout ?? null
+                }
                 disabled={pending || disabled}
               />
               <BlockImageSlot
@@ -808,6 +814,11 @@ function BlockCard({
                     }).projectSketch?.imageUrl ?? undefined
                   ) || null
                 }
+                currentLayout={
+                  (block.data as {
+                    projectSketch?: { imageLayout?: ImageLayout };
+                  }).projectSketch?.imageLayout ?? null
+                }
                 disabled={pending || disabled}
               />
             </div>
@@ -818,6 +829,9 @@ function BlockCard({
               label="이미지 (선택)"
               currentUrl={
                 ((block.data as { imageUrl?: string }).imageUrl ?? null) || null
+              }
+              currentLayout={
+                (block.data as { imageLayout?: ImageLayout }).imageLayout ?? null
               }
               disabled={pending || disabled}
             />

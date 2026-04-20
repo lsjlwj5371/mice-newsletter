@@ -21,7 +21,13 @@ import {
   type Article,
   type ArticleCategory,
 } from "@/lib/validation/rss";
-import { BLOCK_TYPES, type BlockType, type NewsletterContent } from "@/types/newsletter";
+import {
+  BLOCK_TYPES,
+  IMAGE_LAYOUTS,
+  type BlockType,
+  type NewsletterContent,
+  type ImageLayout,
+} from "@/types/newsletter";
 
 export type ActionResult =
   | { ok: true; id?: string; message?: string }
@@ -722,6 +728,100 @@ export async function setBlockImageAction(
       blockIndex: input.blockIndex,
       blockType: block.type,
       slot: input.slot ?? null,
+    },
+  });
+
+  revalidatePath(`/newsletters/${input.newsletterId}`);
+  return { ok: true, id: input.newsletterId };
+}
+
+// ─────────────────────────────────────────────
+// SET IMAGE LAYOUT on a specific block
+// Swaps only the imageLayout field on block.data (or on the groundk_story
+// sub-slot). Leaves imageUrl intact.
+// ─────────────────────────────────────────────
+
+export interface SetBlockImageLayoutInput {
+  newsletterId: string;
+  blockIndex: number;
+  layout: ImageLayout;
+  slot?: "fieldBriefing" | "projectSketch";
+}
+
+export async function setBlockImageLayoutAction(
+  input: SetBlockImageLayoutInput
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const supabase = createAdminClient();
+
+  if (!(IMAGE_LAYOUTS as readonly string[]).includes(input.layout)) {
+    return { ok: false, error: `알 수 없는 레이아웃: ${input.layout}` };
+  }
+
+  const { data: row, error: fetchErr } = await supabase
+    .from("newsletters")
+    .select("id, status, content_json")
+    .eq("id", input.newsletterId)
+    .single();
+  if (fetchErr || !row) {
+    return { ok: false, error: "원본 호를 찾을 수 없습니다." };
+  }
+  if (row.status === "sent") {
+    return { ok: false, error: "이미 발송된 호는 수정할 수 없습니다." };
+  }
+
+  const content = row.content_json as NewsletterContent;
+  if (
+    !content.blocks ||
+    input.blockIndex < 0 ||
+    input.blockIndex >= content.blocks.length
+  ) {
+    return { ok: false, error: "해당 블록을 찾을 수 없습니다." };
+  }
+
+  const block = content.blocks[input.blockIndex];
+  const data = block.data as Record<string, unknown>;
+
+  let updatedBlock: NewsletterContent["blocks"][number];
+  if (block.type === "groundk_story" && input.slot) {
+    const sub = (data[input.slot] ?? {}) as Record<string, unknown>;
+    updatedBlock = {
+      ...block,
+      data: {
+        ...data,
+        [input.slot]: { ...sub, imageLayout: input.layout },
+      },
+    } as NewsletterContent["blocks"][number];
+  } else {
+    updatedBlock = {
+      ...block,
+      data: { ...data, imageLayout: input.layout },
+    } as NewsletterContent["blocks"][number];
+  }
+
+  const updatedBlocks = [...content.blocks];
+  updatedBlocks[input.blockIndex] = updatedBlock;
+
+  const { error: updErr } = await supabase
+    .from("newsletters")
+    .update({
+      content_json: { ...content, blocks: updatedBlocks },
+    })
+    .eq("id", input.newsletterId);
+  if (updErr) {
+    return { ok: false, error: `DB 저장 실패: ${updErr.message}` };
+  }
+
+  await logAudit({
+    adminId: admin.id,
+    action: "newsletter.set_image_layout",
+    entity: "newsletter",
+    entityId: input.newsletterId,
+    metadata: {
+      blockIndex: input.blockIndex,
+      blockType: block.type,
+      slot: input.slot ?? null,
+      layout: input.layout,
     },
   });
 

@@ -41,6 +41,7 @@ import type {
   GroundkStoryBlock,
   ConsolidatedInsightBlock,
   BlogCardGridBlock,
+  ImageLayout,
 } from "@/types/newsletter";
 
 // ─────────────────────────────────────────────
@@ -344,36 +345,40 @@ function OpeningLede({ block }: { block: OpeningLedeBlock }) {
       noBorder
       style={{ paddingTop: "8px", paddingBottom: "20px" }}
     >
-      <BlockImage src={block.data.imageUrl} />
-      <Section
-        style={{
-          borderLeft: `4px solid ${colors.accentGold}`,
-          paddingLeft: "20px",
-        }}
+      <ImageWithBody
+        src={block.data.imageUrl}
+        layout={block.data.imageLayout}
       >
-        <Text
+        <Section
           style={{
-            ...typography.hookText,
-            color: colors.textHeadline,
-            margin: 0,
-            wordBreak: "keep-all",
+            borderLeft: `4px solid ${colors.accentGold}`,
+            paddingLeft: "20px",
           }}
         >
-          {renderMultiline(block.data.hook)}
-        </Text>
-        {block.data.subtext && (
           <Text
             style={{
-              ...typography.hookSubtext,
-              color: colors.textMuted,
-              marginTop: "16px",
-              marginBottom: 0,
+              ...typography.hookText,
+              color: colors.textHeadline,
+              margin: 0,
+              wordBreak: "keep-all",
             }}
           >
-            {renderMultiline(block.data.subtext)}
+            {renderMultiline(block.data.hook)}
           </Text>
-        )}
-      </Section>
+          {block.data.subtext && (
+            <Text
+              style={{
+                ...typography.hookSubtext,
+                color: colors.textMuted,
+                marginTop: "16px",
+                marginBottom: 0,
+              }}
+            >
+              {renderMultiline(block.data.subtext)}
+            </Text>
+          )}
+        </Section>
+      </ImageWithBody>
     </MajorSection>
   );
 }
@@ -673,20 +678,24 @@ function TechSignal({
           >
             {block.data.title}
           </Heading>
-          <BlockImage src={block.data.imageUrl} />
-          {block.data.paragraphs.map((p, i) => (
-            <Text
-              key={i}
-              style={{
-                fontSize: "13.5px",
-                color: colors.textBody,
-                lineHeight: 1.85,
-                fontWeight: 300,
-                margin: "0 0 16px 0",
-              }}
-              dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
-            />
-          ))}
+          <ImageWithBody
+            src={block.data.imageUrl}
+            layout={block.data.imageLayout}
+          >
+            {block.data.paragraphs.map((p, i) => (
+              <Text
+                key={i}
+                style={{
+                  fontSize: "13.5px",
+                  color: colors.textBody,
+                  lineHeight: 1.85,
+                  fontWeight: 300,
+                  margin: "0 0 16px 0",
+                }}
+                dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
+              />
+            ))}
+          </ImageWithBody>
           <Section
             style={{
               backgroundColor: colors.bgInsightSoft,
@@ -814,19 +823,24 @@ function TheoryToField({
         {block.data.title}
       </Heading>
 
-      {block.data.introParagraphs.map((p, i) => (
-        <Text
-          key={`intro-${i}`}
-          style={{
-            fontSize: "14px",
-            color: colors.textBody,
-            lineHeight: 1.95,
-            fontWeight: 300,
-            margin: "0 0 16px 0",
-          }}
-          dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
-        />
-      ))}
+      <ImageWithBody
+        src={block.data.imageUrl}
+        layout={block.data.imageLayout}
+      >
+        {block.data.introParagraphs.map((p, i) => (
+          <Text
+            key={`intro-${i}`}
+            style={{
+              fontSize: "14px",
+              color: colors.textBody,
+              lineHeight: 1.95,
+              fontWeight: 300,
+              margin: "0 0 16px 0",
+            }}
+            dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
+          />
+        ))}
+      </ImageWithBody>
 
       <Section
         style={{
@@ -973,20 +987,24 @@ function EditorTake({
           </Text>
         </Section>
       )}
-      <BlockImage src={block.data.imageUrl} />
-      {block.data.paragraphs.map((p, i) => (
-        <Text
-          key={i}
-          style={{
-            fontSize: "14px",
-            color: colors.textBody,
-            lineHeight: 1.95,
-            fontWeight: 300,
-            margin: "0 0 16px 0",
-          }}
-          dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
-        />
-      ))}
+      <ImageWithBody
+        src={block.data.imageUrl}
+        layout={block.data.imageLayout}
+      >
+        {block.data.paragraphs.map((p, i) => (
+          <Text
+            key={i}
+            style={{
+              fontSize: "14px",
+              color: colors.textBody,
+              lineHeight: 1.95,
+              fontWeight: 300,
+              margin: "0 0 16px 0",
+            }}
+            dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
+          />
+        ))}
+      </ImageWithBody>
       {block.data.closingNote && (
         <Text
           style={{
@@ -1060,21 +1078,26 @@ function GroundkStory({
           >
             {block.data.fieldBriefing.categoryTag}
           </Text>
-          <Text
-            style={{
-              fontSize: "13px",
-              color: colors.textBody,
-              lineHeight: 1.85,
-              fontWeight: 300,
-              margin: 0,
-              whiteSpace: "pre-line",
-            }}
-            dangerouslySetInnerHTML={{
-              __html: renderInlineHtml(
-                block.data.fieldBriefing.body.replace(/\n/g, "<br>")
-              ),
-            }}
-          />
+          <ImageWithBody
+            src={block.data.fieldBriefing.imageUrl}
+            layout={block.data.fieldBriefing.imageLayout}
+          >
+            <Text
+              style={{
+                fontSize: "13px",
+                color: colors.textBody,
+                lineHeight: 1.85,
+                fontWeight: 300,
+                margin: 0,
+                whiteSpace: "pre-line",
+              }}
+              dangerouslySetInnerHTML={{
+                __html: renderInlineHtml(
+                  block.data.fieldBriefing.body.replace(/\n/g, "<br>")
+                ),
+              }}
+            />
+          </ImageWithBody>
         </Section>
       </Section>
 
@@ -1142,20 +1165,24 @@ function GroundkStory({
         >
           {block.data.projectSketch.title}
         </Heading>
-        <BlockImage src={block.data.projectSketch.imageUrl} />
-        {block.data.projectSketch.paragraphs.map((p, i) => (
-          <Text
-            key={i}
-            style={{
-              fontSize: "13px",
-              color: colors.textMuted,
-              lineHeight: 1.85,
-              margin: "0 0 14px 0",
-            }}
-          >
-            {p}
-          </Text>
-        ))}
+        <ImageWithBody
+          src={block.data.projectSketch.imageUrl}
+          layout={block.data.projectSketch.imageLayout}
+        >
+          {block.data.projectSketch.paragraphs.map((p, i) => (
+            <Text
+              key={i}
+              style={{
+                fontSize: "13px",
+                color: colors.textMuted,
+                lineHeight: 1.85,
+                margin: "0 0 14px 0",
+              }}
+            >
+              {p}
+            </Text>
+          ))}
+        </ImageWithBody>
         {block.data.projectSketch.tags.length > 0 && (
           <Section
             style={{
@@ -1248,35 +1275,25 @@ function ConsolidatedInsightSingleTopic({
         </Heading>
       )}
 
-      {block.data.imageUrl && (
-        <Img
-          src={block.data.imageUrl}
-          alt=""
-          style={{
-            display: "block",
-            width: "100%",
-            maxWidth: "100%",
-            height: "auto",
-            borderRadius: "8px",
-            margin: "0 0 20px 0",
-          }}
-        />
-      )}
-
-      {block.data.leadParagraph && (
-        <Text
-          style={{
-            fontSize: "15px",
-            color: colors.textBody,
-            lineHeight: 1.9,
-            fontWeight: 400,
-            margin: "0 0 28px 0",
-          }}
-          dangerouslySetInnerHTML={{
-            __html: renderInlineHtml(block.data.leadParagraph),
-          }}
-        />
-      )}
+      <ImageWithBody
+        src={block.data.imageUrl}
+        layout={block.data.imageLayout}
+      >
+        {block.data.leadParagraph ? (
+          <Text
+            style={{
+              fontSize: "15px",
+              color: colors.textBody,
+              lineHeight: 1.9,
+              fontWeight: 400,
+              margin: "0 0 28px 0",
+            }}
+            dangerouslySetInnerHTML={{
+              __html: renderInlineHtml(block.data.leadParagraph),
+            }}
+          />
+        ) : null}
+      </ImageWithBody>
 
       {chapters.map((ch, i) => (
         <Section
@@ -1686,5 +1703,118 @@ function BlockImage({
   );
 }
 
+/**
+ * Renders an image + body in one of five layouts chosen by the admin.
+ *
+ *   - full (default): 100%-width image above the body
+ *   - small-top     : compact (max 320px) centered image above the body
+ *   - small-bottom  : compact centered image below the body
+ *   - left          : 2-col row, image ~40% on the left / body on the right
+ *   - right         : mirrored
+ *
+ * When src is empty, this is equivalent to rendering body alone. Email
+ * clients respect `align`-based 2-column tables fairly well, so left/right
+ * are safe across Gmail / Outlook / Apple Mail.
+ */
+function ImageWithBody({
+  src,
+  layout,
+  alt = "",
+  children,
+}: {
+  src?: string;
+  layout?: ImageLayout;
+  alt?: string;
+  children: React.ReactNode;
+}) {
+  if (!src) {
+    return <>{children}</>;
+  }
+
+  const mode = layout ?? "full";
+
+  if (mode === "full") {
+    return (
+      <>
+        <BlockImage src={src} alt={alt} />
+        {children}
+      </>
+    );
+  }
+
+  if (mode === "small-top" || mode === "small-bottom") {
+    const imageNode = (
+      <Section
+        key="img"
+        style={{
+          textAlign: "center",
+          marginBottom: mode === "small-top" ? "18px" : "0",
+          marginTop: mode === "small-bottom" ? "18px" : "0",
+        }}
+      >
+        <Img
+          src={src}
+          alt={alt}
+          style={{
+            display: "inline-block",
+            width: "100%",
+            maxWidth: "320px",
+            height: "auto",
+            borderRadius: "8px",
+          }}
+        />
+      </Section>
+    );
+    return mode === "small-top" ? (
+      <>
+        {imageNode}
+        {children}
+      </>
+    ) : (
+      <>
+        {children}
+        {imageNode}
+      </>
+    );
+  }
+
+  // left / right — 2-column Row layout. Image column is ~40%. Use
+  // valign=top so short-image / long-body stays aligned to the top.
+  const imageCol = (
+    <Column
+      key="img"
+      width="40%"
+      style={{ verticalAlign: "top", paddingRight: mode === "left" ? "18px" : 0, paddingLeft: mode === "right" ? "18px" : 0 }}
+    >
+      <Img
+        src={src}
+        alt={alt}
+        style={{
+          display: "block",
+          width: "100%",
+          maxWidth: "100%",
+          height: "auto",
+          borderRadius: "8px",
+        }}
+      />
+    </Column>
+  );
+  const bodyCol = (
+    <Column
+      key="body"
+      width="60%"
+      style={{ verticalAlign: "top" }}
+    >
+      {children}
+    </Column>
+  );
+  return (
+    <Row>
+      {mode === "left" ? imageCol : bodyCol}
+      {mode === "left" ? bodyCol : imageCol}
+    </Row>
+  );
+}
+
 // Re-export the Pill helper for consumers
-export { Pill, BlockImage };
+export { Pill, BlockImage, ImageWithBody };
