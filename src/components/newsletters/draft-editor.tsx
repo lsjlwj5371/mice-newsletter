@@ -9,13 +9,19 @@ import {
   updateNewsletterContentAction,
   regenerateDraftAction,
   regenerateBlockAction,
+  addBlockAction,
+  removeBlockAction,
+  moveBlockAction,
 } from "@/app/(admin)/newsletters/actions";
 import { BlockImageSlot } from "./block-image-slot";
 import { SendPanel } from "./send-panel";
 import {
   NEWSLETTER_STATUS_LABELS,
   BLOCK_LABELS,
+  BLOCK_DESCRIPTIONS,
   BLOCK_NEEDS_RESEARCH,
+  BLOCK_TYPES,
+  type BlockType,
   type NewsletterRow,
   type BlockInstance,
 } from "@/types/newsletter";
@@ -319,18 +325,193 @@ function BlockEditorPanel({
         각 블록의 참고 자료를 확인하고, 마음에 안 들면 이 블록만 다시 생성할 수 있습니다.
         추가 지시 칸에 자연어로 원하는 방향을 적어 주세요 (예: "2번 기사는 관련 없으니 빼줘",
         "분량을 절반으로 줄여줘", "Agentic AI 대신 Spatial Computing으로 바꿔줘").
+        블록 사이의 "+ 여기에 블록 추가" 버튼으로 새 블록을 끼워 넣거나 순서를 바꿀 수도 있습니다.
       </p>
+
+      <AddBlockInsertionPoint
+        newsletterId={newsletterId}
+        position={0}
+        disabled={disabled}
+        onDone={onDone}
+      />
+
       {blocks.map((block, i) => (
-        <BlockCard
-          key={block.id + i}
-          newsletterId={newsletterId}
-          block={block}
-          blockIndex={i}
-          articleMeta={articleMeta}
-          disabled={disabled}
-          onDone={onDone}
-        />
+        <React.Fragment key={block.id + i}>
+          <BlockCard
+            newsletterId={newsletterId}
+            block={block}
+            blockIndex={i}
+            totalBlocks={blocks.length}
+            articleMeta={articleMeta}
+            disabled={disabled}
+            onDone={onDone}
+          />
+          <AddBlockInsertionPoint
+            newsletterId={newsletterId}
+            position={i + 1}
+            disabled={disabled}
+            onDone={onDone}
+          />
+        </React.Fragment>
       ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Insertion point — "+ 여기에 블록 추가" between every pair of cards
+// Expands into a block-type picker inline.
+// ─────────────────────────────────────────────
+interface AddBlockInsertionPointProps {
+  newsletterId: string;
+  position: number;
+  disabled: boolean;
+  onDone: () => void;
+}
+
+function AddBlockInsertionPoint({
+  newsletterId,
+  position,
+  disabled,
+  onDone,
+}: AddBlockInsertionPointProps) {
+  const [open, setOpen] = React.useState(false);
+  const [blockType, setBlockType] = React.useState<BlockType>("news_briefing");
+  const [autoSearch, setAutoSearch] = React.useState(true);
+  const [instructions, setInstructions] = React.useState("");
+  const [pending, startTransition] = React.useTransition();
+  const [msg, setMsg] = React.useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  React.useEffect(() => {
+    // Sync autoSearch default when the picked type changes.
+    setAutoSearch(BLOCK_NEEDS_RESEARCH[blockType]);
+  }, [blockType]);
+
+  function handleAdd() {
+    setMsg(null);
+    startTransition(async () => {
+      const res = await addBlockAction({
+        newsletterId,
+        position,
+        blockType,
+        instructions: instructions.trim() || null,
+        autoSearch: blockType === "groundk_story" ? false : autoSearch,
+      });
+      if (res.ok) {
+        setMsg({ type: "success", text: res.message ?? "추가됨" });
+        setInstructions("");
+        setOpen(false);
+        onDone();
+      } else {
+        setMsg({ type: "error", text: res.error });
+      }
+    });
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        disabled={disabled || pending}
+        className="w-full flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground hover:text-foreground border border-dashed border-border rounded-md hover:border-foreground/40 hover:bg-muted/30 transition disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <span className="text-sm">+</span> 여기에 블록 추가
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs font-semibold">새 블록 추가 (위치 {position + 1})</Label>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false);
+            setMsg(null);
+          }}
+          className="text-xs text-muted-foreground hover:text-foreground"
+          disabled={pending}
+        >
+          취소
+        </button>
+      </div>
+
+      <div>
+        <Label htmlFor={`bt-${position}`} className="text-xs">
+          블록 타입
+        </Label>
+        <select
+          id={`bt-${position}`}
+          value={blockType}
+          onChange={(e) => setBlockType(e.target.value as BlockType)}
+          disabled={pending}
+          className="mt-1 w-full h-9 rounded-md border border-border bg-background px-2 text-sm"
+        >
+          {BLOCK_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {BLOCK_LABELS[t]}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {BLOCK_DESCRIPTIONS[blockType]}
+        </p>
+      </div>
+
+      {blockType !== "groundk_story" && (
+        <div className="flex items-center gap-2">
+          <input
+            id={`as-${position}`}
+            type="checkbox"
+            checked={autoSearch}
+            onChange={(e) => setAutoSearch(e.target.checked)}
+            disabled={pending}
+            className="h-4 w-4 rounded border-border"
+          />
+          <Label htmlFor={`as-${position}`} className="cursor-pointer text-xs">
+            자동 생성 (Claude가 후보 기사 참조)
+          </Label>
+        </div>
+      )}
+
+      <div>
+        <Label className="text-xs">추가 지시 (선택)</Label>
+        <Textarea
+          value={instructions}
+          onChange={(e) => setInstructions(e.target.value)}
+          rows={2}
+          disabled={pending}
+          placeholder={
+            blockType === "groundk_story"
+              ? "예: Field Briefing은 공항 T2 수하물 판독 이슈, Project Sketch는 COS 패션쇼"
+              : "예: 이번엔 ESG 관련만, 분량은 짧게"
+          }
+          className="mt-1 text-xs"
+        />
+      </div>
+
+      {msg && (
+        <div
+          className={
+            msg.type === "success"
+              ? "rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700"
+              : "rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 whitespace-pre-wrap"
+          }
+        >
+          {msg.text}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <Button size="sm" onClick={handleAdd} disabled={pending}>
+          {pending ? "생성 중..." : "추가"}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -339,6 +520,7 @@ interface BlockCardProps {
   newsletterId: string;
   block: BlockInstance;
   blockIndex: number;
+  totalBlocks: number;
   articleMeta: Record<string, ArticleMetaEntry>;
   disabled: boolean;
   onDone: () => void;
@@ -348,6 +530,7 @@ function BlockCard({
   newsletterId,
   block,
   blockIndex,
+  totalBlocks,
   articleMeta,
   disabled,
   onDone,
@@ -366,6 +549,33 @@ function BlockCard({
   const [expanded, setExpanded] = React.useState(false);
 
   const refIds = block.referencedArticleIds ?? [];
+
+  const [structPending, startStruct] = React.useTransition();
+
+  function handleMove(direction: "up" | "down") {
+    setMsg(null);
+    startStruct(async () => {
+      const res = await moveBlockAction(newsletterId, blockIndex, direction);
+      if (res.ok) {
+        onDone();
+      } else {
+        setMsg({ type: "error", text: res.error });
+      }
+    });
+  }
+
+  function handleRemove() {
+    if (!confirm(`"${BLOCK_LABELS[block.type]}" 블록을 삭제할까요?`)) return;
+    setMsg(null);
+    startStruct(async () => {
+      const res = await removeBlockAction(newsletterId, blockIndex);
+      if (res.ok) {
+        onDone();
+      } else {
+        setMsg({ type: "error", text: res.error });
+      }
+    });
+  }
 
   function handleRegenerate() {
     setMsg(null);
@@ -391,33 +601,67 @@ function BlockCard({
 
   const titlePreview = getBlockTitle(block);
 
+  const busy = pending || disabled || structPending;
+
   return (
     <div className="rounded-xl border border-border bg-background overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition text-left"
-      >
-        <span className="text-xs font-mono text-muted-foreground w-6 text-center">
-          {String(blockIndex + 1).padStart(2, "0")}
-        </span>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium">
-            {BLOCK_LABELS[block.type]}
-          </div>
-          {titlePreview && (
-            <div className="text-xs text-muted-foreground truncate mt-0.5">
-              {titlePreview}
+      <div className="w-full flex items-center gap-2 px-4 py-3 hover:bg-muted/40 transition">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex items-center gap-3 flex-1 min-w-0 text-left"
+        >
+          <span className="text-xs font-mono text-muted-foreground w-6 text-center">
+            {String(blockIndex + 1).padStart(2, "0")}
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium">
+              {BLOCK_LABELS[block.type]}
             </div>
+            {titlePreview && (
+              <div className="text-xs text-muted-foreground truncate mt-0.5">
+                {titlePreview}
+              </div>
+            )}
+          </div>
+          {refIds.length > 0 && (
+            <Badge variant="muted">참고 {refIds.length}건</Badge>
           )}
+          <span className="text-muted-foreground text-xs">
+            {expanded ? "▾" : "▸"}
+          </span>
+        </button>
+
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => handleMove("up")}
+            disabled={busy || blockIndex === 0}
+            title="위로 이동"
+            className="w-7 h-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            onClick={() => handleMove("down")}
+            disabled={busy || blockIndex === totalBlocks - 1}
+            title="아래로 이동"
+            className="w-7 h-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            ↓
+          </button>
+          <button
+            type="button"
+            onClick={handleRemove}
+            disabled={busy || totalBlocks <= 1}
+            title={totalBlocks <= 1 ? "최소 1개 블록은 필요합니다" : "삭제"}
+            className="w-7 h-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-rose-600 hover:bg-rose-50 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            ✕
+          </button>
         </div>
-        {refIds.length > 0 && (
-          <Badge variant="muted">참고 {refIds.length}건</Badge>
-        )}
-        <span className="text-muted-foreground text-xs">
-          {expanded ? "▾" : "▸"}
-        </span>
-      </button>
+      </div>
 
       {expanded && (
         <div className="border-t border-border p-4 space-y-4 bg-muted/20">

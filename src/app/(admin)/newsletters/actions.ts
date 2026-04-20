@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -854,4 +855,288 @@ export async function regenerateBlockAction(
 
   revalidatePath(`/newsletters/${input.newsletterId}`);
   return { ok: true, id: input.newsletterId, message: "블록이 재생성되었습니다." };
+}
+
+// ─────────────────────────────────────────────
+// ADD / REMOVE / REORDER BLOCKS (post-draft editing)
+// Lets the admin shape an existing draft — insert a block that wasn't in
+// the initial block picker, remove one, or nudge ordering up/down.
+// ─────────────────────────────────────────────
+
+export interface AddBlockInput {
+  newsletterId: string;
+  /** 0-based insert index. 0 = top, blocks.length = append. */
+  position: number;
+  blockType: BlockType;
+  instructions: string | null;
+  autoSearch: boolean;
+}
+
+export async function addBlockAction(
+  input: AddBlockInput
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const supabase = createAdminClient();
+
+  if (!(BLOCK_TYPES as readonly string[]).includes(input.blockType)) {
+    return { ok: false, error: `알 수 없는 블록 타입: ${input.blockType}` };
+  }
+
+  const { data: row, error: fetchErr } = await supabase
+    .from("newsletters")
+    .select("*")
+    .eq("id", input.newsletterId)
+    .single();
+  if (fetchErr || !row) {
+    return { ok: false, error: "원본 호를 찾을 수 없습니다." };
+  }
+  if (row.status === "sent") {
+    return { ok: false, error: "이미 발송된 호는 수정할 수 없습니다." };
+  }
+
+  const content = row.content_json as NewsletterContent;
+  const existingBlocks = content.blocks ?? [];
+  const insertAt = Math.max(0, Math.min(input.position, existingBlocks.length));
+
+  // Build candidate article pool for the new block (mirrors regenerateBlockAction).
+  // groundk_story is admin-only — never research.
+  const effectiveAutoSearch =
+    input.blockType === "groundk_story" ? false : input.autoSearch;
+
+  let articles: Article[] = [];
+  if (effectiveAutoSearch) {
+    const policy = BLOCK_ARTICLE_POLICY[input.blockType];
+    const cats = Array.from(
+      new Set([...policy.primary, ...policy.fallback])
+    );
+
+    const articlesByCategory: Record<ArticleCategory, Article[]> =
+      emptyArticlesByCategory();
+    const articlesByCategoryAllTime: Record<ArticleCategory, Article[]> =
+      emptyArticlesByCategory();
+
+    for (const cat of cats) {
+      let q = supabase
+        .from("articles")
+        .select("*")
+        .contains("categories", [cat])
+        .eq("review_status", "new")
+        .order("pinned", { ascending: false })
+        .order("importance", { ascending: false, nullsFirst: false })
+        .order("collected_at", { ascending: false })
+        .limit(policy.ignoreDateFilter ? 40 : 15);
+
+      if (!policy.ignoreDateFilter) {
+        if (row.collection_period_start) {
+          q = q.gte("collected_at", row.collection_period_start);
+        }
+        if (row.collection_period_end) {
+          const endDate = new Date(row.collection_period_end);
+          endDate.setUTCDate(endDate.getUTCDate() + 1);
+          q = q.lt("collected_at", endDate.toISOString());
+        }
+      }
+
+      const { data, error } = await q;
+      if (error) {
+        return { ok: false, error: `기사 조회 실패: ${error.message}` };
+      }
+      if (policy.ignoreDateFilter) {
+        articlesByCategoryAllTime[cat] = (data ?? []) as Article[];
+      } else {
+        articlesByCategory[cat] = (data ?? []) as Article[];
+      }
+    }
+
+    // Exclude articles already claimed by existing blocks
+    const alreadyUsed = new Set<string>();
+    for (const b of existingBlocks) {
+      for (const id of b.referencedArticleIds ?? []) alreadyUsed.add(id);
+    }
+
+    articles = getArticlesForBlock(
+      input.blockType,
+      articlesByCategory,
+      policy.ignoreDateFilter ? articlesByCategoryAllTime : undefined,
+      alreadyUsed
+    );
+  }
+
+  let result;
+  try {
+    result = await regenerateSingleBlock({
+      type: input.blockType,
+      issueLabel: row.issue_label,
+      articles,
+      instructions: input.instructions ?? undefined,
+      autoSearch: effectiveAutoSearch,
+      referenceNotes: row.reference_notes ?? undefined,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `블록 생성 실패: ${msg}` };
+  }
+
+  const newBlock = {
+    id: randomUUID(),
+    type: input.blockType,
+    data: result.data,
+    instructions: input.instructions ?? undefined,
+    autoSearch: effectiveAutoSearch,
+    referencedArticleIds: result.referencedArticleIds,
+  } as NewsletterContent["blocks"][number];
+
+  const updatedBlocks = [
+    ...existingBlocks.slice(0, insertAt),
+    newBlock,
+    ...existingBlocks.slice(insertAt),
+  ];
+
+  const { error: updErr } = await supabase
+    .from("newsletters")
+    .update({
+      content_json: { ...content, blocks: updatedBlocks },
+      status: "review",
+    })
+    .eq("id", input.newsletterId);
+  if (updErr) {
+    return { ok: false, error: `DB 저장 실패: ${updErr.message}` };
+  }
+
+  await logAudit({
+    adminId: admin.id,
+    action: "newsletter.add_block",
+    entity: "newsletter",
+    entityId: input.newsletterId,
+    metadata: {
+      position: insertAt,
+      blockType: input.blockType,
+      autoSearch: effectiveAutoSearch,
+      instructions: input.instructions ?? null,
+    },
+  });
+
+  revalidatePath(`/newsletters/${input.newsletterId}`);
+  return {
+    ok: true,
+    id: input.newsletterId,
+    message: "블록이 추가되었습니다.",
+  };
+}
+
+export async function removeBlockAction(
+  newsletterId: string,
+  blockIndex: number
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const supabase = createAdminClient();
+
+  const { data: row, error: fetchErr } = await supabase
+    .from("newsletters")
+    .select("id, status, content_json")
+    .eq("id", newsletterId)
+    .single();
+  if (fetchErr || !row) {
+    return { ok: false, error: "원본 호를 찾을 수 없습니다." };
+  }
+  if (row.status === "sent") {
+    return { ok: false, error: "이미 발송된 호는 수정할 수 없습니다." };
+  }
+
+  const content = row.content_json as NewsletterContent;
+  const blocks = content.blocks ?? [];
+  if (blockIndex < 0 || blockIndex >= blocks.length) {
+    return { ok: false, error: "해당 블록을 찾을 수 없습니다." };
+  }
+  if (blocks.length <= 1) {
+    return { ok: false, error: "최소 1개의 블록은 남아 있어야 합니다." };
+  }
+
+  const removed = blocks[blockIndex];
+  const updatedBlocks = [
+    ...blocks.slice(0, blockIndex),
+    ...blocks.slice(blockIndex + 1),
+  ];
+
+  const { error: updErr } = await supabase
+    .from("newsletters")
+    .update({
+      content_json: { ...content, blocks: updatedBlocks },
+      status: "review",
+    })
+    .eq("id", newsletterId);
+  if (updErr) {
+    return { ok: false, error: `DB 저장 실패: ${updErr.message}` };
+  }
+
+  await logAudit({
+    adminId: admin.id,
+    action: "newsletter.remove_block",
+    entity: "newsletter",
+    entityId: newsletterId,
+    metadata: { blockIndex, blockType: removed.type },
+  });
+
+  revalidatePath(`/newsletters/${newsletterId}`);
+  return { ok: true, id: newsletterId, message: "블록이 삭제되었습니다." };
+}
+
+export async function moveBlockAction(
+  newsletterId: string,
+  blockIndex: number,
+  direction: "up" | "down"
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const supabase = createAdminClient();
+
+  const { data: row, error: fetchErr } = await supabase
+    .from("newsletters")
+    .select("id, status, content_json")
+    .eq("id", newsletterId)
+    .single();
+  if (fetchErr || !row) {
+    return { ok: false, error: "원본 호를 찾을 수 없습니다." };
+  }
+  if (row.status === "sent") {
+    return { ok: false, error: "이미 발송된 호는 수정할 수 없습니다." };
+  }
+
+  const content = row.content_json as NewsletterContent;
+  const blocks = [...(content.blocks ?? [])];
+  const swapWith = direction === "up" ? blockIndex - 1 : blockIndex + 1;
+  if (
+    blockIndex < 0 ||
+    blockIndex >= blocks.length ||
+    swapWith < 0 ||
+    swapWith >= blocks.length
+  ) {
+    return { ok: false, error: "이동할 수 없는 위치입니다." };
+  }
+
+  [blocks[blockIndex], blocks[swapWith]] = [
+    blocks[swapWith],
+    blocks[blockIndex],
+  ];
+
+  const { error: updErr } = await supabase
+    .from("newsletters")
+    .update({
+      content_json: { ...content, blocks },
+      status: "review",
+    })
+    .eq("id", newsletterId);
+  if (updErr) {
+    return { ok: false, error: `DB 저장 실패: ${updErr.message}` };
+  }
+
+  await logAudit({
+    adminId: admin.id,
+    action: "newsletter.move_block",
+    entity: "newsletter",
+    entityId: newsletterId,
+    metadata: { from: blockIndex, to: swapWith },
+  });
+
+  revalidatePath(`/newsletters/${newsletterId}`);
+  return { ok: true, id: newsletterId, message: "순서가 변경되었습니다." };
 }
