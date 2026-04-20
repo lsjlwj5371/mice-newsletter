@@ -208,6 +208,23 @@ export const consolidatedInsightDataSchema = z
     }
   );
 
+export const eventRadarDataSchema = z.object({
+  englishLabel: z.string(),
+  events: z
+    .array(
+      z.object({
+        categoryTag: z.string(),
+        title: z.string(),
+        dateMeta: z.string(),
+        body: z.string(),
+        whyItMatters: z.string().optional(),
+        sourceUrl: z.string().optional(),
+        imageUrl: z.string().optional(),
+      })
+    )
+    .min(1),
+});
+
 export const blogCardGridDataSchema = z.object({
   englishLabel: z.string(),
   cards: z.array(
@@ -233,6 +250,7 @@ export const BLOCK_DATA_SCHEMAS = {
   editor_take: editorTakeDataSchema,
   groundk_story: groundkStoryDataSchema,
   consolidated_insight: consolidatedInsightDataSchema,
+  event_radar: eventRadarDataSchema,
   blog_card_grid: blogCardGridDataSchema,
 } as const;
 
@@ -293,6 +311,12 @@ const consolidatedInsightBlock = z.object({
   data: consolidatedInsightDataSchema,
 });
 
+const eventRadarBlock = z.object({
+  ...blockBase,
+  type: z.literal("event_radar"),
+  data: eventRadarDataSchema,
+});
+
 const blogCardGridBlock = z.object({
   ...blockBase,
   type: z.literal("blog_card_grid"),
@@ -309,6 +333,7 @@ export const blockInstanceSchema = z.discriminatedUnion("type", [
   editorTakeBlock,
   groundkStoryBlock,
   consolidatedInsightBlock,
+  eventRadarBlock,
   blogCardGridBlock,
 ]);
 

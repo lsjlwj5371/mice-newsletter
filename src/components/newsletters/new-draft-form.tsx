@@ -59,6 +59,14 @@ export function NewDraftForm() {
               b.forcedArticleIds.length > 0
                 ? b.forcedArticleIds
                 : undefined,
+            showFieldBriefing:
+              b.type === "groundk_story"
+                ? b.showFieldBriefing ?? true
+                : undefined,
+            showProjectSketch:
+              b.type === "groundk_story"
+                ? b.showProjectSketch ?? true
+                : undefined,
           })),
         });
 

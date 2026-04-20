@@ -411,6 +411,9 @@ export interface BlockConfigInput {
   /** Admin-picked article IDs for this block. When set, bypass the
    *  category/date partition and pass these exact articles to Claude. */
   forcedArticleIds?: string[];
+  /** groundk_story only — per-part visibility. Default true. */
+  showFieldBriefing?: boolean;
+  showProjectSketch?: boolean;
 }
 
 export interface CreateDraftWithBlocksInput {
@@ -574,6 +577,23 @@ export async function createDraftWithBlocksAction(
     const msg = err instanceof Error ? err.message : String(err);
     return { ok: false, error: `Claude 초안 생성 실패: ${msg}` };
   }
+
+  // Stamp any per-block visibility flags that don't round-trip through
+  // Claude (e.g. groundk_story show toggles) onto the generated blocks.
+  // This runs AFTER generation so Claude's freshly produced data gets
+  // the admin's structural choices layered on top.
+  draftResult.content.blocks = draftResult.content.blocks.map((blk, idx) => {
+    const cfg = input.blocks[idx];
+    if (!cfg || cfg.type !== "groundk_story") return blk;
+    return {
+      ...blk,
+      data: {
+        ...(blk.data as Record<string, unknown>),
+        showFieldBriefing: cfg.showFieldBriefing ?? true,
+        showProjectSketch: cfg.showProjectSketch ?? true,
+      },
+    } as typeof blk;
+  });
 
   // Save
   const { data: inserted, error: insertErr } = await supabase

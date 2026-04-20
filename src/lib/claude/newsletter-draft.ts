@@ -1,6 +1,11 @@
 import { getClaudeClient, DRAFT_MODEL } from "./client";
 import { BLOCK_DATA_SCHEMAS } from "@/lib/validation/newsletter-content";
 import { loadTemplateSettings } from "@/lib/template-settings";
+import {
+  extractUrls,
+  fetchReferences,
+  formatReferencesForPrompt,
+} from "@/lib/fetch-reference";
 import type { Article, ArticleCategory } from "@/lib/validation/rss";
 import type {
   NewsletterContent,
@@ -39,6 +44,7 @@ const CANONICAL_ENGLISH_LABELS: Partial<Record<BlockType, string>> = {
   editor_take: "지금 MICE는",
   groundk_story: "GroundK Story",
   consolidated_insight: "GroundK Insight",
+  event_radar: "Event Radar",
   blog_card_grid: "GroundK Blog",
 };
 
@@ -73,6 +79,14 @@ const BLOCK_SCHEMA_PROMPT: Record<BlockType, string> = {
 - 각 챕터 본문은 **2~4개의 두터운 단락**으로 충분히 깊이 있게 씁니다. 분량이 길어지는 것은 환영합니다 — 얕은 설명을 여러 챕터에 흩뿌리는 것보다 한 챕터를 깊게 파는 편이 낫습니다.
 - closingInsight(\`GroundK Take\`)는 **그 하나의 기사에서 GroundK가 직접 도출한 관점**입니다. 기사 요약 재진술이 아니라, "이 한 건의 소식이 MICE 실무에 어떤 결정을 요구하는가"까지 짚어야 합니다.
 - \`_citedIndices\`는 본문에서 실제로 근거로 삼은 기사 **한 건의 번호**만 담습니다 (예: \`[3]\`). 배경 참고만 한 다른 기사는 포함하지 않습니다.`,
+  event_radar: `{ "englishLabel": "Event Radar", "events": [정확히 2~4개. 각 event = { "categoryTag": "Conference · 아시아 / Expo · 국내 / Workshop · 글로벌 등 (분류 + 지역)", "title": "행사 공식 명칭", "dateMeta": "개최일과 장소를 한 줄로 (예: 2026.06.12 – 14 · 서울 COEX)", "body": "2~3문장. 어떤 행사인지, 누가 주최하는지, 일반 업계인이 왜 놓치기 쉬운지.", "whyItMatters": "(선택) 1문장으로 MICE 실무자가 이 행사를 알아야 할 이유. 생략 가능.", "sourceUrl": "관리자가 제공한 URL 그대로. 없으면 빈 문자열." }] }
+
+## event_radar 전용 지침 (매우 중요)
+- 이 블록의 목적은 **일반 MICE 종사자가 정보에 접근하기 어려운, 개최 예정 행사**를 큐레이션하는 것입니다. 대형·보도량이 많은 행사(예: CES, MWC, WTM 국제관광박람회급)는 **피하고**, 규모는 작더라도 전문성이 높거나 지역 한정·초청제 등 노출이 낮은 행사를 우선합니다.
+- **관리자가 제공한 URL의 실제 본문에 명시된 사실**(명칭·일정·장소·주최)만 그대로 옮겨 쓰십시오. 제공 본문에 없는 세부(참가비, 연사, 프로그램 등)는 추정·생성하지 말고 생략합니다.
+- 제공된 후보 기사에만 근거가 있을 때도 마찬가지로 기사에 명시된 사실만 씁니다.
+- 근거가 부족해 채울 수 없는 행사라면 그 항목은 만들지 말고 개수를 줄이십시오. 2개 미만으로 줄어드는 경우에만 RSS 후보에서 가장 가까운 행사 관련 기사를 한 건 활용합니다.
+- sourceUrl은 반드시 관리자가 붙여 넣은 URL 또는 후보 기사의 url만 씁니다. 임의 URL 생성 금지.`,
   blog_card_grid: `{ "englishLabel": "GroundK Blog", "cards": [2~6개. 각 card = { "label": "Field Note / Project Story / Industry Insight / Tech & MICE 중 하나", "title": "제목", "description": "2~3줄의 설명", "linkUrl": "https://blog.naver.com/groundk" }] }`,
 };
 
@@ -190,6 +204,16 @@ const BLOCK_ARTICLE_POLICY: Record<BlockType, BlockArticlePolicy> = {
     // articles a peer block already claimed. Per-block limits are tuned so
     // news_briefing/tech_signal/etc leave a tail in each category that
     // consolidated_insight can draw on even though it partitions last.
+  },
+  event_radar: {
+    // Upcoming events often show up in news feeds. Admin typically
+    // supplements with direct event-website URLs via instructions/refs,
+    // which the fetcher pulls in as primary evidence.
+    primary: ["news_briefing", "in_out_comparison"],
+    fallback: ["tech_signal"],
+    ignoreDateFilter: false,
+    // 2~4 event cards per issue → 6 candidates is a reasonable buffer.
+    limit: 6,
   },
   blog_card_grid: {
     // Admin-curated external blog cards — no article pool.
@@ -328,6 +352,27 @@ function getPlaceholderData(type: BlockType): unknown {
           text: "우리 관점에서 도출한 결론을 작성하세요.",
         },
       };
+    case "event_radar":
+      return {
+        englishLabel: "Event Radar",
+        events: [
+          {
+            categoryTag: "Conference · 지역",
+            title: "행사 공식 명칭을 입력하세요.",
+            dateMeta: "YYYY.MM.DD · 장소",
+            body: "이 행사가 무엇인지 2~3문장으로 작성하세요.",
+            whyItMatters: "MICE 실무자가 이 행사를 알아야 할 이유 (선택).",
+            sourceUrl: "",
+          },
+          {
+            categoryTag: "Expo · 지역",
+            title: "두 번째 행사 명칭",
+            dateMeta: "YYYY.MM.DD · 장소",
+            body: "행사 설명.",
+            sourceUrl: "",
+          },
+        ],
+      };
     case "blog_card_grid":
       return {
         englishLabel: "GroundK Blog",
@@ -349,6 +394,13 @@ interface BlockGenContext {
   articles: Article[]; // pre-filtered, may be empty
   instructions?: string;
   autoSearch: boolean;
+  /**
+   * Server-fetched text of any URLs found in `instructions` or
+   * `referenceNotes`. When present, Claude is instructed to treat this
+   * as the authoritative source for facts/quotes/numbers from the
+   * admin-supplied links instead of fabricating content.
+   */
+  fetchedReferencesBlock?: string;
 }
 
 function formatArticleForPrompt(a: Article, idx: number): string {
@@ -387,9 +439,11 @@ function buildBlockSystemPrompt(type: BlockType): string {
 - 모든 문자열 값은 위 톤을 따릅니다.
 
 ## 출처 규칙 (매우 중요)
-- 출처(URL, 연구자, 연도 등)는 제공된 후보 기사의 실제 정보에서만 가져옵니다.
-- 제공되지 않은 출처를 **지어내지 마십시오**. 없으면 빈 문자열로 둡니다.
-- 본문에 포함한 주장·수치·인용이 있다면, 그 근거는 반드시 제공된 기사 중 하나여야 합니다.
+- 출처(URL, 연구자, 연도 등)는 제공된 후보 기사 또는 "관리자가 붙여 넣은 링크의 실제 본문"에 있는 내용만 사용합니다.
+- 제공되지 않은 출처·수치·고유명사를 **절대 지어내지 마십시오.** 예시 금지: 제공된 본문에 없는 행사명·개최일·금액·통계·연구자 이름·URL을 추측으로 채우는 행위.
+- 본문에 포함한 주장·수치·인용이 있다면, 그 근거는 반드시 제공된 자료 중 하나여야 합니다.
+- 관리자가 제공한 링크 본문이 있는 경우: 그 링크를 다룰 때는 **링크 본문에 명시된 내용만** 사용합니다. 본문에 "2026년 6월 서울 개최" 같은 문장이 있으면 그대로 쓰되, 본문에 없는 세부(예: 참가비, 연사 명단)는 추정·생성하지 말고 생략합니다.
+- 근거가 부족할 때는 내용을 지어내는 대신 해당 필드를 짧게 두거나, 더 모호한 일반 맥락(예: "관련 보도가 이어지고 있습니다") 수준으로 서술합니다.
 
 ## 인용 추적 (필수)
 - 출력 JSON의 **최상위에 \`_citedIndices\` 배열**을 반드시 포함합니다.
@@ -440,6 +494,21 @@ function buildBlockUserMessage(
     parts.push("");
   }
 
+  if (
+    ctx.fetchedReferencesBlock &&
+    ctx.fetchedReferencesBlock.trim().length > 0
+  ) {
+    parts.push(
+      `# 관리자가 붙여 넣은 링크의 실제 본문 (최우선 근거)`
+    );
+    parts.push(
+      `아래 [R1], [R2] 본문은 관리자가 "지시" 또는 "레퍼런스"에 붙여 넣은 URL에서 서버가 직접 받아온 실제 내용입니다. **이 링크들의 내용을 이야기할 때는 반드시 여기 본문에서 발견되는 사실·수치·인용만 사용하십시오.** 본문에 없는 내용은 절대로 추측하지 말고, 본문에 없으면 해당 부분을 비우거나 일반적인 맥락으로 돌려 쓰십시오.`
+    );
+    parts.push("");
+    parts.push(ctx.fetchedReferencesBlock);
+    parts.push("");
+  }
+
   parts.push(
     `# 출력\n위 시스템 프롬프트의 스키마대로 단일 JSON 객체만 출력. 설명·마크다운 금지.`
   );
@@ -474,6 +543,7 @@ const REFERENCE_REQUIRED_BLOCKS: Set<BlockType> = new Set([
   "theory_to_field",
   "stat_feature",
   "consolidated_insight",
+  "event_radar",
 ]);
 
 /**
@@ -517,12 +587,18 @@ async function generateBlockData(
     ctx = { ...ctx, autoSearch: false, articles: [] };
   }
 
-  // Reference-required blocks need at least one article when autoSearch is on.
-  // Without references, we refuse to fabricate and return placeholder.
+  const hasFetchedRefs = Boolean(
+    ctx.fetchedReferencesBlock && ctx.fetchedReferencesBlock.trim().length > 0
+  );
+
+  // Reference-required blocks need SOME source material when autoSearch is on.
+  // Acceptable sources: the RSS article pool OR admin-pasted URLs that the
+  // server was able to fetch. Without either, we refuse to fabricate.
   if (
     ctx.autoSearch &&
     REFERENCE_REQUIRED_BLOCKS.has(type) &&
-    ctx.articles.length === 0
+    ctx.articles.length === 0 &&
+    !hasFetchedRefs
   ) {
     return {
       ok: true,
@@ -531,8 +607,14 @@ async function generateBlockData(
     };
   }
 
-  // Fast path: autoSearch=false with no instructions → skip the API call entirely
-  if (!ctx.autoSearch && (!ctx.instructions || ctx.instructions.trim() === "")) {
+  // Fast path: autoSearch=false with no instructions AND no fetched links →
+  // skip the API call entirely. If either is present we let Claude run so
+  // admin-supplied material is actually used.
+  if (
+    !ctx.autoSearch &&
+    (!ctx.instructions || ctx.instructions.trim() === "") &&
+    !hasFetchedRefs
+  ) {
     return {
       ok: true,
       data: applyCanonicalLabel(type, getPlaceholderData(type)),
@@ -628,12 +710,20 @@ export interface RegenerateBlockResult {
 export async function regenerateSingleBlock(
   input: RegenerateBlockInput
 ): Promise<RegenerateBlockResult> {
+  // Scan admin-supplied text for URLs and pull their real bodies so
+  // Claude can ground on them instead of hallucinating.
+  const urls = extractUrls(input.instructions, input.referenceNotes);
+  const fetched = urls.length > 0 ? await fetchReferences(urls) : [];
+  const fetchedReferencesBlock =
+    fetched.length > 0 ? formatReferencesForPrompt(fetched) ?? undefined : undefined;
+
   const ctx: BlockGenContext = {
     issueLabel: input.issueLabel,
     referenceNotes: input.referenceNotes,
     articles: input.autoSearch ? input.articles : [],
     instructions: input.instructions,
     autoSearch: input.autoSearch,
+    fetchedReferencesBlock,
   };
 
   const result = await generateBlockData(input.type, ctx);
@@ -897,6 +987,17 @@ export async function generateNewsletterDraft(
     externallyClaimed
   );
 
+  // Collect every URL the admin pasted across the global reference notes
+  // and per-block instructions, fetch them once in parallel, and cache
+  // results so blocks that cite the same link reuse one fetch.
+  const allUrls = extractUrls(
+    input.referenceNotes,
+    ...blockTypes.map((t) => instructionMap.get(t)?.instructions ?? null)
+  );
+  const fetchedRefs =
+    allUrls.length > 0 ? await fetchReferences(allUrls) : [];
+  const fetchedByUrl = new Map(fetchedRefs.map((r) => [r.url, r]));
+
   const perBlockContexts = blockTypes.map((type) => {
     const cfg = instructionMap.get(type);
     const autoSearch = cfg?.autoSearch ?? true;
@@ -911,12 +1012,25 @@ export async function generateNewsletterDraft(
       }
     }
 
+    // Per-block fetched refs = URLs present in THIS block's instructions
+    // OR in the global reference notes (so every block sees globally-
+    // supplied links). Preserves [R1]/[R2] ordering from extractUrls.
+    const blockUrls = extractUrls(cfg?.instructions, input.referenceNotes);
+    const blockRefs = blockUrls
+      .map((u) => fetchedByUrl.get(u))
+      .filter((r): r is NonNullable<typeof r> => !!r);
+    const fetchedReferencesBlock =
+      blockRefs.length > 0
+        ? formatReferencesForPrompt(blockRefs) ?? undefined
+        : undefined;
+
     const ctx: BlockGenContext = {
       issueLabel: input.issueLabel,
       referenceNotes: input.referenceNotes,
       articles,
       instructions: cfg?.instructions,
       autoSearch,
+      fetchedReferencesBlock,
     };
     return { type, ctx, cfg };
   });

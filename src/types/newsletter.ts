@@ -44,6 +44,7 @@ export const BLOCK_TYPES = [
   "editor_take",
   "groundk_story",
   "consolidated_insight",
+  "event_radar",
   "blog_card_grid",
 ] as const;
 
@@ -59,6 +60,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   editor_take: "지금 MICE는",
   groundk_story: "그라운드케이 스토리",
   consolidated_insight: "그라운드케이 인사이트 (단일 주제 심층 분석)",
+  event_radar: "이달의 주목할 행사 (Event Radar)",
   blog_card_grid: "블로그 카드 그리드",
 };
 
@@ -72,6 +74,7 @@ export const BLOCK_DESCRIPTIONS: Record<BlockType, string> = {
   editor_take: "이달의 이슈 칼럼 + 풀아웃 인용",
   groundk_story: "Field Briefing(짧은 현장 브리핑) + Project Sketch(프로젝트 소개)",
   consolidated_insight: "하나의 주제를 3~5개 챕터로 나눠 기승전결로 심층 분석. 분량 길게 허용",
+  event_radar: "업계 관계자도 놓치기 쉬운 개최 예정 행사 2~4건 소개 (URL 붙여넣으면 실제 본문 반영)",
   blog_card_grid: "외부 블로그 글을 카드로 소개 (2~6개)",
 };
 
@@ -89,6 +92,10 @@ export const BLOCK_NEEDS_RESEARCH: Record<BlockType, boolean> = {
   editor_take: false,
   groundk_story: false,
   consolidated_insight: true,
+  // event_radar draws on admin-pasted event URLs more than from the RSS
+  // pool, but we default autoSearch true so Claude can surface anything
+  // event-related from the news categories when available.
+  event_radar: true,
   blog_card_grid: false,
 };
 
@@ -107,6 +114,7 @@ export type BlockInstance =
   | EditorTakeBlock
   | GroundkStoryBlock
   | ConsolidatedInsightBlock
+  | EventRadarBlock
   | BlogCardGridBlock;
 
 interface BlockBase {
@@ -328,6 +336,30 @@ export interface ConsolidatedInsightBlock extends BlockBase {
     imageLayout?: ImageLayout;
     // ── Legacy multi-theme field (renderer falls back to this if chapters absent) ──
     parts?: ConsolidatedInsightPart[];
+  };
+}
+
+export interface EventRadarItem {
+  /** Short tag, e.g. "Conference · 아시아" or "Expo · 국내". */
+  categoryTag: string;
+  /** Event name as it should be published. */
+  title: string;
+  /** Formatted date + place, e.g. "2026.06.12 – 14 · 서울 COEX". */
+  dateMeta: string;
+  /** 2~3 sentence description — what it is, who runs it, why it's notable. */
+  body: string;
+  /** Optional 1-sentence "why MICE folks should care" takeaway. */
+  whyItMatters?: string;
+  /** Optional official event URL (published in the rendered card). */
+  sourceUrl?: string;
+  imageUrl?: string;
+}
+
+export interface EventRadarBlock extends BlockBase {
+  type: "event_radar";
+  data: {
+    englishLabel: string; // "Event Radar"
+    events: EventRadarItem[]; // 2~4
   };
 }
 

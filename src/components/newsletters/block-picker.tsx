@@ -35,6 +35,12 @@ export interface BlockConfig {
    * partition. Empty = automatic selection.
    */
   forcedArticleIds: string[];
+  /**
+   * groundk_story only — per-part visibility. Default true. When false,
+   * that sub-section is not rendered on the final issue.
+   */
+  showFieldBriefing?: boolean;
+  showProjectSketch?: boolean;
 }
 
 interface Props {
@@ -68,6 +74,9 @@ export function BlockPicker({ blocks, onChange }: Props) {
       // groundk_story is admin-only — force autoSearch off
       autoSearch: type === "groundk_story" ? false : BLOCK_NEEDS_RESEARCH[type],
       forcedArticleIds: [],
+      ...(type === "groundk_story"
+        ? { showFieldBriefing: true, showProjectSketch: true }
+        : {}),
     };
     onChange([...blocks, newBlock]);
   }
@@ -259,12 +268,51 @@ export function BlockPicker({ blocks, onChange }: Props) {
                   </p>
 
                   {block.type === "groundk_story" ? (
-                    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                      이 블록은 <strong>관리자 레퍼런스 전용</strong>입니다. 자동
-                      검색이 적용되지 않으며, 아래 "추가 지시" 칸에 현장 브리핑과
-                      프로젝트 자료를 직접 제공해 주세요. Claude는 제공된 자료를
-                      분석하여 편집자 톤으로 다듬어 드립니다.
-                    </div>
+                    <>
+                      <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        이 블록은 <strong>관리자 레퍼런스 전용</strong>입니다. 자동
+                        검색이 적용되지 않으며, 아래 &quot;추가 지시&quot; 칸에 현장
+                        브리핑과 프로젝트 자료를 직접 제공해 주세요. Claude는
+                        제공된 자료를 분석하여 편집자 톤으로 다듬어 드립니다.
+                      </div>
+                      <div className="rounded-md border border-border bg-muted/30 px-3 py-2 space-y-1.5">
+                        <Label className="text-xs font-semibold">
+                          포함할 파트
+                        </Label>
+                        <div className="flex items-center gap-4 flex-wrap">
+                          <label className="inline-flex items-center gap-2 cursor-pointer text-xs">
+                            <input
+                              type="checkbox"
+                              checked={block.showFieldBriefing !== false}
+                              onChange={(e) =>
+                                updateBlock(i, {
+                                  showFieldBriefing: e.target.checked,
+                                })
+                              }
+                              className="h-4 w-4 rounded border-border"
+                            />
+                            <span>현장 브리핑 (Field Briefing)</span>
+                          </label>
+                          <label className="inline-flex items-center gap-2 cursor-pointer text-xs">
+                            <input
+                              type="checkbox"
+                              checked={block.showProjectSketch !== false}
+                              onChange={(e) =>
+                                updateBlock(i, {
+                                  showProjectSketch: e.target.checked,
+                                })
+                              }
+                              className="h-4 w-4 rounded border-border"
+                            />
+                            <span>프로젝트 스케치 (Project Sketch)</span>
+                          </label>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          한 파트만 운용하고 싶을 때 체크를 해제하세요. 두 파트를
+                          모두 해제하면 해당 블록을 선택하지 않은 것과 같습니다.
+                        </p>
+                      </div>
+                    </>
                   ) : (
                     <div className="flex items-center gap-2">
                       <input
@@ -367,6 +415,8 @@ function instructionPlaceholder(type: BlockType): string {
       return "예: Project Sketch는 지난 주 COS 패션쇼 프로젝트로. Field Briefing은 공항 의전 지연 이슈";
     case "consolidated_insight":
       return "예: 3개 파트로 — 인바운드 변화 / AI 자동화 / ESG 압박";
+    case "event_radar":
+      return "예: 이달 행사 URL 2~3개 붙여주세요. https://… / https://…  (내용은 링크의 실제 본문에서만 가져옵니다)";
     case "blog_card_grid":
       return "예: 4개 카드 — Field Note, Project Story, Industry Insight, Tech & MICE";
   }
@@ -383,5 +433,5 @@ export const DEFAULT_BLOCK_CONFIGS: BlockConfig[] = [
   { type: "tech_signal", instructions: "", autoSearch: true, forcedArticleIds: [] },
   { type: "theory_to_field", instructions: "", autoSearch: true, forcedArticleIds: [] },
   { type: "editor_take", instructions: "", autoSearch: false, forcedArticleIds: [] },
-  { type: "groundk_story", instructions: "", autoSearch: false, forcedArticleIds: [] },
+  { type: "groundk_story", instructions: "", autoSearch: false, forcedArticleIds: [], showFieldBriefing: true, showProjectSketch: true },
 ];

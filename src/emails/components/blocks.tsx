@@ -40,6 +40,7 @@ import type {
   EditorTakeBlock,
   GroundkStoryBlock,
   ConsolidatedInsightBlock,
+  EventRadarBlock,
   BlogCardGridBlock,
   ImageLayout,
 } from "@/types/newsletter";
@@ -1529,6 +1530,152 @@ function ConsolidatedInsight({
 }
 
 // ─────────────────────────────────────────────
+// BLOCK: event_radar — upcoming events admins curate for the issue
+// ─────────────────────────────────────────────
+function EventRadar({
+  block,
+  index,
+}: {
+  block: EventRadarBlock;
+  index: string;
+}) {
+  return (
+    <MajorSection>
+      <SectionLabel index={index} label={block.data.englishLabel} />
+      {block.data.events.map((ev, i) => (
+        <Section
+          key={i}
+          style={{
+            marginBottom: i === block.data.events.length - 1 ? "0" : "24px",
+            paddingBottom:
+              i === block.data.events.length - 1 ? "0" : "24px",
+            borderBottom:
+              i === block.data.events.length - 1
+                ? "none"
+                : `1px solid ${colors.borderSoft}`,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: "10px",
+              fontWeight: 700,
+              letterSpacing: "2px",
+              color: colors.accentGold,
+              textTransform: "uppercase",
+              margin: "0 0 8px 0",
+            }}
+          >
+            {ev.categoryTag}
+          </Text>
+          <Heading
+            as="h3"
+            style={{
+              fontSize: "18px",
+              fontWeight: 700,
+              color: colors.textHeadline,
+              lineHeight: 1.4,
+              letterSpacing: "-0.2px",
+              margin: "0 0 6px 0",
+            }}
+          >
+            {ev.title}
+          </Heading>
+          <Text
+            style={{
+              fontSize: "12px",
+              color: colors.textMuted,
+              letterSpacing: "0.3px",
+              margin: "0 0 12px 0",
+            }}
+          >
+            📅 {ev.dateMeta}
+          </Text>
+          {ev.imageUrl && (
+            <Img
+              src={ev.imageUrl}
+              alt=""
+              style={{
+                display: "block",
+                width: "100%",
+                maxWidth: "100%",
+                height: "auto",
+                borderRadius: "8px",
+                margin: "0 0 14px 0",
+              }}
+            />
+          )}
+          <Text
+            style={{
+              fontSize: "13.5px",
+              color: colors.textBody,
+              lineHeight: 1.85,
+              fontWeight: 300,
+              margin: "0 0 12px 0",
+            }}
+            dangerouslySetInnerHTML={{ __html: renderInlineHtml(ev.body) }}
+          />
+          {ev.whyItMatters && (
+            <Section
+              style={{
+                backgroundColor: colors.bgInsightSoft,
+                borderLeft: `3px solid ${colors.brandNavy}`,
+                borderRadius: "0 6px 6px 0",
+                padding: "10px 14px",
+                marginTop: "4px",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  letterSpacing: "1.5px",
+                  color: colors.brandNavy,
+                  textTransform: "uppercase",
+                  opacity: 0.7,
+                  margin: "0 0 4px 0",
+                }}
+              >
+                왜 주목해야 하나
+              </Text>
+              <Text
+                style={{
+                  fontSize: "12.5px",
+                  color: colors.textBody,
+                  lineHeight: 1.7,
+                  fontWeight: 300,
+                  margin: 0,
+                }}
+                dangerouslySetInnerHTML={{
+                  __html: renderInlineHtml(ev.whyItMatters),
+                }}
+              />
+            </Section>
+          )}
+          {ev.sourceUrl && (
+            <Text
+              style={{
+                fontSize: "11px",
+                margin: "10px 0 0 0",
+              }}
+            >
+              <Link
+                href={ev.sourceUrl}
+                style={{
+                  color: colors.brandNavy,
+                  textDecoration: "underline",
+                }}
+              >
+                행사 상세 보기 →
+              </Link>
+            </Text>
+          )}
+        </Section>
+      ))}
+    </MajorSection>
+  );
+}
+
+// ─────────────────────────────────────────────
 // BLOCK: blog_card_grid (Ver.2 2x2 cards)
 // ─────────────────────────────────────────────
 function BlogCardGrid({
@@ -1655,6 +1802,8 @@ export function BlockRenderer({
       return <GroundkStory block={block} index={index} />;
     case "consolidated_insight":
       return <ConsolidatedInsight block={block} index={index} />;
+    case "event_radar":
+      return <EventRadar block={block} index={index} />;
     case "blog_card_grid":
       return <BlogCardGrid block={block} index={index} />;
     default: {
