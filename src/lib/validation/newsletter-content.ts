@@ -158,6 +158,8 @@ export const groundkStoryDataSchema = z.object({
     imageUrl: z.string().optional(),
     imageLayout: imageLayoutSchema,
   }),
+  showFieldBriefing: z.boolean().optional(),
+  showProjectSketch: z.boolean().optional(),
 });
 
 export const consolidatedInsightDataSchema = z

@@ -1038,11 +1038,16 @@ function GroundkStory({
   block: GroundkStoryBlock;
   index: string;
 }) {
+  // Missing flag is treated as "show" so pre-existing drafts keep both parts.
+  const showFieldBriefing = block.data.showFieldBriefing !== false;
+  const showProjectSketch = block.data.showProjectSketch !== false;
+
   return (
     <MajorSection noBorder>
       <SectionLabel index={index} label={block.data.englishLabel} />
 
       {/* Field Briefing — light tinted card */}
+      {showFieldBriefing && (
       <Section
         style={{
           backgroundColor: colors.bgFieldBriefing,
@@ -1104,8 +1109,10 @@ function GroundkStory({
           </ImageWithBody>
         </Section>
       </Section>
+      )}
 
       {/* Project Sketch — light card */}
+      {showProjectSketch && (
       <Section
         style={{
           backgroundColor: colors.bgWhite,
@@ -1216,6 +1223,7 @@ function GroundkStory({
           </Section>
         )}
       </Section>
+      )}
     </MajorSection>
   );
 }

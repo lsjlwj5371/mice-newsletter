@@ -285,6 +285,11 @@ export interface GroundkStoryBlock extends BlockBase {
     englishLabel: string; // "GroundK Story"
     fieldBriefing: FieldBriefingPart;
     projectSketch: ProjectSketchPart;
+    /** When false, the Field Briefing sub-section is hidden from render.
+     *  Missing is treated as true (shown) for backward compatibility. */
+    showFieldBriefing?: boolean;
+    /** When false, the Project Sketch sub-section is hidden. Default true. */
+    showProjectSketch?: boolean;
   };
 }
 

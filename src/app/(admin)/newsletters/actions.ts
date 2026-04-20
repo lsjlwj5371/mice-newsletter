@@ -736,6 +736,105 @@ export async function setBlockImageAction(
 }
 
 // ─────────────────────────────────────────────
+// Toggle Field Briefing / Project Sketch visibility on a groundk_story block
+// ─────────────────────────────────────────────
+
+export interface SetGroundkStoryVisibilityInput {
+  newsletterId: string;
+  blockIndex: number;
+  part: "fieldBriefing" | "projectSketch";
+  visible: boolean;
+}
+
+export async function setGroundkStoryVisibilityAction(
+  input: SetGroundkStoryVisibilityInput
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const supabase = createAdminClient();
+
+  const { data: row, error: fetchErr } = await supabase
+    .from("newsletters")
+    .select("id, status, content_json")
+    .eq("id", input.newsletterId)
+    .single();
+  if (fetchErr || !row) {
+    return { ok: false, error: "원본 호를 찾을 수 없습니다." };
+  }
+  if (row.status === "sent") {
+    return { ok: false, error: "이미 발송된 호는 수정할 수 없습니다." };
+  }
+
+  const content = row.content_json as NewsletterContent;
+  if (
+    !content.blocks ||
+    input.blockIndex < 0 ||
+    input.blockIndex >= content.blocks.length
+  ) {
+    return { ok: false, error: "해당 블록을 찾을 수 없습니다." };
+  }
+
+  const block = content.blocks[input.blockIndex];
+  if (block.type !== "groundk_story") {
+    return {
+      ok: false,
+      error: "GroundK Story 블록에서만 사용 가능합니다.",
+    };
+  }
+
+  // Refuse to hide both at once — the block would render empty (just the
+  // section label). Admin can remove the block entirely via the block
+  // delete button instead.
+  const otherPart =
+    input.part === "fieldBriefing" ? "showProjectSketch" : "showFieldBriefing";
+  const otherVisible =
+    (block.data as Record<string, unknown>)[otherPart] !== false;
+  if (!input.visible && !otherVisible) {
+    return {
+      ok: false,
+      error:
+        "두 파트 모두 숨길 수 없습니다. 블록 자체를 제거하려면 상단의 ✕ 버튼을 사용하세요.",
+    };
+  }
+
+  const flagKey =
+    input.part === "fieldBriefing"
+      ? "showFieldBriefing"
+      : "showProjectSketch";
+  const updatedBlock = {
+    ...block,
+    data: { ...block.data, [flagKey]: input.visible },
+  } as NewsletterContent["blocks"][number];
+
+  const updatedBlocks = [...content.blocks];
+  updatedBlocks[input.blockIndex] = updatedBlock;
+
+  const { error: updErr } = await supabase
+    .from("newsletters")
+    .update({
+      content_json: { ...content, blocks: updatedBlocks },
+    })
+    .eq("id", input.newsletterId);
+  if (updErr) {
+    return { ok: false, error: `DB 저장 실패: ${updErr.message}` };
+  }
+
+  await logAudit({
+    adminId: admin.id,
+    action: "newsletter.groundk_story_visibility",
+    entity: "newsletter",
+    entityId: input.newsletterId,
+    metadata: {
+      blockIndex: input.blockIndex,
+      part: input.part,
+      visible: input.visible,
+    },
+  });
+
+  revalidatePath(`/newsletters/${input.newsletterId}`);
+  return { ok: true, id: input.newsletterId };
+}
+
+// ─────────────────────────────────────────────
 // SET IMAGE LAYOUT on a specific block
 // Swaps only the imageLayout field on block.data (or on the groundk_story
 // sub-slot). Leaves imageUrl intact.

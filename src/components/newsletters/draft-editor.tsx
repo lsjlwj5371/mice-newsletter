@@ -12,6 +12,7 @@ import {
   addBlockAction,
   removeBlockAction,
   moveBlockAction,
+  setGroundkStoryVisibilityAction,
 } from "@/app/(admin)/newsletters/actions";
 import { BlockImageSlot } from "./block-image-slot";
 import { SendPanel } from "./send-panel";
@@ -783,6 +784,20 @@ function BlockCard({
           {/* Image upload slot(s) */}
           {block.type === "groundk_story" ? (
             <div className="space-y-4">
+              <GroundkStoryVisibilityToggles
+                newsletterId={newsletterId}
+                blockIndex={blockIndex}
+                showFieldBriefing={
+                  (block.data as { showFieldBriefing?: boolean })
+                    .showFieldBriefing !== false
+                }
+                showProjectSketch={
+                  (block.data as { showProjectSketch?: boolean })
+                    .showProjectSketch !== false
+                }
+                disabled={pending || disabled}
+                onDone={onDone}
+              />
               <BlockImageSlot
                 newsletterId={newsletterId}
                 blockIndex={blockIndex}
@@ -917,6 +932,86 @@ function BlockCard({
         </div>
       )}
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// GroundkStory part toggles — hide / show Field Briefing and Project Sketch
+// independently. Server-side blocks hiding BOTH to keep the block meaningful.
+// ─────────────────────────────────────────────
+function GroundkStoryVisibilityToggles({
+  newsletterId,
+  blockIndex,
+  showFieldBriefing,
+  showProjectSketch,
+  disabled,
+  onDone,
+}: {
+  newsletterId: string;
+  blockIndex: number;
+  showFieldBriefing: boolean;
+  showProjectSketch: boolean;
+  disabled: boolean;
+  onDone: () => void;
+}) {
+  const [pending, startTransition] = React.useTransition();
+  const [msg, setMsg] = React.useState<string | null>(null);
+
+  function toggle(
+    part: "fieldBriefing" | "projectSketch",
+    next: boolean
+  ) {
+    setMsg(null);
+    startTransition(async () => {
+      const res = await setGroundkStoryVisibilityAction({
+        newsletterId,
+        blockIndex,
+        part,
+        visible: next,
+      });
+      if (res.ok) {
+        onDone();
+      } else {
+        setMsg(res.error);
+      }
+    });
+  }
+
+  return (
+    <section className="rounded-md border border-border bg-background p-3 space-y-2">
+      <Label className="text-xs font-semibold">표시할 파트</Label>
+      <p className="text-[11px] text-muted-foreground">
+        둘 중 한 파트만 포함하고 싶을 때 체크를 해제하세요. 해제된 파트는
+        본문·미리보기에서 사라지지만 입력한 내용은 보존됩니다.
+      </p>
+      <div className="flex items-center gap-4 flex-wrap">
+        <label className="inline-flex items-center gap-2 cursor-pointer text-xs">
+          <input
+            type="checkbox"
+            checked={showFieldBriefing}
+            onChange={(e) => toggle("fieldBriefing", e.target.checked)}
+            disabled={pending || disabled}
+            className="h-4 w-4 rounded border-border"
+          />
+          <span>현장 브리핑 (Field Briefing)</span>
+        </label>
+        <label className="inline-flex items-center gap-2 cursor-pointer text-xs">
+          <input
+            type="checkbox"
+            checked={showProjectSketch}
+            onChange={(e) => toggle("projectSketch", e.target.checked)}
+            disabled={pending || disabled}
+            className="h-4 w-4 rounded border-border"
+          />
+          <span>프로젝트 스케치 (Project Sketch)</span>
+        </label>
+      </div>
+      {msg && (
+        <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] text-rose-700">
+          {msg}
+        </div>
+      )}
+    </section>
   );
 }
 
