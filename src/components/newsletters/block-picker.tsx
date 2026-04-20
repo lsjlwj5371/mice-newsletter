@@ -12,6 +12,7 @@ import {
   BLOCK_NEEDS_RESEARCH,
   type BlockType,
 } from "@/types/newsletter";
+import { ArticlePicker } from "@/components/articles/article-picker";
 
 /**
  * A single entry in the block picker state. Represents one block that will
@@ -28,6 +29,12 @@ export interface BlockConfig {
    * the admin will replace manually in the draft editor.
    */
   autoSearch: boolean;
+  /**
+   * Admin-picked article IDs. When non-empty, those exact articles are
+   * passed to Claude for this block — bypassing the normal category/date
+   * partition. Empty = automatic selection.
+   */
+  forcedArticleIds: string[];
 }
 
 interface Props {
@@ -39,12 +46,28 @@ export function BlockPicker({ blocks, onChange }: Props) {
   const selectedTypes = new Set(blocks.map((b) => b.type));
   const availableTypes = BLOCK_TYPES.filter((t) => !selectedTypes.has(t));
 
+  /**
+   * Map of articleId → block label that already uses it (first-match wins).
+   * Passed to every block's ArticlePicker so admin sees where each article
+   * is currently assigned and can avoid accidental duplicates.
+   */
+  const usageByArticleId = React.useMemo(() => {
+    const map = new Map<string, string>();
+    blocks.forEach((b) => {
+      for (const id of b.forcedArticleIds ?? []) {
+        if (!map.has(id)) map.set(id, BLOCK_LABELS[b.type]);
+      }
+    });
+    return map;
+  }, [blocks]);
+
   function addBlock(type: BlockType) {
     const newBlock: BlockConfig = {
       type,
       instructions: "",
       // groundk_story is admin-only — force autoSearch off
       autoSearch: type === "groundk_story" ? false : BLOCK_NEEDS_RESEARCH[type],
+      forcedArticleIds: [],
     };
     onChange([...blocks, newBlock]);
   }
@@ -267,6 +290,33 @@ export function BlockPicker({ blocks, onChange }: Props) {
                     </div>
                   )}
 
+                  {block.type !== "groundk_story" && block.autoSearch && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">
+                        이 블록에서 사용할 기사 (선택)
+                      </Label>
+                      <div className="mt-1">
+                        <ArticlePicker
+                          value={block.forcedArticleIds}
+                          onChange={(ids) =>
+                            updateBlock(i, { forcedArticleIds: ids })
+                          }
+                          articleUsedBy={Object.fromEntries(
+                            Array.from(usageByArticleId.entries()).filter(
+                              // Hide "used by" badge for articles this block
+                              // itself picked — otherwise every selected chip
+                              // would show a redundant self-reference.
+                              ([id]) => !block.forcedArticleIds.includes(id)
+                            )
+                          )}
+                        />
+                      </div>
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        지정하면 카테고리·기간 필터를 무시하고 이 기사들만 Claude에 전달합니다. 비워두면 자동 선별됩니다.
+                      </p>
+                    </div>
+                  )}
+
                   <div>
                     <Label
                       htmlFor={`inst-${i}`}
@@ -326,12 +376,12 @@ function instructionPlaceholder(type: BlockType): string {
  * Default block selection for the new-draft form — modular Ver.1 layout.
  */
 export const DEFAULT_BLOCK_CONFIGS: BlockConfig[] = [
-  { type: "opening_lede", instructions: "", autoSearch: false },
-  { type: "stat_feature", instructions: "", autoSearch: true },
-  { type: "news_briefing", instructions: "", autoSearch: true },
-  { type: "in_out_comparison", instructions: "", autoSearch: true },
-  { type: "tech_signal", instructions: "", autoSearch: true },
-  { type: "theory_to_field", instructions: "", autoSearch: true },
-  { type: "editor_take", instructions: "", autoSearch: false },
-  { type: "groundk_story", instructions: "", autoSearch: false },
+  { type: "opening_lede", instructions: "", autoSearch: false, forcedArticleIds: [] },
+  { type: "stat_feature", instructions: "", autoSearch: true, forcedArticleIds: [] },
+  { type: "news_briefing", instructions: "", autoSearch: true, forcedArticleIds: [] },
+  { type: "in_out_comparison", instructions: "", autoSearch: true, forcedArticleIds: [] },
+  { type: "tech_signal", instructions: "", autoSearch: true, forcedArticleIds: [] },
+  { type: "theory_to_field", instructions: "", autoSearch: true, forcedArticleIds: [] },
+  { type: "editor_take", instructions: "", autoSearch: false, forcedArticleIds: [] },
+  { type: "groundk_story", instructions: "", autoSearch: false, forcedArticleIds: [] },
 ];

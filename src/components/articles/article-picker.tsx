@@ -29,6 +29,14 @@ interface Props {
    * OTHER blocks in the same newsletter).
    */
   excludeIds?: string[];
+  /**
+   * Map of articleId → human-readable block/section label for articles
+   * that are already in use elsewhere in the same newsletter. Shown as
+   * a warning badge next to the article row and as a hint on the chip.
+   * Articles in the map are NOT filtered out — admin may intentionally
+   * reuse — but the badge makes the duplication visible.
+   */
+  articleUsedBy?: Record<string, string>;
   disabled?: boolean;
   /** Trigger button label. Defaults to a simple "기사 선택". */
   triggerLabel?: string;
@@ -47,6 +55,7 @@ export function ArticlePicker({
   onChange,
   defaultCategory,
   excludeIds,
+  articleUsedBy,
   disabled,
   triggerLabel,
 }: Props) {
@@ -165,15 +174,30 @@ export function ArticlePicker({
         <div className="mt-2 flex flex-wrap gap-1.5">
           {value.map((id) => {
             const a = picked.get(id);
+            const usedBy = articleUsedBy?.[id];
             return (
               <span
                 key={id}
-                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1 text-[11px]"
-                title={a?.title ?? id}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px]",
+                  usedBy
+                    ? "border-amber-300 bg-amber-50"
+                    : "border-border bg-muted/40"
+                )}
+                title={
+                  usedBy
+                    ? `${a?.title ?? id} (이미 "${usedBy}" 섹션에서 사용 중)`
+                    : a?.title ?? id
+                }
               >
                 <span className="max-w-[280px] truncate">
                   {a?.title ?? `${id.slice(0, 8)}…`}
                 </span>
+                {usedBy && (
+                  <span className="text-[10px] text-amber-700 shrink-0">
+                    · {usedBy}
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -269,6 +293,7 @@ export function ArticlePicker({
               )}
               {articles.map((a) => {
                 const isChecked = value.includes(a.id);
+                const usedBy = articleUsedBy?.[a.id];
                 return (
                   <label
                     key={a.id}
@@ -276,6 +301,8 @@ export function ArticlePicker({
                       "flex items-start gap-3 p-3 rounded-md border cursor-pointer transition",
                       isChecked
                         ? "border-primary/60 bg-primary/5"
+                        : usedBy
+                        ? "border-amber-200 bg-amber-50/40 hover:bg-amber-50"
                         : "border-border hover:bg-muted/40"
                     )}
                   >
@@ -308,6 +335,11 @@ export function ArticlePicker({
                           </Badge>
                         )}
                         {a.pinned && <Badge variant="active">📌</Badge>}
+                        {usedBy && (
+                          <Badge variant="pending">
+                            ⚠ {usedBy} 섹션 사용 중
+                          </Badge>
+                        )}
                         {a.source && (
                           <span className="text-[11px] text-muted-foreground">
                             {a.source}

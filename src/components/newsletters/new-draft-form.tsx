@@ -55,6 +55,10 @@ export function NewDraftForm() {
             type: b.type,
             instructions: b.instructions.trim() || null,
             autoSearch: b.autoSearch,
+            forcedArticleIds:
+              b.forcedArticleIds.length > 0
+                ? b.forcedArticleIds
+                : undefined,
           })),
         });
 

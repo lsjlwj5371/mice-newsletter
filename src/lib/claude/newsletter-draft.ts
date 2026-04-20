@@ -141,25 +141,30 @@ const BLOCK_ARTICLE_POLICY: Record<BlockType, BlockArticlePolicy> = {
     primary: ["stat_feature", "news_briefing", "tech_signal", "in_out_comparison"],
     fallback: ["theory_to_field", "consolidated_insight"],
     ignoreDateFilter: true,
-    limit: 10,
+    // Output is a single stat + caption → Claude needs ~3 options.
+    limit: 4,
   },
   news_briefing: {
     primary: ["news_briefing"],
     fallback: ["in_out_comparison", "tech_signal"],
     ignoreDateFilter: false,
-    limit: 10,
+    // Output is 3 items. 6 candidates = 2× choice ratio, leaves the rest
+    // of the category pool for consolidated_insight / stat_feature.
+    limit: 6,
   },
   in_out_comparison: {
     primary: ["in_out_comparison"],
     fallback: ["news_briefing"],
     ignoreDateFilter: false,
-    limit: 10,
+    // Output is 2 items (IN + OUT). 5 candidates gives enough to pair.
+    limit: 5,
   },
   tech_signal: {
     primary: ["tech_signal"],
     fallback: ["news_briefing"],
     ignoreDateFilter: false,
-    limit: 10,
+    // Output is 1 topic. 3 candidates = enough to pick the best.
+    limit: 3,
   },
   theory_to_field: {
     // Academic/research material: broaden the pool so Claude has options,
@@ -172,7 +177,9 @@ const BLOCK_ARTICLE_POLICY: Record<BlockType, BlockArticlePolicy> = {
       "consolidated_insight",
     ],
     ignoreDateFilter: true,
-    limit: 15,
+    // Output is 1 topic deep-dive. Broader pool helps surface the right
+    // study, but cap still leaves plenty for other blocks.
+    limit: 6,
   },
   editor_take: {
     // Admin-authored column. Category exists for organization but block
@@ -203,8 +210,10 @@ const BLOCK_ARTICLE_POLICY: Record<BlockType, BlockArticlePolicy> = {
     // dive it, so the pool just needs enough variety for a good choice —
     // not maximal coverage. 6 is a practical sweet spot.
     limit: 6,
-    // Shared-pool block — see sharesPool docs.
-    sharesPool: true,
+    // Exclusive partitioning: synthesis/deep-dive blocks must not re-surface
+    // articles a peer block already claimed. Per-block limits are tuned so
+    // news_briefing/tech_signal/etc leave a tail in each category that
+    // consolidated_insight can draw on even though it partitions last.
   },
   blog_card_grid: {
     // Admin-curated external blog cards — no article pool.
@@ -709,6 +718,15 @@ export interface BlockInstructionEntry {
   type: BlockType;
   instructions?: string;
   autoSearch: boolean;
+  /**
+   * Admin-specified article IDs for this block. When set and non-empty,
+   * bypasses category/date partitioning and uses exactly these articles
+   * as the candidate pool. The caller must also provide `forcedArticles`
+   * (the resolved Article rows) alongside so Claude receives the full
+   * metadata.
+   */
+  forcedArticleIds?: string[];
+  forcedArticles?: Article[];
 }
 
 export interface DraftGenerationInput {
@@ -799,7 +817,14 @@ function getArticlesForBlock(
 export function partitionArticlePools(
   blockTypes: BlockType[],
   articlesByCategory: Record<ArticleCategory, Article[]>,
-  articlesByCategoryAllTime?: Record<ArticleCategory, Article[]>
+  articlesByCategoryAllTime?: Record<ArticleCategory, Article[]>,
+  /**
+   * Article IDs already claimed externally (e.g. by blocks that have
+   * admin-forced article picks). Treated as already-consumed for every
+   * remaining block's partition — prevents the partition from handing
+   * a forced article back to another block too.
+   */
+  externallyClaimed?: Set<string>
 ): Partial<Record<BlockType, Article[]>> {
   // Priority order: narrowest primary first. Ties broken by alphabetical
   // block type to keep partitioning deterministic across runs.
@@ -810,8 +835,12 @@ export function partitionArticlePools(
     return a < b ? -1 : a > b ? 1 : 0;
   });
 
-  const claimedDate = new Set<string>();
-  const claimedAllTime = new Set<string>();
+  // Seed both claimed sets with the externally-claimed IDs. These belong to
+  // blocks that use forced-article picks — we don't know whether those
+  // blocks partition from the date-filtered or all-time pool, so reserve
+  // across both to be safe.
+  const claimedDate = new Set<string>(externallyClaimed ?? []);
+  const claimedAllTime = new Set<string>(externallyClaimed ?? []);
   const pools: Partial<Record<BlockType, Article[]>> = {};
 
   for (const type of order) {
@@ -862,23 +891,50 @@ export async function generateNewsletterDraft(
 
   // Kick off per-block generation in parallel, remembering the article pool
   // used per block so it can be stored for the admin to review.
-  // Partition articles up-front so each block's Claude call sees a
-  // disjoint subset. This prevents the same article ending up in two
-  // blocks' outputs.
+  //
+  // Two-tier candidate resolution:
+  //   1. Blocks with forced-article picks use those exact articles.
+  //      Those IDs are also added to an "externally claimed" set so the
+  //      partition below won't reassign them to another block.
+  //   2. Remaining auto-search blocks go through the usual exclusive
+  //      partition so no article appears in more than one block's pool.
   const autoSearchBlocks = blockTypes.filter((t) => {
     const cfg = instructionMap.get(t);
     return cfg?.autoSearch ?? true;
   });
+
+  const externallyClaimed = new Set<string>();
+  for (const t of autoSearchBlocks) {
+    const cfg = instructionMap.get(t);
+    for (const id of cfg?.forcedArticleIds ?? []) externallyClaimed.add(id);
+  }
+
+  const blocksForPartition = autoSearchBlocks.filter((t) => {
+    const cfg = instructionMap.get(t);
+    return !cfg?.forcedArticleIds || cfg.forcedArticleIds.length === 0;
+  });
+
   const partitioned = partitionArticlePools(
-    autoSearchBlocks,
+    blocksForPartition,
     input.articlesByCategory,
-    input.articlesByCategoryAllTime
+    input.articlesByCategoryAllTime,
+    externallyClaimed
   );
 
   const perBlockContexts = blockTypes.map((type) => {
     const cfg = instructionMap.get(type);
     const autoSearch = cfg?.autoSearch ?? true;
-    const articles = autoSearch ? partitioned[type] ?? [] : [];
+
+    let articles: Article[] = [];
+    if (autoSearch) {
+      const forced = cfg?.forcedArticles ?? [];
+      if (forced.length > 0) {
+        articles = forced;
+      } else {
+        articles = partitioned[type] ?? [];
+      }
+    }
+
     const ctx: BlockGenContext = {
       issueLabel: input.issueLabel,
       referenceNotes: input.referenceNotes,

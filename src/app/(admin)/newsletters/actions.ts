@@ -402,6 +402,9 @@ export interface BlockConfigInput {
   type: BlockType;
   instructions: string | null;
   autoSearch: boolean;
+  /** Admin-picked article IDs for this block. When set, bypass the
+   *  category/date partition and pass these exact articles to Claude. */
+  forcedArticleIds?: string[];
 }
 
 export interface CreateDraftWithBlocksInput {
@@ -511,6 +514,31 @@ export async function createDraftWithBlocksAction(
     }
   }
 
+  // Resolve any admin-forced article picks into full Article rows so
+  // generateNewsletterDraft can pass them through to Claude. Collected
+  // once up-front across all blocks to keep it to a single query.
+  const allForcedIds = Array.from(
+    new Set(
+      input.blocks.flatMap((b) => b.forcedArticleIds ?? []).filter(Boolean)
+    )
+  );
+  const forcedById = new Map<string, Article>();
+  if (allForcedIds.length > 0) {
+    const { data: forcedRows, error: forcedErr } = await supabase
+      .from("articles")
+      .select("*")
+      .in("id", allForcedIds);
+    if (forcedErr) {
+      return {
+        ok: false,
+        error: `지정 기사 조회 실패: ${forcedErr.message}`,
+      };
+    }
+    for (const a of forcedRows ?? []) {
+      forcedById.set(a.id as string, a as Article);
+    }
+  }
+
   // Call Claude
   let draftResult;
   try {
@@ -522,11 +550,19 @@ export async function createDraftWithBlocksAction(
         : undefined,
       referenceNotes: input.referenceNotes ?? undefined,
       blockTypes: input.blocks.map((b) => b.type),
-      blockInstructions: input.blocks.map((b) => ({
-        type: b.type,
-        instructions: b.instructions ?? undefined,
-        autoSearch: b.autoSearch,
-      })),
+      blockInstructions: input.blocks.map((b) => {
+        const forcedIds = (b.forcedArticleIds ?? []).filter(Boolean);
+        const forcedArticles = forcedIds
+          .map((id) => forcedById.get(id))
+          .filter((a): a is Article => !!a);
+        return {
+          type: b.type,
+          instructions: b.instructions ?? undefined,
+          autoSearch: b.autoSearch,
+          forcedArticleIds: forcedIds.length > 0 ? forcedIds : undefined,
+          forcedArticles: forcedArticles.length > 0 ? forcedArticles : undefined,
+        };
+      }),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

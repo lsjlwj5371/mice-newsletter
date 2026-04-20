@@ -320,6 +320,36 @@ function BlockEditorPanel({
   disabled,
   onDone,
 }: BlockEditorPanelProps) {
+  /**
+   * For every referenced article in this newsletter, remember which block
+   * uses it. `articleUsageByBlockIndex[i]` is the usage map EXCLUDING
+   * block i — pass that to each BlockCard's picker so an article the
+   * card itself already uses doesn't show a redundant self-warning.
+   */
+  const { addBlockUsage, perBlockExcluded } = React.useMemo(() => {
+    const fullMap = new Map<string, string>();
+    blocks.forEach((b) => {
+      for (const id of b.referencedArticleIds ?? []) {
+        if (!fullMap.has(id)) fullMap.set(id, BLOCK_LABELS[b.type]);
+      }
+    });
+
+    const addMap: Record<string, string> = {};
+    for (const [id, label] of fullMap) addMap[id] = label;
+
+    const per: Record<number, Record<string, string>> = {};
+    blocks.forEach((b, i) => {
+      const selfIds = new Set(b.referencedArticleIds ?? []);
+      const m: Record<string, string> = {};
+      for (const [id, label] of fullMap) {
+        if (!selfIds.has(id)) m[id] = label;
+      }
+      per[i] = m;
+    });
+
+    return { addBlockUsage: addMap, perBlockExcluded: per };
+  }, [blocks]);
+
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
@@ -334,6 +364,7 @@ function BlockEditorPanel({
         position={0}
         disabled={disabled}
         onDone={onDone}
+        articleUsedBy={addBlockUsage}
       />
 
       {blocks.map((block, i) => (
@@ -346,12 +377,14 @@ function BlockEditorPanel({
             articleMeta={articleMeta}
             disabled={disabled}
             onDone={onDone}
+            articleUsedBy={perBlockExcluded[i] ?? {}}
           />
           <AddBlockInsertionPoint
             newsletterId={newsletterId}
             position={i + 1}
             disabled={disabled}
             onDone={onDone}
+            articleUsedBy={addBlockUsage}
           />
         </React.Fragment>
       ))}
@@ -368,6 +401,8 @@ interface AddBlockInsertionPointProps {
   position: number;
   disabled: boolean;
   onDone: () => void;
+  /** Article usage across sibling blocks — shown as a warning in the picker. */
+  articleUsedBy?: Record<string, string>;
 }
 
 function AddBlockInsertionPoint({
@@ -375,6 +410,7 @@ function AddBlockInsertionPoint({
   position,
   disabled,
   onDone,
+  articleUsedBy,
 }: AddBlockInsertionPointProps) {
   const [open, setOpen] = React.useState(false);
   const [blockType, setBlockType] = React.useState<BlockType>("news_briefing");
@@ -494,6 +530,7 @@ function AddBlockInsertionPoint({
                   value={forcedArticleIds}
                   onChange={setForcedArticleIds}
                   disabled={pending}
+                  articleUsedBy={articleUsedBy}
                 />
               </div>
               <p className="mt-1 text-[11px] text-muted-foreground">
@@ -549,6 +586,8 @@ interface BlockCardProps {
   articleMeta: Record<string, ArticleMetaEntry>;
   disabled: boolean;
   onDone: () => void;
+  /** Articles used by SIBLING blocks — shown as warnings in the picker. */
+  articleUsedBy?: Record<string, string>;
 }
 
 function BlockCard({
@@ -559,6 +598,7 @@ function BlockCard({
   articleMeta,
   disabled,
   onDone,
+  articleUsedBy,
 }: BlockCardProps) {
   const [instructions, setInstructions] = React.useState(
     block.instructions ?? ""
@@ -819,7 +859,7 @@ function BlockCard({
                     value={forcedArticleIds}
                     onChange={setForcedArticleIds}
                     disabled={pending || disabled}
-                    excludeIds={[]}
+                    articleUsedBy={articleUsedBy}
                   />
                 </div>
                 <p className="mt-1 text-[11px] text-muted-foreground">
