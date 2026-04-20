@@ -79,23 +79,32 @@ export function NewsletterHeaderBlock({
         </Text>
       )}
 
-      {/* Wordmark with inline diamond accent */}
+      {/* Wordmark with inline diamond accent. Font size auto-scales by
+          length when the admin hasn't explicitly set wordmarkFontSize —
+          short brand strings like "PIK" render big, longer ones like
+          "MICE 人 Insight" scale down to avoid overflow. */}
       <Section style={{ marginBottom: "10px" }}>
         <Row>
           <Column style={{ verticalAlign: "middle", width: "auto" }}>
             <span
               style={{
                 display: "inline-block",
-                fontSize: "56px",
-                fontWeight: 900,
+                fontSize: `${
+                  content.wordmarkFontSize ??
+                  autoWordmarkFontSize(content.wordmark)
+                }px`,
+                fontWeight: content.wordmarkFontWeight ?? 900,
                 lineHeight: 0.95,
-                color: colors.textHeadline,
-                letterSpacing: "-1px",
+                color: content.wordmarkColor ?? colors.textHeadline,
+                letterSpacing: `${content.wordmarkLetterSpacing ?? -1}px`,
                 fontFamily:
                   "'Pretendard', 'Impact', 'Arial Black', Arial, sans-serif",
               }}
             >
-              {renderWordmarkWithDiamond(content.wordmark)}
+              {renderWordmarkWithDiamond(
+                content.wordmark,
+                content.wordmarkColor
+              )}
             </span>
             <span
               style={{
@@ -165,9 +174,20 @@ export function NewsletterHeaderBlock({
  * heuristic: if the wordmark contains recognized accent letters, color the
  * last one navy. Otherwise render plain.
  */
-function renderWordmarkWithDiamond(wordmark: string): React.ReactNode {
+function renderWordmarkWithDiamond(
+  wordmark: string,
+  customColor?: string
+): React.ReactNode {
   const chars = Array.from(wordmark);
   if (chars.length === 0) return wordmark;
+  // When the admin has chosen an explicit wordmarkColor, honor it across
+  // the entire string — disable the per-character navy accent so the
+  // color choice actually shows through.
+  if (customColor) {
+    return (
+      <span style={{ color: customColor }}>{wordmark}</span>
+    );
+  }
   return chars.map((c, i) => (
     <span
       key={i}
@@ -178,6 +198,21 @@ function renderWordmarkWithDiamond(wordmark: string): React.ReactNode {
       {c}
     </span>
   ));
+}
+
+/**
+ * Pick a sensible default font size based on wordmark length. Keeps the
+ * classic 56px for 1–4 characters ("PIK") and steps down for longer
+ * brand strings so "MICE 人 Insight" doesn't overflow the column.
+ * Admin can always override via wordmarkFontSize on the template.
+ */
+function autoWordmarkFontSize(wordmark: string): number {
+  const len = Array.from(wordmark).length;
+  if (len <= 4) return 56;
+  if (len <= 7) return 44;
+  if (len <= 11) return 34;
+  if (len <= 15) return 28;
+  return 24;
 }
 
 // ─────────────────────────────────────────────

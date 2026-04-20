@@ -16,6 +16,10 @@ const headerSchema = z.object({
   industryTag: z.string(),
   issueMeta: z.string(),
   description: z.string(),
+  wordmarkFontSize: z.number().int().min(10).max(120).optional(),
+  wordmarkColor: z.string().optional(),
+  wordmarkFontWeight: z.number().int().min(100).max(900).optional(),
+  wordmarkLetterSpacing: z.number().optional(),
 });
 
 const referralCtaSchema = z.object({

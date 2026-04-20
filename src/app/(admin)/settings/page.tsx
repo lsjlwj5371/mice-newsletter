@@ -35,6 +35,11 @@ export default async function SettingsPage() {
                 tagline: template.header.tagline,
                 industryTag: template.header.industryTag,
                 description: template.header.description,
+                wordmarkFontSize: template.header.wordmarkFontSize ?? null,
+                wordmarkColor: template.header.wordmarkColor ?? null,
+                wordmarkFontWeight: template.header.wordmarkFontWeight ?? null,
+                wordmarkLetterSpacing:
+                  template.header.wordmarkLetterSpacing ?? null,
               },
               referralCta: template.referralCta,
               footer: {

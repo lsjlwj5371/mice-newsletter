@@ -21,6 +21,12 @@ export interface UpdateTemplateInput {
     tagline: string;
     industryTag: string;
     description: string;
+    /** Optional — when null/undefined, the renderer auto-scales by
+     *  wordmark length. */
+    wordmarkFontSize?: number | null;
+    wordmarkColor?: string | null;
+    wordmarkFontWeight?: number | null;
+    wordmarkLetterSpacing?: number | null;
   };
   referralCta: {
     message: string;
@@ -66,12 +72,46 @@ export async function updateTemplateSettingsAction(
     }
   }
 
+  // Strip optional style fields when empty/null so they don't clutter the
+  // JSON and the renderer's auto-scaling + default color kick in.
+  const cleanedHeader: Record<string, unknown> = {
+    wordmark: input.header.wordmark,
+    tagline: input.header.tagline,
+    industryTag: input.header.industryTag,
+    description: input.header.description,
+  };
+  if (
+    input.header.wordmarkFontSize !== null &&
+    input.header.wordmarkFontSize !== undefined
+  ) {
+    cleanedHeader.wordmarkFontSize = input.header.wordmarkFontSize;
+  }
+  if (
+    input.header.wordmarkColor !== null &&
+    input.header.wordmarkColor !== undefined &&
+    input.header.wordmarkColor.trim() !== ""
+  ) {
+    cleanedHeader.wordmarkColor = input.header.wordmarkColor.trim();
+  }
+  if (
+    input.header.wordmarkFontWeight !== null &&
+    input.header.wordmarkFontWeight !== undefined
+  ) {
+    cleanedHeader.wordmarkFontWeight = input.header.wordmarkFontWeight;
+  }
+  if (
+    input.header.wordmarkLetterSpacing !== null &&
+    input.header.wordmarkLetterSpacing !== undefined
+  ) {
+    cleanedHeader.wordmarkLetterSpacing = input.header.wordmarkLetterSpacing;
+  }
+
   const { error } = await supabase
     .from("template_settings")
     .upsert(
       {
         id: "default",
-        header: input.header,
+        header: cleanedHeader,
         referral_cta: input.referralCta,
         footer: input.footer,
         updated_at: new Date().toISOString(),
@@ -88,7 +128,11 @@ export async function updateTemplateSettingsAction(
   // per-issue fields (header.issueMeta) — everything else is swapped to
   // the new template values. Sent issues are left untouched so the
   // archive reflects the template at send time.
-  const propagated = await propagateTemplateToDrafts(supabase, input);
+  const propagated = await propagateTemplateToDrafts(
+    supabase,
+    cleanedHeader,
+    input
+  );
 
   await logAudit({
     adminId: admin.id,
@@ -122,6 +166,7 @@ export async function updateTemplateSettingsAction(
  */
 async function propagateTemplateToDrafts(
   supabase: ReturnType<typeof createAdminClient>,
+  cleanedHeader: Record<string, unknown>,
   input: UpdateTemplateInput
 ): Promise<{ count: number; error?: string }> {
   try {
@@ -144,12 +189,14 @@ async function propagateTemplateToDrafts(
       if (!content) continue;
 
       // Preserve this draft's issueMeta (per-issue label like "VOL.01 …").
-      // Everything else in the fixed sections is replaced.
+      // Everything else in the fixed sections is replaced. cleanedHeader
+      // already omits unset optional style fields so drafts don't carry
+      // stale wordmarkFontSize/color after admin clears them.
       const issueMeta = content.header?.issueMeta ?? "";
       const nextContent = {
         ...content,
         header: {
-          ...input.header,
+          ...cleanedHeader,
           issueMeta,
         },
         referralCta: {

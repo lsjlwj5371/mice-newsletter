@@ -132,6 +132,149 @@ export function TemplateEditor({ initial }: Props) {
             disabled={pending}
           />
         </div>
+
+        {/* ── Wordmark fine-tuning ─────────────────────────── */}
+        <div className="space-y-3 pt-4 border-t border-border">
+          <div>
+            <Label className="text-xs font-semibold">워드마크 세부 스타일</Label>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              글자 수에 따라 자동으로 조절되지만, 원하는 크기·색상이 있으면 아래에
+              입력하세요. 비워두면 자동으로 처리됩니다.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label
+                htmlFor="wordmarkFontSize"
+                className="text-xs text-muted-foreground"
+              >
+                글자 크기 (px, 10~120)
+              </Label>
+              <Input
+                id="wordmarkFontSize"
+                type="number"
+                min={10}
+                max={120}
+                step={1}
+                value={header.wordmarkFontSize ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setHeader({
+                    ...header,
+                    wordmarkFontSize:
+                      v === "" ? null : Math.max(10, Math.min(120, Number(v))),
+                  });
+                }}
+                disabled={pending}
+                placeholder="자동"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label
+                htmlFor="wordmarkColor"
+                className="text-xs text-muted-foreground"
+              >
+                글자 색상
+              </Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={
+                    header.wordmarkColor && header.wordmarkColor.startsWith("#")
+                      ? header.wordmarkColor
+                      : "#000000"
+                  }
+                  onChange={(e) =>
+                    setHeader({ ...header, wordmarkColor: e.target.value })
+                  }
+                  disabled={pending}
+                  className="h-9 w-10 rounded border border-border cursor-pointer shrink-0 p-0.5"
+                  aria-label="색상 선택"
+                />
+                <Input
+                  id="wordmarkColor"
+                  value={header.wordmarkColor ?? ""}
+                  onChange={(e) =>
+                    setHeader({
+                      ...header,
+                      wordmarkColor: e.target.value || null,
+                    })
+                  }
+                  disabled={pending}
+                  placeholder="#111111 (비워두면 기본 색)"
+                  className="flex-1"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label
+                htmlFor="wordmarkFontWeight"
+                className="text-xs text-muted-foreground"
+              >
+                글자 굵기 (100~900)
+              </Label>
+              <Input
+                id="wordmarkFontWeight"
+                type="number"
+                min={100}
+                max={900}
+                step={100}
+                value={header.wordmarkFontWeight ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setHeader({
+                    ...header,
+                    wordmarkFontWeight:
+                      v === "" ? null : Math.max(100, Math.min(900, Number(v))),
+                  });
+                }}
+                disabled={pending}
+                placeholder="자동 (기본 900)"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label
+                htmlFor="wordmarkLetterSpacing"
+                className="text-xs text-muted-foreground"
+              >
+                자간 (px, 음수 가능)
+              </Label>
+              <Input
+                id="wordmarkLetterSpacing"
+                type="number"
+                step={0.5}
+                value={header.wordmarkLetterSpacing ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setHeader({
+                    ...header,
+                    wordmarkLetterSpacing: v === "" ? null : Number(v),
+                  });
+                }}
+                disabled={pending}
+                placeholder="자동 (기본 -1)"
+              />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              setHeader({
+                ...header,
+                wordmarkFontSize: null,
+                wordmarkColor: null,
+                wordmarkFontWeight: null,
+                wordmarkLetterSpacing: null,
+              })
+            }
+            disabled={pending}
+            className="text-[11px] text-muted-foreground hover:text-foreground underline"
+          >
+            네 개 모두 자동으로 되돌리기
+          </button>
+        </div>
       </section>
 
       <section className="rounded-xl border border-border bg-background p-6 space-y-4">

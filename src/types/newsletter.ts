@@ -394,6 +394,17 @@ export interface HeaderContent {
   issueMeta: string;
   /** Extended description e.g. "업계 종사자를 위한 인사이트 레터 · by GroundK" */
   description: string;
+  /** Wordmark font size in pixels. When unset, the renderer auto-scales
+   *  based on the wordmark length so short brand strings look big and
+   *  long ones like "MICE 人 Insight" don't overflow the column. */
+  wordmarkFontSize?: number;
+  /** CSS color (hex or keyword) applied to the wordmark. Defaults to
+   *  the headline ink color. */
+  wordmarkColor?: string;
+  /** Font weight applied to the wordmark (100–900). Defaults to 900. */
+  wordmarkFontWeight?: number;
+  /** Letter spacing in px. Negative tightens the wordmark. Default -1. */
+  wordmarkLetterSpacing?: number;
 }
 
 export interface ReferralCtaContent {
