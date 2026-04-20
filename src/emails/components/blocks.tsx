@@ -301,12 +301,20 @@ export function NewsletterFooterBlock({
           align="right"
           style={{ verticalAlign: "bottom" }}
         >
+          {/* Intentionally empty — the unsubscribe line is now rendered
+              on its own full-width row below so it fits on one line
+              across typical email/web widths. */}
+        </Column>
+      </Row>
+      <Row>
+        <Column>
           <Text
             style={{
               ...typography.footerSmall,
               color: colors.textFaint,
               textAlign: "right",
-              margin: 0,
+              margin: "20px 0 0 0",
+              whiteSpace: "nowrap",
             }}
           >
             수신을 원치 않으시면{" "}
@@ -1182,7 +1190,200 @@ function GroundkStory({
 }
 
 // ─────────────────────────────────────────────
-// BLOCK: consolidated_insight (Ver.2 long-form multi-part)
+// BLOCK: consolidated_insight — NEW single-topic chapter layout
+// ─────────────────────────────────────────────
+function ConsolidatedInsightSingleTopic({
+  block,
+  index,
+}: {
+  block: ConsolidatedInsightBlock;
+  index: string;
+}) {
+  const chapters = block.data.chapters ?? [];
+  return (
+    <MajorSection>
+      <SectionLabel index={index} label={block.data.englishLabel} />
+
+      {block.data.topicLabel && (
+        <Text
+          style={{
+            fontSize: "11px",
+            fontWeight: 700,
+            letterSpacing: "2px",
+            color: colors.brandNavy,
+            textTransform: "uppercase",
+            opacity: 0.75,
+            margin: "0 0 6px 0",
+          }}
+        >
+          {block.data.topicLabel}
+        </Text>
+      )}
+
+      {block.data.topicMeta && (
+        <Text
+          style={{
+            fontSize: "12px",
+            color: colors.textSoft,
+            margin: "0 0 10px 0",
+          }}
+        >
+          {block.data.topicMeta}
+        </Text>
+      )}
+
+      {block.data.title && (
+        <Heading
+          as="h2"
+          style={{
+            fontSize: "26px",
+            fontWeight: 700,
+            color: colors.textHeadline,
+            lineHeight: 1.35,
+            letterSpacing: "-0.4px",
+            margin: "0 0 18px 0",
+          }}
+        >
+          {block.data.title}
+        </Heading>
+      )}
+
+      {block.data.imageUrl && (
+        <Img
+          src={block.data.imageUrl}
+          alt=""
+          style={{
+            display: "block",
+            width: "100%",
+            maxWidth: "100%",
+            height: "auto",
+            borderRadius: "8px",
+            margin: "0 0 20px 0",
+          }}
+        />
+      )}
+
+      {block.data.leadParagraph && (
+        <Text
+          style={{
+            fontSize: "15px",
+            color: colors.textBody,
+            lineHeight: 1.9,
+            fontWeight: 400,
+            margin: "0 0 28px 0",
+          }}
+          dangerouslySetInnerHTML={{
+            __html: renderInlineHtml(block.data.leadParagraph),
+          }}
+        />
+      )}
+
+      {chapters.map((ch, i) => (
+        <Section
+          key={i}
+          style={{
+            marginBottom: i === chapters.length - 1 ? "28px" : "40px",
+            paddingTop: "24px",
+            borderTop: `1px solid ${colors.borderSoft}`,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              letterSpacing: "2.5px",
+              color: colors.brandNavy,
+              textTransform: "uppercase",
+              margin: "0 0 10px 0",
+            }}
+          >
+            {ch.chapterLabel}
+          </Text>
+          <Heading
+            as="h3"
+            style={{
+              fontSize: "19px",
+              fontWeight: 700,
+              color: colors.textHeadline,
+              lineHeight: 1.4,
+              letterSpacing: "-0.3px",
+              margin: "0 0 14px 0",
+            }}
+          >
+            {ch.heading}
+          </Heading>
+          {ch.paragraphs.map((p, j) => (
+            <Text
+              key={j}
+              style={{
+                fontSize: "14px",
+                color: colors.textBody,
+                lineHeight: 1.9,
+                fontWeight: 300,
+                margin: "0 0 14px 0",
+              }}
+              dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
+            />
+          ))}
+          {ch.pullQuote && (
+            <Text
+              style={{
+                fontSize: "15px",
+                fontWeight: 500,
+                fontStyle: "italic",
+                color: colors.textHeadline,
+                lineHeight: 1.6,
+                borderLeft: `3px solid ${colors.brandNavy}`,
+                paddingLeft: "14px",
+                margin: "18px 0 4px 0",
+              }}
+            >
+              {ch.pullQuote}
+            </Text>
+          )}
+        </Section>
+      ))}
+
+      {block.data.closingInsight && (
+        <Section
+          style={{
+            backgroundColor: colors.bgInsight,
+            padding: "22px 24px",
+            borderRadius: "8px",
+            marginTop: "12px",
+          }}
+        >
+          <Text
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              letterSpacing: "2px",
+              color: colors.textHeadline,
+              textTransform: "uppercase",
+              margin: "0 0 10px 0",
+            }}
+          >
+            {block.data.closingInsight.label ?? "GroundK Take"}
+          </Text>
+          <Text
+            style={{
+              fontSize: "14px",
+              color: colors.textBody,
+              lineHeight: 1.85,
+              margin: 0,
+            }}
+            dangerouslySetInnerHTML={{
+              __html: renderInlineHtml(block.data.closingInsight.text),
+            }}
+          />
+        </Section>
+      )}
+    </MajorSection>
+  );
+}
+
+// ─────────────────────────────────────────────
+// BLOCK: consolidated_insight — legacy multi-theme layout (fallback)
 // ─────────────────────────────────────────────
 function ConsolidatedInsight({
   block,
@@ -1191,21 +1392,30 @@ function ConsolidatedInsight({
   block: ConsolidatedInsightBlock;
   index: string;
 }) {
+  // Prefer the new single-topic chapter-based layout; fall back to the
+  // legacy multi-theme layout if the draft predates the schema change.
+  if (block.data.chapters && block.data.chapters.length > 0) {
+    return (
+      <ConsolidatedInsightSingleTopic block={block} index={index} />
+    );
+  }
+
+  const legacyParts = block.data.parts ?? [];
   return (
     <MajorSection>
       <SectionLabel index={index} label={block.data.englishLabel} />
-      {block.data.parts.map((part, i) => (
+      {legacyParts.map((part, i) => (
         <Section
           key={i}
           style={{
             marginBottom:
-              i === block.data.parts.length - 1 ? "0" : "48px",
+              i === legacyParts.length - 1 ? "0" : "48px",
             paddingBottom:
-              i === block.data.parts.length - 1
+              i === legacyParts.length - 1
                 ? "0"
                 : "48px",
             borderBottom:
-              i === block.data.parts.length - 1
+              i === legacyParts.length - 1
                 ? "none"
                 : `1px solid ${colors.borderSoft}`,
           }}

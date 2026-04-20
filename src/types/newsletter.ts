@@ -58,7 +58,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   theory_to_field: "이론에서 현장으로",
   editor_take: "지금 MICE는",
   groundk_story: "그라운드케이 스토리",
-  consolidated_insight: "그라운드케이 인사이트 (심층, 2~4파트)",
+  consolidated_insight: "그라운드케이 인사이트 (단일 주제 심층 분석)",
   blog_card_grid: "블로그 카드 그리드",
 };
 
@@ -71,7 +71,7 @@ export const BLOCK_DESCRIPTIONS: Record<BlockType, string> = {
   theory_to_field: "학술/연구를 현장 적용 관점으로 풀어냄",
   editor_take: "이달의 이슈 칼럼 + 풀아웃 인용",
   groundk_story: "Field Briefing(짧은 현장 브리핑) + Project Sketch(프로젝트 소개)",
-  consolidated_insight: "Ver.2 스타일: 2~4개의 심층 분석을 한 섹션에 묶음",
+  consolidated_insight: "하나의 주제를 3~5개 챕터로 나눠 기승전결로 심층 분석. 분량 길게 허용",
   blog_card_grid: "외부 블로그 글을 카드로 소개 (2~6개)",
 };
 
@@ -253,6 +253,9 @@ export interface GroundkStoryBlock extends BlockBase {
   };
 }
 
+/** Legacy shape — 2~4 mini-themes packed into one section. Kept so existing
+ *  drafts continue to validate while they transition to the new chapters[]
+ *  format. */
 export interface ConsolidatedInsightPart {
   categoryTag: string;
   title: string;
@@ -261,11 +264,29 @@ export interface ConsolidatedInsightPart {
   imageUrl?: string;
 }
 
+/** New shape — ONE topic broken into ordered chapters (기승전결), closing
+ *  with the brand's own take. Intended for long-form deep dives. */
+export interface ConsolidatedInsightChapter {
+  chapterLabel: string; // "01 · 배경", "02 · 확산" …
+  heading: string;
+  paragraphs: string[];
+  pullQuote?: string;
+}
+
 export interface ConsolidatedInsightBlock extends BlockBase {
   type: "consolidated_insight";
   data: {
     englishLabel: string; // "GroundK Insight"
-    parts: ConsolidatedInsightPart[]; // 2~4
+    // ── New single-topic fields ─────────────────────────
+    topicLabel?: string;
+    topicMeta?: string;
+    title?: string;
+    leadParagraph?: string;
+    chapters?: ConsolidatedInsightChapter[];
+    closingInsight?: { label?: string; text: string };
+    imageUrl?: string;
+    // ── Legacy multi-theme field (renderer falls back to this if chapters absent) ──
+    parts?: ConsolidatedInsightPart[];
   };
 }
 

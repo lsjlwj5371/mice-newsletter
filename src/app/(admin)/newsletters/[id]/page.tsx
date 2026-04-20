@@ -101,14 +101,15 @@ export default async function NewsletterDraftPage({
   if (allRefIds.length > 0) {
     const { data: artRows } = await supabase
       .from("articles")
-      .select("id, title, url, source, category")
+      .select("id, title, url, source, categories")
       .in("id", allRefIds);
     for (const a of artRows ?? []) {
+      const cats = (a.categories as string[] | null) ?? [];
       articleMetaMap.set(a.id as string, {
         title: a.title as string,
         url: a.url as string,
         source: (a.source as string | null) ?? null,
-        category: a.category as string,
+        category: cats[0] ?? "",
       });
     }
   }

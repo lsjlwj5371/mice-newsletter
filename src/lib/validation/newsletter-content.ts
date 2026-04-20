@@ -151,18 +151,50 @@ export const groundkStoryDataSchema = z.object({
   }),
 });
 
-export const consolidatedInsightDataSchema = z.object({
-  englishLabel: z.string(),
-  parts: z.array(
-    z.object({
-      categoryTag: z.string(),
-      title: z.string(),
-      paragraphs: z.array(z.string()).min(1),
-      insight: insightSchemaExported,
-      imageUrl: z.string().optional(),
-    })
-  ).min(1),
-});
+export const consolidatedInsightDataSchema = z
+  .object({
+    englishLabel: z.string(),
+    // ── New long-form single-topic shape ───────────────────
+    topicLabel: z.string().optional(),
+    topicMeta: z.string().optional(),
+    title: z.string().optional(),
+    leadParagraph: z.string().optional(),
+    chapters: z
+      .array(
+        z.object({
+          chapterLabel: z.string(), // "01 · 배경", "02 · 확산" …
+          heading: z.string(),
+          paragraphs: z.array(z.string()).min(1),
+          pullQuote: z.string().optional(),
+        })
+      )
+      .optional(),
+    closingInsight: z
+      .object({ label: z.string().optional(), text: z.string() })
+      .optional(),
+    imageUrl: z.string().optional(),
+    // ── Legacy multi-theme shape (kept so older drafts still validate) ──
+    parts: z
+      .array(
+        z.object({
+          categoryTag: z.string(),
+          title: z.string(),
+          paragraphs: z.array(z.string()).min(1),
+          insight: insightSchemaExported,
+          imageUrl: z.string().optional(),
+        })
+      )
+      .optional(),
+  })
+  .refine(
+    (v) =>
+      (v.chapters && v.chapters.length > 0) ||
+      (v.parts && v.parts.length > 0),
+    {
+      message: "chapters 또는 parts 중 하나는 1개 이상 있어야 합니다.",
+      path: ["chapters"],
+    }
+  );
 
 export const blogCardGridDataSchema = z.object({
   englishLabel: z.string(),
