@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/admin/page-header";
+import { loadTemplateSettings } from "@/lib/template-settings";
+import { TemplateEditor } from "./template-editor";
+
+export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -7,13 +11,41 @@ export default async function SettingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const template = await loadTemplateSettings();
+
   return (
     <>
       <PageHeader
         title="설정"
-        description="관리자 계정 · 환경 정보"
+        description="관리자 계정 · 환경 정보 · 뉴스레터 템플릿"
       />
       <div className="px-8 py-8 space-y-6 max-w-3xl">
+        <section>
+          <h2 className="text-base font-semibold mb-2">뉴스레터 템플릿</h2>
+          <p className="text-xs text-muted-foreground mb-4">
+            새로 만드는 뉴스레터의 헤더·추천 CTA·푸터 기본값입니다. 여기서
+            저장한 값은 다음 호 생성부터 적용되고, 이미 만들어둔 초안은
+            개별 호의 JSON 탭에서 수정해야 합니다.
+          </p>
+          <TemplateEditor
+            initial={{
+              header: {
+                wordmark: template.header.wordmark,
+                tagline: template.header.tagline,
+                industryTag: template.header.industryTag,
+                description: template.header.description,
+              },
+              referralCta: template.referralCta,
+              footer: {
+                brandName: template.footer.brandName,
+                brandTagline: template.footer.brandTagline ?? "",
+                links: template.footer.links,
+                unsubscribeHref: template.footer.unsubscribeHref,
+              },
+            }}
+          />
+        </section>
+
         <section className="rounded-xl border border-border bg-background p-6">
           <h2 className="text-sm font-semibold mb-3">현재 로그인 계정</h2>
           <dl className="text-sm space-y-2">

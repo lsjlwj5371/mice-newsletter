@@ -1,5 +1,6 @@
 import { getClaudeClient, DRAFT_MODEL } from "./client";
 import { BLOCK_DATA_SCHEMAS } from "@/lib/validation/newsletter-content";
+import { loadTemplateSettings } from "@/lib/template-settings";
 import type { Article, ArticleCategory } from "@/lib/validation/rss";
 import type {
   NewsletterContent,
@@ -7,35 +8,10 @@ import type {
   BlockType,
 } from "@/types/newsletter";
 
-// ─────────────────────────────────────────────
-// Fixed branding constants
-// ─────────────────────────────────────────────
-
-const PIK_HEADER = {
-  wordmark: "PIK",
-  tagline: "We pick what moves you",
-  industryTag: "MICE · PCO · Event Industry",
-  issueMeta: "",
-  description: "업계 종사자를 위한 인사이트 레터 · by GroundK",
-};
-
-const REFERRAL_CTA_DEFAULT = {
-  message:
-    "지금부터 드리는 정보가 유익하셨거나, 함께 받으면 좋을 분이 떠오르셨다면 알려주세요. 다음 호부터 그분께도 전달해드리겠습니다.",
-  buttonLabel: "추천하기",
-  buttonHref: "{{REFERRAL_HREF}}",
-};
-
-const FOOTER_DEFAULT = {
-  brandName: "PIK by GroundK",
-  brandTagline: "We pick what moves you",
-  links: [
-    { label: "groundk.co.kr", href: "https://groundk.co.kr" },
-    { label: "triseup.com", href: "https://triseup.com" },
-    { label: "rideus.co.kr", href: "https://rideus.co.kr" },
-  ],
-  unsubscribeHref: "{{UNSUBSCRIBE_HREF}}",
-};
+// Branding defaults used to live here as hardcoded constants; they now
+// come from the admin-editable `template_settings` row via
+// loadTemplateSettings() in the generator below. See lib/template-settings.ts
+// for the fallbacks used when the row is missing.
 
 export const DEFAULT_BLOCK_TYPES: BlockType[] = [
   "opening_lede",
@@ -981,13 +957,18 @@ export async function generateNewsletterDraft(
   // Build a subject deterministically from the issueLabel
   const subject = `[PIK] ${input.issueLabel}`;
 
+  // Load admin-editable template defaults. When the row is missing or
+  // malformed, loadTemplateSettings returns the hardcoded fallbacks —
+  // generation must never block on a misconfigured template.
+  const template = await loadTemplateSettings();
+
   const content: NewsletterContent = {
     issueLabel: input.issueLabel,
     subject,
-    header: { ...PIK_HEADER, issueMeta: input.issueLabel },
-    referralCta: REFERRAL_CTA_DEFAULT,
+    header: { ...template.header, issueMeta: input.issueLabel },
+    referralCta: template.referralCta,
     blocks,
-    footer: FOOTER_DEFAULT,
+    footer: template.footer,
   };
 
   const usedArticleIds = Object.values(input.articlesByCategory)

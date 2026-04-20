@@ -60,19 +60,23 @@ export function NewsletterHeaderBlock({
         borderBottom: `2px solid ${colors.borderStrong}`,
       }}
     >
-      {/* Industry tag eyebrow */}
-      <Text
-        style={{
-          fontSize: "11px",
-          fontWeight: 500,
-          color: colors.textMuted,
-          margin: "0 0 16px 0",
-          letterSpacing: "2px",
-          textTransform: "uppercase",
-        }}
-      >
-        {content.industryTag}
-      </Text>
+      {/* Industry tag eyebrow — only rendered when non-empty. Admins
+          can clear it from the template settings if they don't want
+          an industry label above the wordmark. */}
+      {content.industryTag && content.industryTag.trim() !== "" && (
+        <Text
+          style={{
+            fontSize: "11px",
+            fontWeight: 500,
+            color: colors.textMuted,
+            margin: "0 0 16px 0",
+            letterSpacing: "2px",
+            textTransform: "uppercase",
+          }}
+        >
+          {content.industryTag}
+        </Text>
+      )}
 
       {/* Wordmark with inline diamond accent */}
       <Section style={{ marginBottom: "10px" }}>
