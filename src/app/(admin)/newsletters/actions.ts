@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { logAudit } from "@/lib/audit";
+import { unmarkArticlesUsedForNewsletter } from "@/lib/article-used";
 import {
   generateNewsletterDraft,
   regenerateSingleBlock,
@@ -266,6 +267,11 @@ export async function deleteNewsletterAction(
       error: "이미 발송된 호는 삭제할 수 없습니다. 보관(archived)으로 변경해 주세요.",
     };
   }
+
+  // Return any articles this draft had claimed back to the candidate pool.
+  // (New flow only sets used_in_newsletter_id at send time, but this handles
+  // legacy rows from before that change as well.)
+  await unmarkArticlesUsedForNewsletter(supabase, id);
 
   const { error } = await supabase.from("newsletters").delete().eq("id", id);
   if (error) {
@@ -548,9 +554,13 @@ export async function createDraftWithBlocksAction(
     return { ok: false, error: `DB 저장 실패: ${insertErr.message}` };
   }
 
-  // Collect articles that ended up referenced by any block in this draft,
-  // then mark them as used-in-this-newsletter and clear their pinned flag
-  // so they don't get force-pinned again in the next issue.
+  // Pinned flag is a "please include this in the next draft" request —
+  // its purpose is fulfilled the moment the article lands in a draft,
+  // so clear it now. `used_in_newsletter_id` is NOT set here: that
+  // backlink is reserved for articles that made it into an actually-sent
+  // newsletter (see lib/article-used.ts). If this draft is discarded,
+  // the pin stays cleared (admin can re-pin) but no article ends up
+  // incorrectly marked as "used".
   const referencedByAnyBlock = Array.from(
     new Set(
       (draftResult.content.blocks ?? []).flatMap(
@@ -561,10 +571,7 @@ export async function createDraftWithBlocksAction(
   if (referencedByAnyBlock.length > 0) {
     await supabase
       .from("articles")
-      .update({
-        used_in_newsletter_id: inserted.id,
-        pinned: false,
-      })
+      .update({ pinned: false })
       .in("id", referencedByAnyBlock);
   }
 

@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { logAudit } from "@/lib/audit";
 import { processSendQueue } from "@/lib/send-queue";
+import { markArticlesUsedForSentNewsletter } from "@/lib/article-used";
 import type { ActionResult } from "./actions";
 
 /**
@@ -202,6 +203,8 @@ export async function sendNewsletterAction(
       .from("newsletters")
       .update({ status: "sent", sent_at: new Date().toISOString() })
       .eq("id", newsletterId);
+    // Cement this issue's referenced articles as "used" now that it's sent.
+    await markArticlesUsedForSentNewsletter(supabase, newsletterId);
   }
 
   await logAudit({

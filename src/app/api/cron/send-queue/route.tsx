@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import crypto from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { processSendQueue } from "@/lib/send-queue";
+import { markArticlesUsedForSentNewsletter } from "@/lib/article-used";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -70,6 +71,8 @@ async function run(): Promise<NextResponse> {
         .from("newsletters")
         .update({ status: "sent", sent_at: new Date().toISOString() })
         .eq("id", nl.id);
+      // Cement this issue's referenced articles as "used" now that it's sent.
+      await markArticlesUsedForSentNewsletter(supabase, nl.id);
     }
   }
 
