@@ -88,7 +88,15 @@ const BLOCK_SCHEMA_PROMPT: Record<BlockType, string> = {
   theory_to_field: `{ "englishLabel": "From Theory to Field", "sourceYear": "제공된 기사에 명시된 연도 (예: 1990). 없으면 빈 문자열", "sourceAuthor": "제공된 기사에 명시된 저자 / 소속. 없으면 빈 문자열", "sourceMeta": "영문 부제가 있다면. 없으면 빈 문자열", "title": "호기심을 자극하는 헤드라인", "introParagraphs": ["1~2단락"], "bridge": { "label": "→ 현장에서는", "text": "1~2문장" }, "outroParagraphs": ["1단락"], "closingNote": "1문장의 마무리" }`,
   editor_take: `{ "englishLabel": "지금 MICE는", "eyebrow": "이달의 이슈", "title": "\\n으로 줄바꿈 가능한 제목", "leadParagraph": "진입 1문장", "pullQuote": "짧고 강렬한 인용구", "paragraphs": ["2~3단락"], "closingNote": "1문장의 마무리" }`,
   groundk_story: `{ "englishLabel": "GroundK Story", "fieldBriefing": { "eyebrow": "이달의 현장 브리핑", "categoryTag": "공항 운영 등", "body": "1~2단락. 줄바꿈은 \\n\\n 로 구분" }, "projectSketch": { "projectMeta": "Project · 이름", "dateMeta": "YYYY.MM.DD", "eyebrow": "그라운드케이 프로젝트 스케치", "title": "프로젝트 타이틀", "paragraphs": ["정확히 3개의 단락"], "tags": ["태그 3개 정도"] } }`,
-  consolidated_insight: `{ "englishLabel": "GroundK Insight", "topicLabel": "주제 태그 (예: Agentic AI · MICE 운영)", "topicMeta": "YYYY.MM · 심층 분석", "title": "이 호에서 다루는 하나의 심층 주제 제목 (24~40자)", "leadParagraph": "이 주제를 왜 지금 다루는지 설명하는 도입 단락 2~4문장", "chapters": [정확히 3~5개. 각 chapter = { "chapterLabel": "01 · 배경", "heading": "이 챕터에서 밝힐 질문/포인트 (14~28자)", "paragraphs": ["2~4개의 두터운 단락. 문장은 문어체 ~습니다 끝맺음."], "pullQuote": "(선택) 이 챕터에서 가장 강조하고 싶은 1문장. 생략 가능" }], "closingInsight": { "label": "GroundK Take", "text": "후보 기사들을 종합해 우리 관점에서 도출한 결론 2~4문장. 단순 요약 금지, 실무자가 당장 취할 수 있는 의미까지 짚을 것." } }`,
+  consolidated_insight: `{ "englishLabel": "GroundK Insight", "topicLabel": "주제 태그 (예: Agentic AI · MICE 운영)", "topicMeta": "YYYY.MM · 심층 분석", "title": "이 호에서 다루는 하나의 심층 주제 제목 (24~40자)", "leadParagraph": "이 주제를 왜 지금 다루는지 설명하는 도입 단락 2~4문장", "chapters": [정확히 3~5개. 각 chapter = { "chapterLabel": "01 · 배경", "heading": "이 챕터에서 밝힐 질문/포인트 (14~28자)", "paragraphs": ["2~4개의 두터운 단락. 문장은 문어체 ~습니다 끝맺음."], "pullQuote": "(선택) 이 챕터에서 가장 강조하고 싶은 1문장. 생략 가능" }], "closingInsight": { "label": "GroundK Take", "text": "선택한 기사 한 건에서 도출한 결론 2~4문장. 단순 요약 금지, 실무자가 당장 취할 수 있는 의미까지 짚을 것." } }
+
+## consolidated_insight 전용 지침 (매우 중요)
+- 이 블록은 **여러 기사를 짜깁기하는 섹션이 아닙니다.** 후보 기사 중 **단 하나**(가장 MICE 업계에 파급력 있고 다층적으로 풀어낼 수 있는 기사)를 고르고, 그 **하나의 기사만을 심층 분석**합니다.
+- 다른 후보 기사는 읽되 **본문에는 직접 인용하지 마십시오.** 배경 이해용 참고일 뿐입니다.
+- 3~5개의 챕터는 **서로 다른 주제를 병렬 나열하는 것이 아니라**, 선택한 하나의 주제를 기승전결(배경 → 전개 → 파급 → 현장 적용) 흐름으로 심층 전개합니다.
+- 각 챕터 본문은 **2~4개의 두터운 단락**으로 충분히 깊이 있게 씁니다. 분량이 길어지는 것은 환영합니다 — 얕은 설명을 여러 챕터에 흩뿌리는 것보다 한 챕터를 깊게 파는 편이 낫습니다.
+- closingInsight(\`GroundK Take\`)는 **그 하나의 기사에서 GroundK가 직접 도출한 관점**입니다. 기사 요약 재진술이 아니라, "이 한 건의 소식이 MICE 실무에 어떤 결정을 요구하는가"까지 짚어야 합니다.
+- \`_citedIndices\`는 본문에서 실제로 근거로 삼은 기사 **한 건의 번호**만 담습니다 (예: \`[3]\`). 배경 참고만 한 다른 기사는 포함하지 않습니다.`,
   blog_card_grid: `{ "englishLabel": "GroundK Blog", "cards": [2~6개. 각 card = { "label": "Field Note / Project Story / Industry Insight / Tech & MICE 중 하나", "title": "제목", "description": "2~3줄의 설명", "linkUrl": "https://blog.naver.com/groundk" }] }`,
 };
 
@@ -191,10 +199,11 @@ const BLOCK_ARTICLE_POLICY: Record<BlockType, BlockArticlePolicy> = {
     ],
     fallback: [],
     ignoreDateFilter: false,
-    limit: 12,
-    // Synthesis block — share the pool so it still has articles to work
-    // with when combined with individual deep-dive blocks that would
-    // otherwise claim all its primary categories first.
+    // Claude is instructed to pick ONE article from this pool and deep-
+    // dive it, so the pool just needs enough variety for a good choice —
+    // not maximal coverage. 6 is a practical sweet spot.
+    limit: 6,
+    // Shared-pool block — see sharesPool docs.
     sharesPool: true,
   },
   blog_card_grid: {
@@ -397,8 +406,17 @@ function buildBlockSystemPrompt(type: BlockType): string {
 - 제공되지 않은 출처를 **지어내지 마십시오**. 없으면 빈 문자열로 둡니다.
 - 본문에 포함한 주장·수치·인용이 있다면, 그 근거는 반드시 제공된 기사 중 하나여야 합니다.
 
+## 인용 추적 (필수)
+- 출력 JSON의 **최상위에 \`_citedIndices\` 배열**을 반드시 포함합니다.
+- 이 배열에는 본문 작성 과정에서 실제로 근거로 사용한 후보 기사 번호(제공된 \`[1]\`, \`[2]\`, ... 중)만 담습니다.
+- 단순히 "참고는 했지만 본문에 반영되지 않은" 기사는 포함하지 마십시오.
+- 예: 후보 기사 [1]~[10]을 주었는데 실제로 [3]과 [7]만 근거로 썼다면 \`"_citedIndices": [3, 7]\`.
+- 어떤 기사도 근거로 쓰지 않았다면 \`"_citedIndices": []\`.
+
 ## 출력 스키마
-${BLOCK_SCHEMA_PROMPT[type]}`;
+${BLOCK_SCHEMA_PROMPT[type]}
+
+위 스키마에 더해 최상위에 \`"_citedIndices": [...]\` 필드를 추가합니다.`;
 }
 
 function buildBlockUserMessage(
@@ -481,10 +499,25 @@ const REFERENCE_REQUIRED_BLOCKS: Set<BlockType> = new Set([
  */
 const ADMIN_ONLY_BLOCKS: Set<BlockType> = new Set(["groundk_story"]);
 
+interface BlockGenOk {
+  ok: true;
+  data: unknown;
+  /**
+   * 1-based indices (matching the `[1]`, `[2]`, ... prompt labels) that
+   * Claude marked as ACTUALLY used as evidence. When null, the caller
+   * should fall back to the full input pool — e.g. because Claude didn't
+   * honor the `_citedIndices` contract, or the block didn't go through
+   * the LLM path (placeholder / admin-only).
+   */
+  citedIndices: number[] | null;
+}
+
+type BlockGenResult = BlockGenOk | { ok: false; error: string };
+
 async function generateBlockData(
   type: BlockType,
   ctx: BlockGenContext
-): Promise<{ ok: true; data: unknown } | { ok: false; error: string }> {
+): Promise<BlockGenResult> {
   // Admin-only blocks require admin instructions. Without them, return a
   // placeholder so the user knows to supply source material.
   if (ADMIN_ONLY_BLOCKS.has(type)) {
@@ -492,6 +525,7 @@ async function generateBlockData(
       return {
         ok: true,
         data: applyCanonicalLabel(type, getPlaceholderData(type)),
+        citedIndices: [],
       };
     }
     // Force autoSearch off so Claude never pulls from RSS for this block.
@@ -508,12 +542,17 @@ async function generateBlockData(
     return {
       ok: true,
       data: applyCanonicalLabel(type, getPlaceholderData(type)),
+      citedIndices: [],
     };
   }
 
   // Fast path: autoSearch=false with no instructions → skip the API call entirely
   if (!ctx.autoSearch && (!ctx.instructions || ctx.instructions.trim() === "")) {
-    return { ok: true, data: applyCanonicalLabel(type, getPlaceholderData(type)) };
+    return {
+      ok: true,
+      data: applyCanonicalLabel(type, getPlaceholderData(type)),
+      citedIndices: [],
+    };
   }
 
   const client = getClaudeClient();
@@ -548,6 +587,20 @@ async function generateBlockData(
       };
     }
 
+    // Pull out the cited-article tracker before schema validation so the
+    // zod schemas don't have to know about this meta field.
+    let citedIndices: number[] | null = null;
+    if (parsed && typeof parsed === "object") {
+      const obj = parsed as Record<string, unknown>;
+      const raw = obj._citedIndices;
+      if (Array.isArray(raw)) {
+        citedIndices = raw
+          .filter((n): n is number => typeof n === "number" && Number.isFinite(n))
+          .map((n) => Math.trunc(n));
+      }
+      delete obj._citedIndices;
+    }
+
     const result = schema.safeParse(parsed);
     if (!result.success) {
       const issues = result.error.issues
@@ -557,7 +610,11 @@ async function generateBlockData(
       return { ok: false, error: `스키마 검증 실패: ${issues}` };
     }
 
-    return { ok: true, data: applyCanonicalLabel(type, result.data) };
+    return {
+      ok: true,
+      data: applyCanonicalLabel(type, result.data),
+      citedIndices,
+    };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { ok: false, error: msg };
@@ -600,8 +657,42 @@ export async function regenerateSingleBlock(
   }
   return {
     data: result.data,
-    referencedArticleIds: ctx.articles.map((a) => a.id),
+    referencedArticleIds: resolveReferencedIds(ctx.articles, result.citedIndices),
   };
+}
+
+/**
+ * Map Claude's `_citedIndices` (1-based) back to actual article IDs. When
+ * Claude complied with the contract, this narrows the reference list to
+ * only what the block actually used — so the draft editor no longer shows
+ * a dozen articles for a section that really drew on one or two.
+ *
+ * Fallbacks:
+ *   - citedIndices === null (Claude ignored the contract) → keep the full
+ *     pool so admins can still see what was considered.
+ *   - citedIndices === [] (explicitly nothing cited) → return empty. For
+ *     reference-required blocks this will be rare; when it happens it's
+ *     honest signalling that the block is admin-authored or placeholder.
+ *   - citedIndices contains out-of-range numbers → those are silently
+ *     dropped.
+ */
+function resolveReferencedIds(
+  articles: Article[],
+  citedIndices: number[] | null
+): string[] {
+  if (citedIndices === null) {
+    return articles.map((a) => a.id);
+  }
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const idx of citedIndices) {
+    const article = articles[idx - 1]; // prompt uses 1-based labels
+    if (!article) continue;
+    if (seen.has(article.id)) continue;
+    seen.add(article.id);
+    out.push(article.id);
+  }
+  return out;
 }
 
 export {
@@ -808,7 +899,12 @@ export async function generateNewsletterDraft(
     const r = results[i];
     const { ctx, cfg } = perBlockContexts[i];
     const id = `b${i + 1}`;
-    const referencedArticleIds = ctx.articles.map((a) => a.id);
+    // When Claude reported cited indices, narrow the reference list to
+    // what was actually used. On failure (placeholder), there's no
+    // reference list.
+    const referencedArticleIds = r.ok
+      ? resolveReferencedIds(ctx.articles, r.citedIndices)
+      : [];
     const base = {
       id,
       type,
