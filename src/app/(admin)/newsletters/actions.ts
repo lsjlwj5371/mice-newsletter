@@ -308,6 +308,63 @@ export async function updateNewsletterContentAction(
 }
 
 // ─────────────────────────────────────────────
+// UPDATE SUBJECT — quick edit of the email subject line alone
+// ─────────────────────────────────────────────
+export async function updateNewsletterSubjectAction(
+  id: string,
+  nextSubject: string
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+
+  const trimmed = nextSubject.trim();
+  if (!trimmed) {
+    return { ok: false, error: "제목은 비워둘 수 없습니다." };
+  }
+  if (trimmed.length > 200) {
+    return { ok: false, error: "제목이 너무 깁니다 (최대 200자)." };
+  }
+
+  const supabase = createAdminClient();
+  const { data: row, error: fetchErr } = await supabase
+    .from("newsletters")
+    .select("id, status, content_json")
+    .eq("id", id)
+    .single();
+  if (fetchErr || !row) {
+    return { ok: false, error: "원본 호를 찾을 수 없습니다." };
+  }
+  if (row.status === "sent") {
+    return { ok: false, error: "이미 발송된 호는 수정할 수 없습니다." };
+  }
+
+  const content = row.content_json as NewsletterContent;
+  const updatedContent = { ...content, subject: trimmed };
+
+  const { error: updErr } = await supabase
+    .from("newsletters")
+    .update({
+      content_json: updatedContent,
+      subject: trimmed,
+    })
+    .eq("id", id);
+  if (updErr) {
+    return { ok: false, error: `저장 실패: ${updErr.message}` };
+  }
+
+  await logAudit({
+    adminId: admin.id,
+    action: "newsletter.update_subject",
+    entity: "newsletter",
+    entityId: id,
+    metadata: { subject: trimmed },
+  });
+
+  revalidatePath(`/newsletters/${id}`);
+  revalidatePath("/newsletters");
+  return { ok: true, id, message: "제목이 저장되었습니다." };
+}
+
+// ─────────────────────────────────────────────
 // DELETE DRAFT
 // ─────────────────────────────────────────────
 export async function deleteNewsletterAction(

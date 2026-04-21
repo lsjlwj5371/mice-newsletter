@@ -13,7 +13,9 @@ import {
   removeBlockAction,
   moveBlockAction,
   setGroundkStoryVisibilityAction,
+  updateNewsletterSubjectAction,
 } from "@/app/(admin)/newsletters/actions";
+import { Input } from "@/components/ui/input";
 import { BlockImageSlot } from "./block-image-slot";
 import { SendPanel } from "./send-panel";
 import { ArticlePicker } from "@/components/articles/article-picker";
@@ -123,6 +125,13 @@ export function DraftEditor({
 
   return (
     <>
+      {/* ── Subject line (email 제목) — inline-editable ──── */}
+      <SubjectEditor
+        newsletterId={newsletter.id}
+        initialSubject={newsletter.subject}
+        disabled={newsletter.status === "sent"}
+      />
+
       {/* ── Top status bar ──────────────────────────────── */}
       <div className="px-8 py-4 border-b border-border bg-background flex items-center gap-3 flex-wrap">
         <Badge variant="pending">{NEWSLETTER_STATUS_LABELS[newsletter.status]}</Badge>
@@ -1045,6 +1054,106 @@ function getBlockTitle(block: BlockInstance): string | null {
     return parts[0].title as string;
   }
   return null;
+}
+
+// ─────────────────────────────────────────────
+// Subject editor — inline-editable email subject line in the top bar
+// ─────────────────────────────────────────────
+function SubjectEditor({
+  newsletterId,
+  initialSubject,
+  disabled,
+}: {
+  newsletterId: string;
+  initialSubject: string;
+  disabled: boolean;
+}) {
+  const router = useRouter();
+  const [value, setValue] = React.useState(initialSubject);
+  const [pending, startTransition] = React.useTransition();
+  const [msg, setMsg] = React.useState<
+    | { type: "success" | "error"; text: string }
+    | null
+  >(null);
+
+  // Re-sync when the incoming prop changes (e.g. after regenerate).
+  React.useEffect(() => {
+    setValue(initialSubject);
+  }, [initialSubject]);
+
+  const dirty = value.trim() !== initialSubject.trim();
+
+  function save() {
+    if (!dirty || pending || disabled) return;
+    setMsg(null);
+    startTransition(async () => {
+      const res = await updateNewsletterSubjectAction(newsletterId, value);
+      if (res.ok) {
+        setMsg({ type: "success", text: res.message ?? "저장됨" });
+        router.refresh();
+      } else {
+        setMsg({ type: "error", text: res.error });
+      }
+    });
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      save();
+    } else if (e.key === "Escape") {
+      setValue(initialSubject);
+      setMsg(null);
+    }
+  }
+
+  return (
+    <div className="px-8 pt-4 pb-0 bg-background">
+      <div className="flex items-center gap-3 flex-wrap">
+        <label
+          htmlFor="email-subject"
+          className="text-xs font-semibold text-muted-foreground shrink-0"
+        >
+          메일 제목
+        </label>
+        <Input
+          id="email-subject"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={save}
+          onKeyDown={handleKeyDown}
+          disabled={disabled || pending}
+          placeholder="메일 받은편지함에 표시될 제목"
+          className="flex-1 min-w-[260px] text-sm"
+          maxLength={200}
+        />
+        {dirty && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={save}
+            disabled={pending}
+          >
+            {pending ? "저장 중..." : "저장"}
+          </Button>
+        )}
+        {msg && (
+          <span
+            className={
+              msg.type === "success"
+                ? "text-[11px] text-emerald-700"
+                : "text-[11px] text-rose-700"
+            }
+          >
+            {msg.text}
+          </span>
+        )}
+      </div>
+      <p className="mt-1.5 text-[11px] text-muted-foreground">
+        수신자 메일 프리뷰에 보이는 줄입니다. Enter 또는 포커스 이동 시 저장됩니다.
+      </p>
+    </div>
+  );
 }
 
 function formatDateTime(iso: string) {

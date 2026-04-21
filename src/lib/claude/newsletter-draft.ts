@@ -1147,13 +1147,18 @@ export async function generateNewsletterDraft(
     } as BlockInstance;
   });
 
-  // Build a subject deterministically from the issueLabel
-  const subject = `[PIK] ${input.issueLabel}`;
-
   // Load admin-editable template defaults. When the row is missing or
   // malformed, loadTemplateSettings returns the hardcoded fallbacks —
   // generation must never block on a misconfigured template.
   const template = await loadTemplateSettings();
+
+  // Derive the default email subject from the live template's wordmark
+  // so renaming the brand updates the subject prefix automatically.
+  // Admin can still override the subject per-draft from the editor.
+  const prefix = (template.header.wordmark ?? "").trim();
+  const subject = prefix
+    ? `[${prefix}] ${input.issueLabel}`
+    : input.issueLabel;
 
   const content: NewsletterContent = {
     issueLabel: input.issueLabel,
