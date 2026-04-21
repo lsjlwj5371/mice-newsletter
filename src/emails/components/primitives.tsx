@@ -127,9 +127,27 @@ export function ItemGroup({
         dangerouslySetInnerHTML={{ __html: renderInlineHtml(body) }}
       />
 
-      {/* NOTE: sourceUrl is intentionally NOT rendered in the email body.
-          Admins verify references in the draft editor; recipients see only
-          the curated article without a public link back to the source. */}
+      {/* sourceUrl is admin-opt-in: rendered as a subtle "원문 보기 →"
+          link only when the admin has set a URL on this item. */}
+      {sourceUrl && sourceUrl.trim() !== "" && (
+        <Text
+          style={{
+            fontSize: "12px",
+            color: colors.textSoft,
+            margin: "-6px 0 12px 0",
+          }}
+        >
+          <a
+            href={sourceUrl}
+            style={{
+              color: colors.textSoft,
+              textDecoration: "underline",
+            }}
+          >
+            원문 보기 →
+          </a>
+        </Text>
+      )}
       {insight && <InsightBox label={insight.label} text={insight.text} />}
     </Section>
   );

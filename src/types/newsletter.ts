@@ -233,6 +233,8 @@ export interface TechSignalBlock extends BlockBase {
     miceInsight: string;
     imageUrl?: string;
     imageLayout?: ImageLayout;
+    /** Optional admin-supplied origin URL; rendered as "원문 보기 →" link. */
+    sourceUrl?: string;
   };
 }
 
@@ -250,6 +252,8 @@ export interface TheoryToFieldBlock extends BlockBase {
     closingNote?: string;
     imageUrl?: string;
     imageLayout?: ImageLayout;
+    /** Optional admin-supplied origin URL; rendered as "원문 보기 →" link. */
+    sourceUrl?: string;
   };
 }
 
@@ -334,6 +338,8 @@ export interface ConsolidatedInsightBlock extends BlockBase {
     closingInsight?: { label?: string; text: string };
     imageUrl?: string;
     imageLayout?: ImageLayout;
+    /** Optional admin-supplied origin URL; rendered as "원문 보기 →" link. */
+    sourceUrl?: string;
     // ── Legacy multi-theme field (renderer falls back to this if chapters absent) ──
     parts?: ConsolidatedInsightPart[];
   };

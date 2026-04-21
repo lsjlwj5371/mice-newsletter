@@ -877,6 +877,121 @@ export interface SetGroundkStoryVisibilityInput {
   visible: boolean;
 }
 
+// ─────────────────────────────────────────────
+// Set source URL on a block or on a nested item within a block
+// (news_briefing.items[i].sourceUrl, event_radar.events[i].sourceUrl,
+//  tech_signal.sourceUrl / theory_to_field.sourceUrl /
+//  consolidated_insight.sourceUrl).
+// Empty string clears the link (renderer omits the "원문 보기" line).
+// ─────────────────────────────────────────────
+
+export interface SetBlockSourceUrlInput {
+  newsletterId: string;
+  blockIndex: number;
+  /** When set, patches the nested item at this index instead of the block's
+   *  top-level sourceUrl. Applies to news_briefing.items / event_radar.events. */
+  itemIndex?: number;
+  url: string | null;
+}
+
+export async function setBlockSourceUrlAction(
+  input: SetBlockSourceUrlInput
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const supabase = createAdminClient();
+
+  const normalized =
+    input.url && input.url.trim() !== "" ? input.url.trim() : "";
+
+  const { data: row, error: fetchErr } = await supabase
+    .from("newsletters")
+    .select("id, status, content_json")
+    .eq("id", input.newsletterId)
+    .single();
+  if (fetchErr || !row) {
+    return { ok: false, error: "원본 호를 찾을 수 없습니다." };
+  }
+  if (row.status === "sent") {
+    return { ok: false, error: "이미 발송된 호는 수정할 수 없습니다." };
+  }
+
+  const content = row.content_json as NewsletterContent;
+  if (
+    !content.blocks ||
+    input.blockIndex < 0 ||
+    input.blockIndex >= content.blocks.length
+  ) {
+    return { ok: false, error: "해당 블록을 찾을 수 없습니다." };
+  }
+
+  const block = content.blocks[input.blockIndex];
+  const data = block.data as Record<string, unknown>;
+  let updatedData: Record<string, unknown>;
+
+  if (input.itemIndex === undefined) {
+    // Block-level sourceUrl (tech_signal / theory_to_field / consolidated_insight)
+    updatedData = { ...data };
+    if (normalized) updatedData.sourceUrl = normalized;
+    else delete updatedData.sourceUrl;
+  } else {
+    // Nested item sourceUrl (news_briefing.items[i] / event_radar.events[i])
+    const nestedKey =
+      block.type === "news_briefing"
+        ? "items"
+        : block.type === "event_radar"
+        ? "events"
+        : null;
+    if (!nestedKey) {
+      return {
+        ok: false,
+        error: `${block.type} 블록은 항목별 원문 링크를 지원하지 않습니다.`,
+      };
+    }
+    const nested = (data[nestedKey] as Array<Record<string, unknown>>) ?? [];
+    if (input.itemIndex < 0 || input.itemIndex >= nested.length) {
+      return { ok: false, error: "해당 항목을 찾을 수 없습니다." };
+    }
+    const nextNested = [...nested];
+    const targetItem = { ...nextNested[input.itemIndex] };
+    if (normalized) targetItem.sourceUrl = normalized;
+    else delete targetItem.sourceUrl;
+    nextNested[input.itemIndex] = targetItem;
+    updatedData = { ...data, [nestedKey]: nextNested };
+  }
+
+  const updatedBlock = {
+    ...block,
+    data: updatedData,
+  } as NewsletterContent["blocks"][number];
+  const updatedBlocks = [...content.blocks];
+  updatedBlocks[input.blockIndex] = updatedBlock;
+
+  const { error: updErr } = await supabase
+    .from("newsletters")
+    .update({
+      content_json: { ...content, blocks: updatedBlocks },
+    })
+    .eq("id", input.newsletterId);
+  if (updErr) {
+    return { ok: false, error: `DB 저장 실패: ${updErr.message}` };
+  }
+
+  await logAudit({
+    adminId: admin.id,
+    action: "newsletter.set_source_url",
+    entity: "newsletter",
+    entityId: input.newsletterId,
+    metadata: {
+      blockIndex: input.blockIndex,
+      itemIndex: input.itemIndex ?? null,
+      cleared: !normalized,
+    },
+  });
+
+  revalidatePath(`/newsletters/${input.newsletterId}`);
+  return { ok: true, id: input.newsletterId };
+}
+
 export async function setGroundkStoryVisibilityAction(
   input: SetGroundkStoryVisibilityInput
 ): Promise<ActionResult> {

@@ -14,6 +14,7 @@ import {
   moveBlockAction,
   setGroundkStoryVisibilityAction,
   updateNewsletterSubjectAction,
+  setBlockSourceUrlAction,
 } from "@/app/(admin)/newsletters/actions";
 import { Input } from "@/components/ui/input";
 import { BlockImageSlot } from "./block-image-slot";
@@ -865,6 +866,17 @@ function BlockCard({
             />
           )}
 
+          {/* Source URL editor — shows "원문 보기 →" link on the rendered
+              email when admin sets a URL. Per-item for multi-item blocks,
+              block-level for single-topic blocks. */}
+          <SourceUrlEditor
+            newsletterId={newsletterId}
+            blockIndex={blockIndex}
+            block={block}
+            disabled={pending || disabled}
+            onDone={onDone}
+          />
+
           {/* Regenerate controls */}
           <section className="space-y-2">
             <Label className="text-xs font-semibold">
@@ -959,6 +971,181 @@ function BlockCard({
 // GroundkStory part toggles — hide / show Field Briefing and Project Sketch
 // independently. Server-side blocks hiding BOTH to keep the block meaningful.
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// SourceUrlEditor — per-block / per-item "원문 링크" input.
+//
+// Renders one URL field for single-topic blocks (tech_signal,
+// theory_to_field, consolidated_insight) and N fields for multi-item
+// blocks (news_briefing.items, event_radar.events). Saves on blur or
+// Enter via setBlockSourceUrlAction. Skipped entirely for block types
+// that don't carry a sourceUrl concept.
+// ─────────────────────────────────────────────
+type SourceUrlTarget =
+  | { kind: "block"; current: string }
+  | { kind: "item"; itemIndex: number; itemLabel: string; current: string };
+
+function collectSourceUrlTargets(block: BlockInstance): SourceUrlTarget[] {
+  const d = block.data as Record<string, unknown>;
+  switch (block.type) {
+    case "tech_signal":
+    case "theory_to_field":
+    case "consolidated_insight":
+      return [
+        { kind: "block", current: (d.sourceUrl as string | undefined) ?? "" },
+      ];
+    case "news_briefing": {
+      const items =
+        (d.items as Array<Record<string, unknown>> | undefined) ?? [];
+      return items.map((it, i) => ({
+        kind: "item" as const,
+        itemIndex: i,
+        itemLabel:
+          ((it.title as string | undefined) ?? `항목 ${i + 1}`).slice(0, 40) +
+          (((it.title as string | undefined) ?? "").length > 40 ? "…" : ""),
+        current: (it.sourceUrl as string | undefined) ?? "",
+      }));
+    }
+    case "event_radar": {
+      const events =
+        (d.events as Array<Record<string, unknown>> | undefined) ?? [];
+      return events.map((ev, i) => ({
+        kind: "item" as const,
+        itemIndex: i,
+        itemLabel:
+          ((ev.title as string | undefined) ?? `행사 ${i + 1}`).slice(0, 40) +
+          (((ev.title as string | undefined) ?? "").length > 40 ? "…" : ""),
+        current: (ev.sourceUrl as string | undefined) ?? "",
+      }));
+    }
+    default:
+      return [];
+  }
+}
+
+function SourceUrlEditor({
+  newsletterId,
+  blockIndex,
+  block,
+  disabled,
+  onDone,
+}: {
+  newsletterId: string;
+  blockIndex: number;
+  block: BlockInstance;
+  disabled: boolean;
+  onDone: () => void;
+}) {
+  const targets = collectSourceUrlTargets(block);
+  if (targets.length === 0) return null;
+
+  return (
+    <section className="space-y-2 rounded-md border border-border bg-background p-3">
+      <Label className="text-xs font-semibold">원문 링크 (선택)</Label>
+      <p className="text-[11px] text-muted-foreground">
+        URL을 입력하면 발송본에 &quot;원문 보기 →&quot; 링크가 표시됩니다. 비우면
+        링크가 렌더링되지 않습니다.
+      </p>
+      <div className="space-y-2">
+        {targets.map((t, i) => (
+          <SourceUrlRow
+            key={`${t.kind}-${t.kind === "item" ? t.itemIndex : "block"}-${i}`}
+            newsletterId={newsletterId}
+            blockIndex={blockIndex}
+            target={t}
+            disabled={disabled}
+            onDone={onDone}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SourceUrlRow({
+  newsletterId,
+  blockIndex,
+  target,
+  disabled,
+  onDone,
+}: {
+  newsletterId: string;
+  blockIndex: number;
+  target: SourceUrlTarget;
+  disabled: boolean;
+  onDone: () => void;
+}) {
+  const [value, setValue] = React.useState(target.current);
+  const [pending, startTransition] = React.useTransition();
+  const [msg, setMsg] = React.useState<
+    | { type: "success" | "error"; text: string }
+    | null
+  >(null);
+
+  React.useEffect(() => {
+    setValue(target.current);
+  }, [target.current]);
+
+  const dirty = value.trim() !== target.current.trim();
+
+  function save() {
+    if (!dirty || pending || disabled) return;
+    setMsg(null);
+    startTransition(async () => {
+      const res = await setBlockSourceUrlAction({
+        newsletterId,
+        blockIndex,
+        itemIndex: target.kind === "item" ? target.itemIndex : undefined,
+        url: value.trim() || null,
+      });
+      if (res.ok) {
+        onDone();
+      } else {
+        setMsg({ type: "error", text: res.error });
+      }
+    });
+  }
+
+  return (
+    <div>
+      {target.kind === "item" && (
+        <div className="text-[11px] text-muted-foreground mb-1">
+          {target.itemLabel}
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <Input
+          type="url"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={save}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              save();
+            }
+          }}
+          disabled={disabled || pending}
+          placeholder="https://..."
+          className="flex-1 text-xs"
+        />
+        {dirty && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={save}
+            disabled={pending}
+          >
+            {pending ? "저장 중..." : "저장"}
+          </Button>
+        )}
+      </div>
+      {msg && msg.type === "error" && (
+        <p className="mt-1 text-[11px] text-rose-700">{msg.text}</p>
+      )}
+    </div>
+  );
+}
+
 function GroundkStoryVisibilityToggles({
   newsletterId,
   blockIndex,

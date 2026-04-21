@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import Newsletter from "@/emails/Newsletter";
 import { sendEmail } from "@/lib/gmail/send";
 import { signToken, unsubscribeUrl } from "@/lib/tokens";
+import { signReferralToken } from "@/lib/referral-token";
 import { injectTracking } from "@/lib/tracking-inject";
 import { inlineStorageImages } from "@/lib/image-inline";
 import { newsletterContentSchema } from "@/lib/validation/newsletter-content";
@@ -165,10 +166,20 @@ export async function processSendQueue({
       htmlCache.set(claimed.newsletter_id, cached);
     }
 
-    const personalizedHtml = cached.html.replaceAll(
-      "{{UNSUBSCRIBE_HREF}}",
-      unsubscribeUrl(claimed.id, claimed.recipient_email, appUrl)
-    );
+    // Build a per-recipient referral URL so each subscriber's "추천하기"
+    // button attributes their invites back to them. `signReferralToken`
+    // embeds the recipient_id in a signed payload that `/r/[token]` reads
+    // server-side when the invite is accepted.
+    const referralHref = `${appUrl}/r/${signReferralToken(
+      claimed.recipient_id ?? null
+    )}`;
+
+    const personalizedHtml = cached.html
+      .replaceAll(
+        "{{UNSUBSCRIBE_HREF}}",
+        unsubscribeUrl(claimed.id, claimed.recipient_email, appUrl)
+      )
+      .replaceAll("{{REFERRAL_HREF}}", referralHref);
     // Wrap all external links for click tracking and append the open
     // pixel. Skip for test sends so we don't pollute open/click stats.
     const trackedHtml = claimed.is_test

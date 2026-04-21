@@ -115,6 +115,7 @@ export const techSignalDataSchema = z.object({
   miceInsight: z.string(),
   imageUrl: z.string().optional(),
   imageLayout: imageLayoutSchema,
+  sourceUrl: z.string().optional(),
 });
 
 export const theoryToFieldDataSchema = z.object({
@@ -132,6 +133,7 @@ export const theoryToFieldDataSchema = z.object({
   closingNote: z.string().optional(),
   imageUrl: z.string().optional(),
   imageLayout: imageLayoutSchema,
+  sourceUrl: z.string().optional(),
 });
 
 export const editorTakeDataSchema = z.object({
@@ -192,6 +194,7 @@ export const consolidatedInsightDataSchema = z
       .optional(),
     imageUrl: z.string().optional(),
     imageLayout: imageLayoutSchema,
+    sourceUrl: z.string().optional(),
     // ── Legacy multi-theme shape (kept so older drafts still validate) ──
     parts: z
       .array(

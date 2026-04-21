@@ -785,6 +785,25 @@ function TechSignal({
               }}
             />
           </Section>
+          {block.data.sourceUrl && block.data.sourceUrl.trim() !== "" && (
+            <Text
+              style={{
+                fontSize: "12px",
+                color: colors.textSoft,
+                margin: "12px 0 0 0",
+              }}
+            >
+              <Link
+                href={block.data.sourceUrl}
+                style={{
+                  color: colors.textSoft,
+                  textDecoration: "underline",
+                }}
+              >
+                원문 보기 →
+              </Link>
+            </Text>
+          )}
         </Section>
       </Section>
     </Section>
@@ -957,6 +976,25 @@ function TheoryToField({
           }}
         >
           {block.data.closingNote}
+        </Text>
+      )}
+      {block.data.sourceUrl && block.data.sourceUrl.trim() !== "" && (
+        <Text
+          style={{
+            fontSize: "12px",
+            color: colors.textSoft,
+            margin: "14px 0 0 0",
+          }}
+        >
+          <Link
+            href={block.data.sourceUrl}
+            style={{
+              color: colors.textSoft,
+              textDecoration: "underline",
+            }}
+          >
+            원문 보기 →
+          </Link>
         </Text>
       )}
     </MajorSection>
@@ -1427,6 +1465,25 @@ function ConsolidatedInsightSingleTopic({
           The final chapter now carries the takeaway itself — a separate
           closing box duplicated the conclusion. Field is kept in the
           schema so older drafts don't fail validation. */}
+      {block.data.sourceUrl && block.data.sourceUrl.trim() !== "" && (
+        <Text
+          style={{
+            fontSize: "12px",
+            color: colors.textSoft,
+            margin: "16px 0 0 0",
+          }}
+        >
+          <Link
+            href={block.data.sourceUrl}
+            style={{
+              color: colors.textSoft,
+              textDecoration: "underline",
+            }}
+          >
+            원문 보기 →
+          </Link>
+        </Text>
+      )}
     </MajorSection>
   );
 }
@@ -1670,9 +1727,28 @@ function EventRadar({
               />
             </Section>
           )}
-          {/* sourceUrl is intentionally NOT rendered. Admins verify the
-              URL in the draft editor; recipients see only the curated
-              copy. Field is retained in the schema for internal use. */}
+          {/* sourceUrl is admin-opt-in per event. Rendered as a small
+              "원문 보기 →" link when the admin has set it, otherwise
+              omitted entirely. */}
+          {ev.sourceUrl && ev.sourceUrl.trim() !== "" && (
+            <Text
+              style={{
+                fontSize: "12px",
+                color: colors.textSoft,
+                margin: "10px 0 0 0",
+              }}
+            >
+              <Link
+                href={ev.sourceUrl}
+                style={{
+                  color: colors.textSoft,
+                  textDecoration: "underline",
+                }}
+              >
+                원문 보기 →
+              </Link>
+            </Text>
+          )}
         </Section>
       ))}
     </MajorSection>
