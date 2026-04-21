@@ -40,6 +40,8 @@ export default async function SettingsPage() {
                 wordmarkFontWeight: template.header.wordmarkFontWeight ?? null,
                 wordmarkLetterSpacing:
                   template.header.wordmarkLetterSpacing ?? null,
+                wordmarkLogoUrl: template.header.wordmarkLogoUrl ?? null,
+                wordmarkLogoHeight: template.header.wordmarkLogoHeight ?? null,
               },
               referralCta: template.referralCta,
               footer: {

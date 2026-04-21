@@ -27,6 +27,9 @@ export interface UpdateTemplateInput {
     wordmarkColor?: string | null;
     wordmarkFontWeight?: number | null;
     wordmarkLetterSpacing?: number | null;
+    /** When set, header renders this image instead of text wordmark. */
+    wordmarkLogoUrl?: string | null;
+    wordmarkLogoHeight?: number | null;
   };
   referralCta: {
     message: string;
@@ -104,6 +107,19 @@ export async function updateTemplateSettingsAction(
     input.header.wordmarkLetterSpacing !== undefined
   ) {
     cleanedHeader.wordmarkLetterSpacing = input.header.wordmarkLetterSpacing;
+  }
+  if (
+    input.header.wordmarkLogoUrl !== null &&
+    input.header.wordmarkLogoUrl !== undefined &&
+    input.header.wordmarkLogoUrl.trim() !== ""
+  ) {
+    cleanedHeader.wordmarkLogoUrl = input.header.wordmarkLogoUrl.trim();
+  }
+  if (
+    input.header.wordmarkLogoHeight !== null &&
+    input.header.wordmarkLogoHeight !== undefined
+  ) {
+    cleanedHeader.wordmarkLogoHeight = input.header.wordmarkLogoHeight;
   }
 
   const { error } = await supabase

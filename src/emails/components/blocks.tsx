@@ -79,33 +79,46 @@ export function NewsletterHeaderBlock({
         </Text>
       )}
 
-      {/* Wordmark with inline diamond accent. Font size auto-scales by
-          length when the admin hasn't explicitly set wordmarkFontSize —
-          short brand strings like "PIK" render big, longer ones like
-          "MICE 人 Insight" scale down to avoid overflow. */}
+      {/* Wordmark: image if the admin uploaded a logo, otherwise the
+          text wordmark with length-based auto-scaling. Text wordmark
+          font size auto-scales when wordmarkFontSize is unset — short
+          strings like "PIK" render big, long ones scale down. */}
       <Section style={{ marginBottom: "10px" }}>
         <Row>
           <Column style={{ verticalAlign: "middle", width: "auto" }}>
-            <span
-              style={{
-                display: "inline-block",
-                fontSize: `${
-                  content.wordmarkFontSize ??
-                  autoWordmarkFontSize(content.wordmark)
-                }px`,
-                fontWeight: content.wordmarkFontWeight ?? 900,
-                lineHeight: 0.95,
-                color: content.wordmarkColor ?? colors.textHeadline,
-                letterSpacing: `${content.wordmarkLetterSpacing ?? -1}px`,
-                fontFamily:
-                  "'Pretendard', 'Impact', 'Arial Black', Arial, sans-serif",
-              }}
-            >
-              {renderWordmarkWithDiamond(
-                content.wordmark,
-                content.wordmarkColor
-              )}
-            </span>
+            {content.wordmarkLogoUrl ? (
+              <Img
+                src={content.wordmarkLogoUrl}
+                alt={content.wordmark || "Logo"}
+                style={{
+                  display: "inline-block",
+                  height: `${content.wordmarkLogoHeight ?? 64}px`,
+                  width: "auto",
+                  verticalAlign: "middle",
+                }}
+              />
+            ) : (
+              <span
+                style={{
+                  display: "inline-block",
+                  fontSize: `${
+                    content.wordmarkFontSize ??
+                    autoWordmarkFontSize(content.wordmark)
+                  }px`,
+                  fontWeight: content.wordmarkFontWeight ?? 900,
+                  lineHeight: 0.95,
+                  color: content.wordmarkColor ?? colors.textHeadline,
+                  letterSpacing: `${content.wordmarkLetterSpacing ?? -1}px`,
+                  fontFamily:
+                    "'Pretendard', 'Impact', 'Arial Black', Arial, sans-serif",
+                }}
+              >
+                {renderWordmarkWithDiamond(
+                  content.wordmark,
+                  content.wordmarkColor
+                )}
+              </span>
+            )}
             <span
               style={{
                 display: "inline-block",

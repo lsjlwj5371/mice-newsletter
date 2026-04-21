@@ -133,6 +133,28 @@ export function TemplateEditor({ initial }: Props) {
           />
         </div>
 
+        {/* ── Wordmark image (optional) ────────────────────── */}
+        <div className="space-y-3 pt-4 border-t border-border">
+          <div>
+            <Label className="text-xs font-semibold">워드마크 로고 이미지 (선택)</Label>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              업로드하면 헤더 상단 워드마크 글자 대신 이 이미지가 렌더링됩니다.
+              비워두면 위에서 설정한 텍스트 워드마크가 표시됩니다.
+            </p>
+          </div>
+          <WordmarkLogoField
+            value={header.wordmarkLogoUrl ?? null}
+            height={header.wordmarkLogoHeight ?? null}
+            onChangeUrl={(url) =>
+              setHeader({ ...header, wordmarkLogoUrl: url })
+            }
+            onChangeHeight={(h) =>
+              setHeader({ ...header, wordmarkLogoHeight: h })
+            }
+            disabled={pending}
+          />
+        </div>
+
         {/* ── Wordmark fine-tuning ─────────────────────────── */}
         <div className="space-y-3 pt-4 border-t border-border">
           <div>
@@ -458,5 +480,163 @@ export function TemplateEditor({ initial }: Props) {
         </p>
       </div>
     </form>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Wordmark logo upload field
+// Uploads via /api/uploads/image (shared with block images). The
+// returned URL flows into the parent form state; actual persistence
+// to template_settings happens when the admin clicks 템플릿 저장.
+// ─────────────────────────────────────────────
+function WordmarkLogoField({
+  value,
+  height,
+  onChangeUrl,
+  onChangeHeight,
+  disabled,
+}: {
+  value: string | null;
+  height: number | null;
+  onChangeUrl: (next: string | null) => void;
+  onChangeHeight: (next: number | null) => void;
+  disabled?: boolean;
+}) {
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/uploads/image", {
+        method: "POST",
+        body: fd,
+      });
+      const body = (await res.json()) as
+        | { ok: true; url: string }
+        | { ok: false; error: string };
+      if (!res.ok || !body.ok) {
+        setError(("error" in body && body.error) || `업로드 실패 (HTTP ${res.status})`);
+        return;
+      }
+      onChangeUrl(body.url);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`업로드 실패: ${msg}`);
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      {value ? (
+        <div className="space-y-2">
+          <div className="rounded-lg border border-border bg-muted/20 p-4 flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={value}
+              alt="로고 미리보기"
+              style={{
+                display: "block",
+                height: `${height ?? 64}px`,
+                width: "auto",
+                maxWidth: "100%",
+              }}
+            />
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Label
+              htmlFor="wordmarkLogoHeight"
+              className="text-xs text-muted-foreground"
+            >
+              이미지 높이 (px, 16~200)
+            </Label>
+            <Input
+              id="wordmarkLogoHeight"
+              type="number"
+              min={16}
+              max={200}
+              step={2}
+              value={height ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                onChangeHeight(
+                  v === "" ? null : Math.max(16, Math.min(200, Number(v)))
+                );
+              }}
+              disabled={disabled}
+              placeholder="64"
+              className="w-24"
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading || disabled}
+            >
+              {uploading ? "업로드 중..." : "다른 이미지로 교체"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="text-rose-600"
+              onClick={() => {
+                onChangeUrl(null);
+                onChangeHeight(null);
+              }}
+              disabled={uploading || disabled}
+            >
+              로고 제거
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            이 필드가 채워져 있는 한, 위의 텍스트 워드마크 스타일(글자
+            크기/색상 등)은 무시됩니다. 텍스트로 다시 돌아가려면 &quot;로고 제거&quot;를
+            누르세요.
+          </p>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading || disabled}
+          className="w-full rounded-lg border-2 border-dashed border-border bg-muted/20 p-6 text-center hover:bg-muted/40 transition disabled:opacity-50"
+        >
+          <div className="text-sm text-muted-foreground">
+            {uploading ? (
+              <>업로드 중…</>
+            ) : (
+              <>
+                <div className="text-lg mb-1">🖼️</div>
+                <div className="font-medium">로고 업로드</div>
+                <div className="text-xs mt-1">
+                  PNG · JPEG · WebP (투명 배경 PNG 권장)
+                </div>
+              </>
+            )}
+          </div>
+        </button>
+      )}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        onChange={handleFile}
+        className="hidden"
+      />
+      {error && (
+        <p className="text-xs text-rose-600 whitespace-pre-wrap">{error}</p>
+      )}
+    </div>
   );
 }

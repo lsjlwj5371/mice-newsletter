@@ -405,6 +405,13 @@ export interface HeaderContent {
   wordmarkFontWeight?: number;
   /** Letter spacing in px. Negative tightens the wordmark. Default -1. */
   wordmarkLetterSpacing?: number;
+  /** When set, the header renders this image instead of the text
+   *  wordmark. The other wordmark* style fields are ignored in that
+   *  case. Clear the field to go back to text. */
+  wordmarkLogoUrl?: string;
+  /** Rendered height of the logo image in pixels. Width is auto-scaled
+   *  to preserve aspect ratio. Default 64. */
+  wordmarkLogoHeight?: number;
 }
 
 export interface ReferralCtaContent {

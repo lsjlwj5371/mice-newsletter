@@ -20,6 +20,8 @@ const headerSchema = z.object({
   wordmarkColor: z.string().optional(),
   wordmarkFontWeight: z.number().int().min(100).max(900).optional(),
   wordmarkLetterSpacing: z.number().optional(),
+  wordmarkLogoUrl: z.string().optional(),
+  wordmarkLogoHeight: z.number().int().min(16).max(200).optional(),
 });
 
 const referralCtaSchema = z.object({
