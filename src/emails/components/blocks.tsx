@@ -1784,7 +1784,7 @@ function EventRadar({
       <SectionLabel
         index={index}
         label={block.data.englishLabel}
-        emoji="📅"
+        emoji="📡"
       />
       {block.data.events.map((ev, i) => (
         <Section
