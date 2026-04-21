@@ -149,28 +149,34 @@ export function BlockImageSlot({
               className="block w-full max-h-64 object-contain"
             />
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Label className="text-xs text-muted-foreground">배치</Label>
-            <select
-              value={currentLayout ?? "full"}
-              onChange={(e) =>
-                handleLayoutChange(e.target.value as ImageLayout)
-              }
-              disabled={uploading || disabled || layoutPending}
-              className="h-8 rounded-md border border-border bg-background px-2 text-xs"
-            >
-              {IMAGE_LAYOUTS.map((lay) => (
-                <option key={lay} value={lay}>
-                  {IMAGE_LAYOUT_LABELS[lay]}
-                </option>
-              ))}
-            </select>
-            {layoutPending && (
-              <span className="text-[11px] text-muted-foreground">
-                적용 중...
-              </span>
-            )}
-          </div>
+          {/* Layout controls only apply to block-level images. Per-item
+              thumbnails (event_radar events / news_briefing items) use
+              the card's built-in layout, so we hide the dropdown when
+              this slot targets a specific item. */}
+          {itemIndex === undefined && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Label className="text-xs text-muted-foreground">배치</Label>
+              <select
+                value={currentLayout ?? "full"}
+                onChange={(e) =>
+                  handleLayoutChange(e.target.value as ImageLayout)
+                }
+                disabled={uploading || disabled || layoutPending}
+                className="h-8 rounded-md border border-border bg-background px-2 text-xs"
+              >
+                {IMAGE_LAYOUTS.map((lay) => (
+                  <option key={lay} value={lay}>
+                    {IMAGE_LAYOUT_LABELS[lay]}
+                  </option>
+                ))}
+              </select>
+              {layoutPending && (
+                <span className="text-[11px] text-muted-foreground">
+                  적용 중...
+                </span>
+              )}
+            </div>
+          )}
           <div className="flex gap-2">
             <Button
               type="button"
