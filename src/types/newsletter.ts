@@ -402,7 +402,7 @@ export interface BlogCardGridBlock extends BlockBase {
 // Fixed sections
 // ─────────────────────────────────────────────
 export interface HeaderContent {
-  /** Brand wordmark e.g. "PIK" */
+  /** Brand wordmark e.g. "MICE人sight" */
   wordmark: string;
   /** Small tagline next to wordmark e.g. "We pick what moves you" */
   tagline: string;

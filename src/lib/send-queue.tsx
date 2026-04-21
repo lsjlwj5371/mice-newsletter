@@ -58,7 +58,7 @@ export async function processSendQueue({
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   const fromEmail =
     process.env.GOOGLE_SENDER_EMAIL ?? "no-reply@example.com";
-  const fromName = process.env.GOOGLE_SENDER_NAME ?? "PIK by GroundK";
+  const fromName = process.env.GOOGLE_SENDER_NAME ?? "MICE人sight by GroundK";
 
   // Cache of rendered HTML per newsletter (so mass-send for the same
   // newsletter only renders once).

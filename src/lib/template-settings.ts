@@ -11,11 +11,11 @@ import type {
  * working even when settings load fails.
  */
 const HEADER_FALLBACK: HeaderContent = {
-  wordmark: "PIK",
+  wordmark: "MICE人sight",
   tagline: "We pick what moves you",
   industryTag: "",
   issueMeta: "",
-  description: "업계 종사자를 위한 인사이트 레터 · by GroundK",
+  description: "MICE 업계 종사자를 위한 인사이트 레터 · by GroundK",
 };
 
 const REFERRAL_FALLBACK: ReferralCtaContent = {
@@ -26,7 +26,7 @@ const REFERRAL_FALLBACK: ReferralCtaContent = {
 };
 
 const FOOTER_FALLBACK: FooterContent = {
-  brandName: "PIK by GroundK",
+  brandName: "MICE人sight by GroundK",
   brandTagline: "We pick what moves you",
   links: [
     { label: "groundk.co.kr", href: "https://groundk.co.kr" },

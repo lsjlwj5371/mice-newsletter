@@ -1,5 +1,6 @@
 import { ReferralForm } from "./referral-form";
 import { verifyReferralToken } from "@/lib/referral-token";
+import { loadTemplateSettings } from "@/lib/template-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,11 @@ interface Props {
 export default async function ReferralPage({ params }: Props) {
   const { token } = await params;
   const claims = verifyReferralToken(token);
+
+  // Pull the current brand name from the admin-editable template
+  // settings so rebrands flow through automatically.
+  const template = await loadTemplateSettings();
+  const brand = (template.header.wordmark ?? "").trim() || "뉴스레터";
 
   if (!claims) {
     return renderShell(
@@ -27,9 +33,10 @@ export default async function ReferralPage({ params }: Props) {
   return renderShell(
     <>
       <div style={{ fontSize: 32, marginBottom: 8 }}>✉️</div>
-      <h1 style={headingStyle}>PIK 뉴스레터 구독</h1>
+      <h1 style={headingStyle}>{brand} 뉴스레터 구독</h1>
       <p style={bodyStyle}>
-        MICE 산업 종사자를 위한 인사이트 레터, 매월 PIK을 이메일로 받아보세요.
+        MICE 산업 종사자를 위한 인사이트 레터, {brand}을(를) 이메일로
+        받아보세요.
       </p>
       <ReferralForm token={token} />
       <p style={{ ...smallStyle, marginTop: 16 }}>

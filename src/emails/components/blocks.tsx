@@ -46,7 +46,7 @@ import type {
 } from "@/types/newsletter";
 
 // ─────────────────────────────────────────────
-// FIXED: Header — PIK wordmark
+// FIXED: Header — brand wordmark
 // ─────────────────────────────────────────────
 export function NewsletterHeaderBlock({
   content,
@@ -82,7 +82,7 @@ export function NewsletterHeaderBlock({
       {/* Wordmark: image if the admin uploaded a logo, otherwise the
           text wordmark with length-based auto-scaling. Text wordmark
           font size auto-scales when wordmarkFontSize is unset — short
-          strings like "PIK" render big, long ones scale down. */}
+          short brand strings render big, long ones scale down. */}
       <Section style={{ marginBottom: "10px" }}>
         <Row>
           <Column style={{ verticalAlign: "middle", width: "auto" }}>
@@ -240,7 +240,7 @@ function formatIssueNumber(n: number): string {
 }
 
 /**
- * Render a wordmark like "PIK" with the middle letters styled as accent
+ * Render the wordmark with the last character styled as an accent
  * (e.g. the "I" rendered in navy while P and K are black). Uses a simple
  * heuristic: if the wordmark contains recognized accent letters, color the
  * last one navy. Otherwise render plain.
@@ -273,7 +273,7 @@ function renderWordmarkWithDiamond(
 
 /**
  * Pick a sensible default font size based on wordmark length. Keeps the
- * classic 56px for 1–4 characters ("PIK") and steps down for longer
+ * classic 56px for 1–4 character wordmarks and steps down for longer
  * brand strings so "MICE 人 Insight" doesn't overflow the column.
  * Admin can always override via wordmarkFontSize on the template.
  */

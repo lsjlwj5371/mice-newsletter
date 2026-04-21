@@ -24,7 +24,7 @@ interface Props {
 }
 
 /**
- * PIK newsletter email template (schema_version = 2 — block-based).
+ * MICE人sight newsletter email template (schema_version = 2 — block-based).
  *
  * Structure:
  *   - Header (fixed)

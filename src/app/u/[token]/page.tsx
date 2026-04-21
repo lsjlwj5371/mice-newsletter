@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyToken } from "@/lib/tokens";
 import { logAudit } from "@/lib/audit";
+import { loadTemplateSettings } from "@/lib/template-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -78,7 +79,12 @@ export default async function UnsubscribePage({ params }: Props) {
     }
   }
 
-  return renderSuccessShell(email, alreadyUnsubscribed);
+  // Pull the live brand name from template settings so messaging uses
+  // the current wordmark instead of a hardcoded legacy one.
+  const template = await loadTemplateSettings();
+  const brand = (template.header.wordmark ?? "").trim() || "뉴스레터";
+
+  return renderSuccessShell(email, alreadyUnsubscribed, brand);
 }
 
 // ─── UI helpers ────────────────────────────────
@@ -114,7 +120,7 @@ function shell(children: React.ReactNode) {
   );
 }
 
-function renderSuccessShell(email: string, already: boolean) {
+function renderSuccessShell(email: string, already: boolean, brand: string) {
   return shell(
     <>
       <div style={{ fontSize: 48, marginBottom: 12 }}>
@@ -141,7 +147,7 @@ function renderSuccessShell(email: string, already: boolean) {
       >
         {already
           ? `${email} 은(는) 이미 수신 거부 처리된 상태입니다.`
-          : `${email} 은(는) 이제 PIK 뉴스레터를 받지 않습니다.`}
+          : `${email} 은(는) 이제 ${brand} 뉴스레터를 받지 않습니다.`}
       </p>
       <p style={{ fontSize: 12, color: "#888", lineHeight: 1.6 }}>
         다시 구독하고 싶으시면 운영팀에 연락해 주세요.

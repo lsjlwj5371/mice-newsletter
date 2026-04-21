@@ -472,7 +472,7 @@ function buildBlockSystemPrompt(
 `
     : "";
 
-  return `당신은 "PIK" 뉴스레터의 전문 에디터입니다. 한국 MICE 산업 종사자를 대상으로 하는 격식 있는 인사이트 레터입니다.
+  return `당신은 "MICE人sight" 뉴스레터의 전문 에디터입니다. 한국 MICE 산업 종사자를 대상으로 하는 격식 있는 인사이트 레터입니다.
 
 ## 역할
 ${roleLine}

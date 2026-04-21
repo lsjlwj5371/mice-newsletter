@@ -2,17 +2,17 @@ import type { NewsletterContent } from "@/types/newsletter";
 
 /**
  * Sample newsletter content for the design preview at /preview/newsletter.
- * Uses the new block-based schema (schema_version = 2) and the PIK branding.
+ * Uses the new block-based schema (schema_version = 2) and MICE人sight branding.
  *
  * Includes every block type so the admin can see the full catalog rendered.
  */
 
 export const sampleNewsletter: NewsletterContent = {
   issueLabel: "VOL.01 · 2026년 4월호",
-  subject: "[PIK] 4월 호 — 금리 인하 신호와 Agentic AI",
+  subject: "[MICE人sight] 4월 호 — 금리 인하 신호와 Agentic AI",
 
   header: {
-    wordmark: "PIK",
+    wordmark: "MICE人sight",
     tagline: "We pick what moves you",
     industryTag: "MICE · PCO · Event Industry",
     issueMeta: "VOL.01 · 2026년 4월호",
@@ -257,7 +257,7 @@ export const sampleNewsletter: NewsletterContent = {
   ],
 
   footer: {
-    brandName: "PIK by GroundK",
+    brandName: "MICE人sight by GroundK",
     brandTagline: "We pick what moves you",
     links: [
       { label: "groundk.co.kr", href: "https://groundk.co.kr" },

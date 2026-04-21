@@ -11,7 +11,7 @@
  * Constraints:
  *  - Only inline images whose URL lives on our own Storage bucket
  *    (NEXT_PUBLIC_SUPABASE_URL). Leave external images (including the
- *    PIK logo if it's hosted outside Storage) as regular URLs so the
+ *    brand logo if it's hosted outside Storage) as regular URLs so the
  *    HTML doesn't balloon.
  *  - The /public/logo.png on Vercel is considered external — we leave
  *    it as a URL too since it's never deleted.
