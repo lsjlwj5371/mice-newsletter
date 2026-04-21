@@ -198,7 +198,10 @@ export function InsightBox({
 }
 
 // ─────────────────────────────────────────────
-// Major section wrapper (vertical padding + bottom border)
+// Major section wrapper + ornamental divider trailing the section.
+// Replaces the old `border-bottom` hairline with a centered gold
+// diamond flanked by short hairlines — subtle but immediately makes
+// the layout read as an edited magazine rather than a run-on document.
 // ─────────────────────────────────────────────
 export function MajorSection({
   children,
@@ -210,15 +213,84 @@ export function MajorSection({
   style?: React.CSSProperties;
 }) {
   return (
+    <>
+      <Section
+        style={{
+          paddingTop: spacing.sectionVertical,
+          paddingBottom: spacing.sectionVertical,
+          ...style,
+        }}
+      >
+        {children}
+      </Section>
+      {!noBorder && <SectionDivider />}
+    </>
+  );
+}
+
+/**
+ * Decorative section separator — three evenly-spaced narrow hairlines
+ * with a centered accent diamond. Uses a plain table row so every mail
+ * client renders it identically; no CSS pseudo-elements or gradients.
+ */
+export function SectionDivider() {
+  return (
     <Section
       style={{
-        paddingTop: spacing.sectionVertical,
-        paddingBottom: spacing.sectionVertical,
-        borderBottom: noBorder ? "none" : `1px solid ${colors.borderSoft}`,
-        ...style,
+        paddingTop: "14px",
+        paddingBottom: "14px",
+        textAlign: "center",
       }}
     >
-      {children}
+      <table
+        role="presentation"
+        cellPadding={0}
+        cellSpacing={0}
+        border={0}
+        width="60%"
+        style={{
+          margin: "0 auto",
+          borderCollapse: "collapse",
+          borderSpacing: 0,
+        }}
+      >
+        <tbody>
+          <tr>
+            <td
+              style={{
+                borderBottom: `1px solid ${colors.borderSoft}`,
+                height: "1px",
+                fontSize: "0",
+                lineHeight: "0",
+              }}
+            >
+              &nbsp;
+            </td>
+            <td
+              style={{
+                padding: "0 14px",
+                fontSize: "10px",
+                lineHeight: 1,
+                color: colors.accentGold,
+                letterSpacing: "1px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              ◆
+            </td>
+            <td
+              style={{
+                borderBottom: `1px solid ${colors.borderSoft}`,
+                height: "1px",
+                fontSize: "0",
+                lineHeight: "0",
+              }}
+            >
+              &nbsp;
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </Section>
   );
 }

@@ -79,149 +79,170 @@ export function NewsletterHeaderBlock({
         </Text>
       )}
 
-      {/* Wordmark: image if the admin uploaded a logo, otherwise the
-          text wordmark with length-based auto-scaling. Text wordmark
-          font size auto-scales when wordmarkFontSize is unset — short
-          short brand strings render big, long ones scale down. */}
-      <Section style={{ marginBottom: "10px" }}>
-        <Row>
-          <Column style={{ verticalAlign: "middle", width: "auto" }}>
-            {content.wordmarkLogoUrl ? (
-              <Img
-                src={content.wordmarkLogoUrl}
-                alt={content.wordmark || "Logo"}
-                style={{
-                  display: "inline-block",
-                  height: `${content.wordmarkLogoHeight ?? 64}px`,
-                  width: "auto",
-                  verticalAlign: "middle",
-                }}
-              />
-            ) : (
-              <span
-                style={{
-                  display: "inline-block",
-                  fontSize: `${
-                    content.wordmarkFontSize ??
-                    autoWordmarkFontSize(content.wordmark)
-                  }px`,
-                  fontWeight: content.wordmarkFontWeight ?? 900,
-                  lineHeight: 0.95,
-                  color: content.wordmarkColor ?? colors.textHeadline,
-                  letterSpacing: `${content.wordmarkLetterSpacing ?? -1}px`,
-                  fontFamily:
-                    "'Pretendard', 'Impact', 'Arial Black', Arial, sans-serif",
-                }}
-              >
-                {renderWordmarkWithDiamond(
-                  content.wordmark,
-                  content.wordmarkColor
-                )}
-              </span>
-            )}
+      {/* Header row: brand block on the left, issue meta badge on the
+          right — masthead-style so the date + VOL are the first thing a
+          reader's eye hits after the brand, without crowding the body. */}
+      <Row>
+        <Column style={{ verticalAlign: "top", width: "68%" }}>
+          {/* Wordmark: image if the admin uploaded a logo, otherwise
+              the text wordmark with length-based auto-scaling. */}
+          {content.wordmarkLogoUrl ? (
+            <Img
+              src={content.wordmarkLogoUrl}
+              alt={content.wordmark || "Logo"}
+              style={{
+                display: "inline-block",
+                height: `${content.wordmarkLogoHeight ?? 64}px`,
+                width: "auto",
+                verticalAlign: "middle",
+              }}
+            />
+          ) : (
             <span
               style={{
                 display: "inline-block",
-                marginLeft: "14px",
-                fontSize: "13px",
-                fontWeight: 400,
-                color: colors.textMuted,
-                verticalAlign: "middle",
-                letterSpacing: "-0.1px",
+                fontSize: `${
+                  content.wordmarkFontSize ??
+                  autoWordmarkFontSize(content.wordmark)
+                }px`,
+                fontWeight: content.wordmarkFontWeight ?? 900,
+                lineHeight: 0.95,
+                color: content.wordmarkColor ?? colors.textHeadline,
+                letterSpacing: `${content.wordmarkLetterSpacing ?? -1}px`,
+                fontFamily:
+                  "'Pretendard', 'Impact', 'Arial Black', Arial, sans-serif",
               }}
             >
-              {content.tagline}
-            </span>
-          </Column>
-        </Row>
-      </Section>
-
-      {/* Description */}
-      <Text
-        style={{
-          fontSize: "13px",
-          color: colors.textSoft,
-          fontWeight: 300,
-          margin: "6px 0 18px 0",
-        }}
-      >
-        {content.description}
-      </Text>
-
-      {/* Meta bar (issue number + date). When the new structured fields
-          are set, render as:
-              ISSUE · 2026.04.28
-              VOL 001
-          Falling back to the legacy single-line `issueMeta` for drafts
-          created before this split.  */}
-      <Section
-        style={{
-          paddingTop: "14px",
-          borderTop: `1px solid ${colors.borderSoft}`,
-        }}
-      >
-        {content.issueNumber !== undefined ||
-        content.issueDate ||
-        content.issueMeta ? (
-          content.issueNumber !== undefined || content.issueDate ? (
-            <>
-              <Text
-                style={{
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  color: colors.textFaint,
-                  letterSpacing: "2px",
-                  textTransform: "uppercase",
-                  margin: "0 0 6px 0",
-                }}
-              >
-                Issue
-                {content.issueDate
-                  ? ` · ${formatIssueDate(content.issueDate)}`
-                  : ""}
-              </Text>
-              {content.issueNumber !== undefined && (
-                <Text
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: 700,
-                    color: colors.textHeadline,
-                    letterSpacing: "1px",
-                    margin: 0,
-                  }}
-                >
-                  VOL {formatIssueNumber(content.issueNumber)}
-                </Text>
+              {renderWordmarkWithDiamond(
+                content.wordmark,
+                content.wordmarkColor
               )}
-            </>
-          ) : (
-            <>
-              <Text
-                style={{
-                  fontSize: "9px",
-                  fontWeight: 700,
-                  color: colors.textFaint,
-                  letterSpacing: "2px",
-                  textTransform: "uppercase",
-                  margin: "0 0 3px 0",
-                }}
-              >
-                Issue
-              </Text>
-              <Text
-                style={{
-                  fontSize: "12px",
-                  color: colors.textMuted,
-                  margin: 0,
-                }}
-              >
-                {content.issueMeta}
-              </Text>
-            </>
-          )
-        ) : null}
-      </Section>
+            </span>
+          )}
+          <span
+            style={{
+              display: "inline-block",
+              marginLeft: "14px",
+              fontSize: "13px",
+              fontWeight: 400,
+              color: colors.textMuted,
+              verticalAlign: "middle",
+              letterSpacing: "-0.1px",
+            }}
+          >
+            {content.tagline}
+          </span>
+          <Text
+            style={{
+              fontSize: "13px",
+              color: colors.textSoft,
+              fontWeight: 300,
+              margin: "10px 0 0 0",
+            }}
+          >
+            {content.description}
+          </Text>
+        </Column>
+        <Column
+          style={{
+            verticalAlign: "top",
+            width: "32%",
+            paddingLeft: "16px",
+          }}
+          align="right"
+        >
+          <IssueMetaBadge content={content} />
+        </Column>
+      </Row>
     </Section>
+  );
+}
+
+/**
+ * Masthead-style badge for the issue number + date, docked to the
+ * header's right column. New structured fields (issueNumber /
+ * issueDate) are preferred; legacy drafts that only have the flat
+ * issueMeta string render it as the single-line fallback.
+ */
+function IssueMetaBadge({ content }: { content: HeaderContent }) {
+  const hasStructured =
+    content.issueNumber !== undefined || Boolean(content.issueDate);
+  const hasLegacy = Boolean(content.issueMeta);
+  if (!hasStructured && !hasLegacy) return null;
+
+  return (
+    <div
+      style={{
+        display: "inline-block",
+        textAlign: "right",
+        padding: "8px 12px",
+        border: `1px solid ${colors.borderSoft}`,
+        borderRadius: "6px",
+        backgroundColor: "#fafbfc",
+        minWidth: "110px",
+      }}
+    >
+      {hasStructured ? (
+        <>
+          <Text
+            style={{
+              fontSize: "9px",
+              fontWeight: 700,
+              color: colors.textFaint,
+              letterSpacing: "2px",
+              textTransform: "uppercase",
+              margin: "0 0 4px 0",
+              lineHeight: 1,
+            }}
+          >
+            Issue
+            {content.issueDate
+              ? ` · ${formatIssueDate(content.issueDate)}`
+              : ""}
+          </Text>
+          {content.issueNumber !== undefined && (
+            <Text
+              style={{
+                fontSize: "14px",
+                fontWeight: 700,
+                color: colors.textHeadline,
+                letterSpacing: "1px",
+                margin: 0,
+                lineHeight: 1.1,
+              }}
+            >
+              VOL {formatIssueNumber(content.issueNumber)}
+            </Text>
+          )}
+        </>
+      ) : (
+        <>
+          <Text
+            style={{
+              fontSize: "9px",
+              fontWeight: 700,
+              color: colors.textFaint,
+              letterSpacing: "2px",
+              textTransform: "uppercase",
+              margin: "0 0 4px 0",
+              lineHeight: 1,
+            }}
+          >
+            Issue
+          </Text>
+          <Text
+            style={{
+              fontSize: "12px",
+              color: colors.textMuted,
+              margin: 0,
+              lineHeight: 1.2,
+            }}
+          >
+            {content.issueMeta}
+          </Text>
+        </>
+      )}
+    </div>
   );
 }
 

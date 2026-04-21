@@ -4,6 +4,7 @@ import {
   Head,
   Body,
   Container,
+  Section,
   Preview,
   Font,
 } from "@react-email/components";
@@ -107,20 +108,40 @@ export default function Newsletter({ content, appUrl }: Props) {
             maxWidth: spacing.containerMaxWidth,
             margin: "0 auto",
             backgroundColor: colors.bgWhite,
-            padding: spacing.wrapperPadding,
             border: "1px solid #d8dde4",
             borderRadius: "12px",
             boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
+            overflow: "hidden",
           }}
         >
-          <NewsletterHeaderBlock content={content.header} />
-          <ReferralCtaBlock content={content.referralCta} />
+          {/* Brand accent bar: 5px navy band at the card's top edge.
+              Pure solid color so every mail client renders it — no VML
+              or CSS gradients needed. Fills the card width via a full
+              table row; the Container's overflow:hidden + rounded
+              corners clip it to the card's rounded top. */}
+          <Section
+            style={{
+              backgroundColor: colors.brandNavy,
+              height: "5px",
+              lineHeight: "5px",
+              fontSize: "0",
+              margin: 0,
+              padding: 0,
+            }}
+          >
+            &nbsp;
+          </Section>
 
-          {indexedBlocks.map(({ block, index }) => (
-            <BlockRenderer key={block.id} block={block} index={index} />
-          ))}
+          <div style={{ padding: spacing.wrapperPadding }}>
+            <NewsletterHeaderBlock content={content.header} />
+            <ReferralCtaBlock content={content.referralCta} />
 
-          <NewsletterFooterBlock content={content.footer} appUrl={appUrl} />
+            {indexedBlocks.map(({ block, index }) => (
+              <BlockRenderer key={block.id} block={block} index={index} />
+            ))}
+
+            <NewsletterFooterBlock content={content.footer} appUrl={appUrl} />
+          </div>
         </Container>
       </Body>
     </Html>
