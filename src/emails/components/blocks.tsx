@@ -229,29 +229,40 @@ function autoWordmarkFontSize(wordmark: string): number {
 }
 
 /**
- * "원문 보기 →" link renderer used by every block that supports an
- * opt-in admin-set sourceUrl. Emits nothing when the URL is empty so
- * unused blocks don't leak empty paragraphs.
+ * "원문 보기 →" link rendered as a compact button block so readers
+ * actually notice it — the earlier inline gray link was nearly
+ * invisible against body text. Emits nothing when the URL is empty.
+ *
+ * Style notes (email-safe):
+ *   - inline-block `<a>` with padding/border emulates a button across
+ *     Gmail / Outlook / Apple Mail without needing <table> hacks.
+ *   - neutral palette (navy border + bg tint) so it doesn't compete
+ *     with the referral CTA, which is the page-level action.
  */
 function SourceLink({
   url,
-  topMargin = "12px",
+  topMargin = "16px",
 }: {
   url?: string;
   topMargin?: string;
 }) {
   if (!url || url.trim() === "") return null;
   return (
-    <Text
-      style={{
-        fontSize: "12px",
-        color: colors.textSoft,
-        margin: `${topMargin} 0 0 0`,
-      }}
-    >
+    <Text style={{ margin: `${topMargin} 0 0 0`, lineHeight: 1 }}>
       <Link
         href={url}
-        style={{ color: colors.textSoft, textDecoration: "underline" }}
+        style={{
+          display: "inline-block",
+          padding: "8px 14px",
+          backgroundColor: "#f3f4f8",
+          color: colors.brandNavy,
+          border: `1px solid ${colors.borderStrong}`,
+          borderRadius: "6px",
+          fontSize: "12px",
+          fontWeight: 600,
+          letterSpacing: "0.2px",
+          textDecoration: "none",
+        }}
       >
         원문 보기 →
       </Link>
@@ -1770,28 +1781,10 @@ function EventRadar({
               />
             </Section>
           )}
-          {/* sourceUrl is admin-opt-in per event. Rendered as a small
-              "원문 보기 →" link when the admin has set it, otherwise
-              omitted entirely. */}
-          {ev.sourceUrl && ev.sourceUrl.trim() !== "" && (
-            <Text
-              style={{
-                fontSize: "12px",
-                color: colors.textSoft,
-                margin: "10px 0 0 0",
-              }}
-            >
-              <Link
-                href={ev.sourceUrl}
-                style={{
-                  color: colors.textSoft,
-                  textDecoration: "underline",
-                }}
-              >
-                원문 보기 →
-              </Link>
-            </Text>
-          )}
+          {/* sourceUrl is admin-opt-in per event. Button-style block
+              for visibility; omitted when the admin hasn't set it. */}
+          <SourceLink url={ev.sourceUrl} topMargin="14px" />
+
         </Section>
       ))}
     </MajorSection>

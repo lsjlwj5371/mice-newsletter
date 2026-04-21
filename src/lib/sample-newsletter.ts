@@ -188,7 +188,7 @@ export const sampleNewsletter: NewsletterContent = {
       id: "b9",
       type: "consolidated_insight",
       data: {
-        englishLabel: "GroundK Insight",
+        englishLabel: "MICE Insight",
         parts: [
           {
             categoryTag: "인바운드 시장 구조 변화",

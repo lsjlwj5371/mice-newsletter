@@ -59,7 +59,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   theory_to_field: "이론에서 현장으로",
   editor_take: "지금 MICE는",
   groundk_story: "그라운드케이 스토리",
-  consolidated_insight: "그라운드케이 인사이트 (단일 주제 심층 분석)",
+  consolidated_insight: "MICE 인사이트 (단일 주제 심층 분석)",
   event_radar: "이달의 주목할 행사 (Event Radar)",
   blog_card_grid: "블로그 카드 그리드",
 };

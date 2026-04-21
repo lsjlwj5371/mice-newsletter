@@ -43,7 +43,7 @@ const CANONICAL_ENGLISH_LABELS: Partial<Record<BlockType, string>> = {
   theory_to_field: "From Theory to Field",
   editor_take: "지금 MICE는",
   groundk_story: "GroundK Story",
-  consolidated_insight: "GroundK Insight",
+  consolidated_insight: "MICE Insight",
   event_radar: "Event Radar",
   blog_card_grid: "GroundK Blog",
 };
@@ -70,7 +70,7 @@ const BLOCK_SCHEMA_PROMPT: Record<BlockType, string> = {
   theory_to_field: `{ "englishLabel": "From Theory to Field", "sourceYear": "제공된 기사에 명시된 연도 (예: 1990). 없으면 빈 문자열", "sourceAuthor": "제공된 기사에 명시된 저자 / 소속. 없으면 빈 문자열", "sourceMeta": "영문 부제가 있다면. 없으면 빈 문자열", "title": "호기심을 자극하는 헤드라인", "introParagraphs": ["1~2단락"], "bridge": { "label": "→ 현장에서는", "text": "1~2문장" }, "outroParagraphs": ["1단락"], "closingNote": "1문장의 마무리" }`,
   editor_take: `{ "englishLabel": "지금 MICE는", "eyebrow": "이달의 이슈", "title": "\\n으로 줄바꿈 가능한 제목", "leadParagraph": "진입 1문장", "pullQuote": "짧고 강렬한 인용구", "paragraphs": ["2~3단락"], "closingNote": "1문장의 마무리" }`,
   groundk_story: `{ "englishLabel": "GroundK Story", "fieldBriefing": { "eyebrow": "이달의 현장 브리핑", "categoryTag": "공항 운영 등", "body": "1~2단락. 줄바꿈은 \\n\\n 로 구분" }, "projectSketch": { "projectMeta": "Project · 이름", "dateMeta": "YYYY.MM.DD", "eyebrow": "그라운드케이 프로젝트 스케치", "title": "프로젝트 타이틀", "paragraphs": ["정확히 3개의 단락"], "tags": ["태그 3개 정도"] } }`,
-  consolidated_insight: `{ "englishLabel": "GroundK Insight", "topicLabel": "주제 태그 (예: Agentic AI · MICE 운영)", "topicMeta": "YYYY.MM · 심층 분석", "title": "이 호에서 다루는 하나의 심층 주제 제목 (24~40자)", "leadParagraph": "이 주제를 왜 지금 다루는지 설명하는 도입 단락 2~4문장", "chapters": [정확히 3~5개. 각 chapter = { "chapterLabel": "01 · 배경", "heading": "이 챕터에서 밝힐 질문/포인트 (14~28자)", "paragraphs": ["2~4개의 두터운 단락. 문장은 문어체 ~습니다 끝맺음."], "pullQuote": "(선택) 이 챕터에서 가장 강조하고 싶은 1문장. 생략 가능" }] }
+  consolidated_insight: `{ "englishLabel": "MICE Insight", "topicLabel": "주제 태그 (예: Agentic AI · MICE 운영)", "topicMeta": "YYYY.MM · 심층 분석", "title": "이 호에서 다루는 하나의 심층 주제 제목 (24~40자)", "leadParagraph": "이 주제를 왜 지금 다루는지 설명하는 도입 단락 2~4문장", "chapters": [정확히 3~5개. 각 chapter = { "chapterLabel": "01 · 배경", "heading": "이 챕터에서 밝힐 질문/포인트 (14~28자)", "paragraphs": ["2~4개의 두터운 단락. 문장은 문어체 ~습니다 끝맺음."], "pullQuote": "(선택) 이 챕터에서 가장 강조하고 싶은 1문장. 생략 가능" }] }
 
 ## consolidated_insight 전용 지침 (매우 중요)
 - 이 블록은 **여러 기사를 짜깁기하는 섹션이 아닙니다.** 후보 기사 중 **단 하나**(가장 MICE 업계에 파급력 있고 다층적으로 풀어낼 수 있는 기사)를 고르고, 그 **하나의 기사만을 심층 분석**합니다.
@@ -324,7 +324,7 @@ function getPlaceholderData(type: BlockType): unknown {
       };
     case "consolidated_insight":
       return {
-        englishLabel: "GroundK Insight",
+        englishLabel: "MICE Insight",
         topicLabel: "주제 태그",
         topicMeta: "YYYY.MM · 심층 분석",
         title: "하나의 주제를 심층 분석하는 제목을 작성하세요.",

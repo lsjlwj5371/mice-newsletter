@@ -88,20 +88,29 @@ export default function Newsletter({ content, appUrl }: Props) {
         />
       </Head>
       <Preview>{content.subject}</Preview>
+      {/* Outer Body: soft neutral canvas behind the newsletter card so
+          the inner white container reads as a distinct sheet even in
+          mail clients that default to a white background. */}
       <Body
         style={{
-          backgroundColor: colors.bgWhite,
+          backgroundColor: "#eceff3",
           margin: 0,
-          padding: 0,
+          padding: "24px 12px",
           fontFamily: typography.fontFamily,
         }}
       >
+        {/* Inner container: the newsletter "card". Subtle border +
+            rounded corners + soft shadow give it a clear edge on both
+            light (#ffffff) and tinted client backgrounds. */}
         <Container
           style={{
             maxWidth: spacing.containerMaxWidth,
             margin: "0 auto",
             backgroundColor: colors.bgWhite,
             padding: spacing.wrapperPadding,
+            border: "1px solid #d8dde4",
+            borderRadius: "12px",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
           }}
         >
           <NewsletterHeaderBlock content={content.header} />

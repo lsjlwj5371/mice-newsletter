@@ -127,21 +127,24 @@ export function ItemGroup({
         dangerouslySetInnerHTML={{ __html: renderInlineHtml(body) }}
       />
 
-      {/* sourceUrl is admin-opt-in: rendered as a subtle "원문 보기 →"
-          link only when the admin has set a URL on this item. */}
+      {/* sourceUrl is admin-opt-in: rendered as a compact button so
+          readers actually notice it. Only shows when the admin has
+          set a URL on this item. */}
       {sourceUrl && sourceUrl.trim() !== "" && (
-        <Text
-          style={{
-            fontSize: "12px",
-            color: colors.textSoft,
-            margin: "-6px 0 12px 0",
-          }}
-        >
+        <Text style={{ margin: "-2px 0 14px 0", lineHeight: 1 }}>
           <a
             href={sourceUrl}
             style={{
-              color: colors.textSoft,
-              textDecoration: "underline",
+              display: "inline-block",
+              padding: "8px 14px",
+              backgroundColor: "#f3f4f8",
+              color: colors.brandNavy,
+              border: `1px solid ${colors.borderStrong}`,
+              borderRadius: "6px",
+              fontSize: "12px",
+              fontWeight: 600,
+              letterSpacing: "0.2px",
+              textDecoration: "none",
             }}
           >
             원문 보기 →
