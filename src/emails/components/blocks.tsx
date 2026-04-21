@@ -183,13 +183,11 @@ export function NewsletterHeaderBlock({
               {content.issueNumber !== undefined && (
                 <Text
                   style={{
-                    fontSize: "22px",
-                    fontWeight: 800,
+                    fontSize: "14px",
+                    fontWeight: 700,
                     color: colors.textHeadline,
-                    letterSpacing: "1.5px",
+                    letterSpacing: "1px",
                     margin: 0,
-                    fontFamily:
-                      "'Pretendard', 'Impact', 'Arial Black', Arial, sans-serif",
                   }}
                 >
                   VOL {formatIssueNumber(content.issueNumber)}
