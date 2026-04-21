@@ -7,7 +7,13 @@ import { Input, Textarea, Label } from "@/components/ui/input";
 import { BlockPicker, DEFAULT_BLOCK_CONFIGS, type BlockConfig } from "./block-picker";
 import { createDraftWithBlocksAction } from "@/app/(admin)/newsletters/actions";
 
-export function NewDraftForm() {
+interface Props {
+  /** Server-computed suggestion for the next issue number. Defaults to 1
+   *  when loading fails. Admin can still type anything into the field. */
+  defaultIssueNumber: number;
+}
+
+export function NewDraftForm({ defaultIssueNumber }: Props) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
@@ -15,7 +21,11 @@ export function NewDraftForm() {
 
   // Form state
   const today = new Date();
-  const defaultIssueLabel = `VOL · ${today.getFullYear()}년 ${today.getMonth() + 1}월호`;
+  // Default to a simple "N호" label based on current newsletter count.
+  // Admin frequently publishes off a cadence (주간 / 이슈 기반), so the
+  // month label we used before was misleading. The input stays fully
+  // editable for special editions ("창간호", "특별호 · YYYY" 등).
+  const defaultIssueLabel = `${defaultIssueNumber}호`;
   const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
   const todayStr = formatDateForInput(today);
   const thirtyAgoStr = formatDateForInput(thirtyDaysAgo);
@@ -99,11 +109,12 @@ export function NewDraftForm() {
             value={issueLabel}
             onChange={(e) => setIssueLabel(e.target.value)}
             required
-            placeholder="VOL.02 · 2026년 5월호"
+            placeholder="예: 1호, 창간호, 특별호 — VOL.01 · 2026 여름 등"
             disabled={pending}
           />
           <p className="text-xs text-muted-foreground">
-            뉴스레터 상단·관리 화면에 표시되는 호 식별 라벨
+            기존 뉴스레터 수를 바탕으로 다음 호 번호를 자동으로 제안합니다.
+            창간호·특별호 등 원하는 이름을 자유롭게 입력해도 됩니다.
           </p>
         </div>
 
