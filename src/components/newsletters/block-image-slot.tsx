@@ -23,6 +23,8 @@ interface Props {
   currentLayout?: ImageLayout | null;
   /** For groundk_story: which sub-part this slot controls. */
   slot?: "fieldBriefing" | "projectSketch";
+  /** For event_radar / news_briefing: which nested item this slot targets. */
+  itemIndex?: number;
   /** Human-readable label shown above the widget. */
   label?: string;
   disabled?: boolean;
@@ -43,6 +45,7 @@ export function BlockImageSlot({
   currentUrl,
   currentLayout,
   slot,
+  itemIndex,
   label = "이미지",
   disabled,
 }: Props) {
@@ -96,6 +99,7 @@ export function BlockImageSlot({
         blockIndex,
         imageUrl: body.url,
         slot,
+        itemIndex,
       });
       if (!actionRes.ok) {
         setError(actionRes.error);
@@ -121,6 +125,7 @@ export function BlockImageSlot({
         blockIndex,
         imageUrl: null,
         slot,
+        itemIndex,
       });
       if (!actionRes.ok) {
         setError(actionRes.error);

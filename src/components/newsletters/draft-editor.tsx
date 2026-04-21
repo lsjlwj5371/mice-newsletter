@@ -851,6 +851,46 @@ function BlockCard({
                 disabled={pending || disabled}
               />
             </div>
+          ) : block.type === "event_radar" ? (
+            <div className="space-y-4">
+              {(
+                (block.data as {
+                  events?: Array<{ title?: string; imageUrl?: string }>;
+                }).events ?? []
+              ).map((ev, i) => (
+                <BlockImageSlot
+                  key={i}
+                  newsletterId={newsletterId}
+                  blockIndex={blockIndex}
+                  itemIndex={i}
+                  label={`행사 ${i + 1}${
+                    ev.title ? ` — ${ev.title.slice(0, 30)}` : ""
+                  } 이미지 (선택)`}
+                  currentUrl={ev.imageUrl ?? null}
+                  disabled={pending || disabled}
+                />
+              ))}
+            </div>
+          ) : block.type === "news_briefing" ? (
+            <div className="space-y-4">
+              {(
+                (block.data as {
+                  items?: Array<{ title?: string; imageUrl?: string }>;
+                }).items ?? []
+              ).map((it, i) => (
+                <BlockImageSlot
+                  key={i}
+                  newsletterId={newsletterId}
+                  blockIndex={blockIndex}
+                  itemIndex={i}
+                  label={`기사 ${i + 1}${
+                    it.title ? ` — ${it.title.slice(0, 30)}` : ""
+                  } 이미지 (선택)`}
+                  currentUrl={it.imageUrl ?? null}
+                  disabled={pending || disabled}
+                />
+              ))}
+            </div>
           ) : (
             <BlockImageSlot
               newsletterId={newsletterId}

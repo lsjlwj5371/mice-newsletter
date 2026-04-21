@@ -790,6 +790,9 @@ export interface SetBlockImageInput {
   imageUrl: string | null;
   /** For compound blocks like groundk_story: which sub-part to target. */
   slot?: "fieldBriefing" | "projectSketch";
+  /** For array-based blocks (news_briefing.items, event_radar.events):
+   *  which item to patch. Mutually exclusive with `slot`. */
+  itemIndex?: number;
 }
 
 export async function setBlockImageAction(
@@ -834,6 +837,35 @@ export async function setBlockImageAction(
         ...data,
         [input.slot]: { ...sub, imageUrl: nextValue },
       },
+    } as NewsletterContent["blocks"][number];
+  } else if (input.itemIndex !== undefined) {
+    // Array-based blocks: patch the nested item's imageUrl rather than
+    // the block's top-level data.imageUrl. Only news_briefing and
+    // event_radar have item arrays with imageUrl.
+    const nestedKey =
+      block.type === "news_briefing"
+        ? "items"
+        : block.type === "event_radar"
+        ? "events"
+        : null;
+    if (!nestedKey) {
+      return {
+        ok: false,
+        error: `${block.type} 블록은 항목별 이미지를 지원하지 않습니다.`,
+      };
+    }
+    const nested = (data[nestedKey] as Array<Record<string, unknown>>) ?? [];
+    if (input.itemIndex < 0 || input.itemIndex >= nested.length) {
+      return { ok: false, error: "해당 항목을 찾을 수 없습니다." };
+    }
+    const nextNested = [...nested];
+    const target = { ...nextNested[input.itemIndex] };
+    if (nextValue) target.imageUrl = nextValue;
+    else delete target.imageUrl;
+    nextNested[input.itemIndex] = target;
+    updatedBlock = {
+      ...block,
+      data: { ...data, [nestedKey]: nextNested },
     } as NewsletterContent["blocks"][number];
   } else {
     updatedBlock = {
