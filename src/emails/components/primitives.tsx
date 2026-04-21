@@ -229,17 +229,41 @@ export function MajorSection({
 }
 
 /**
- * Decorative section separator — three evenly-spaced narrow hairlines
- * with a centered accent diamond. Uses a plain table row so every mail
- * client renders it identically; no CSS pseudo-elements or gradients.
+ * Decorative section separator — two hairlines flanking a centered
+ * gold diamond. Previous version used `border-bottom` on the side td
+ * cells; that collapsed to zero in several clients because the
+ * middle cell pushed the row height above 1px. Now each side cell
+ * wraps a 1px-tall `<div>` with a background color, vertically
+ * centered inside the taller row — renders as a visible hairline
+ * across Gmail / Outlook / Apple Mail alike.
  */
 export function SectionDivider() {
+  const lineCell = (
+    <td
+      width="45%"
+      style={{
+        verticalAlign: "middle",
+      }}
+    >
+      <div
+        style={{
+          height: "1px",
+          lineHeight: "1px",
+          fontSize: "1px",
+          backgroundColor: colors.borderSoft,
+          width: "100%",
+        }}
+      >
+        &nbsp;
+      </div>
+    </td>
+  );
+
   return (
     <Section
       style={{
-        paddingTop: "14px",
-        paddingBottom: "14px",
-        textAlign: "center",
+        paddingTop: "16px",
+        paddingBottom: "16px",
       }}
     >
       <table
@@ -247,7 +271,8 @@ export function SectionDivider() {
         cellPadding={0}
         cellSpacing={0}
         border={0}
-        width="60%"
+        width="70%"
+        align="center"
         style={{
           margin: "0 auto",
           borderCollapse: "collapse",
@@ -256,38 +281,22 @@ export function SectionDivider() {
       >
         <tbody>
           <tr>
+            {lineCell}
             <td
+              align="center"
               style={{
-                borderBottom: `1px solid ${colors.borderSoft}`,
-                height: "1px",
-                fontSize: "0",
-                lineHeight: "0",
-              }}
-            >
-              &nbsp;
-            </td>
-            <td
-              style={{
+                verticalAlign: "middle",
                 padding: "0 14px",
-                fontSize: "10px",
+                fontSize: "12px",
                 lineHeight: 1,
                 color: colors.accentGold,
-                letterSpacing: "1px",
                 whiteSpace: "nowrap",
+                width: "30px",
               }}
             >
               ◆
             </td>
-            <td
-              style={{
-                borderBottom: `1px solid ${colors.borderSoft}`,
-                height: "1px",
-                fontSize: "0",
-                lineHeight: "0",
-              }}
-            >
-              &nbsp;
-            </td>
+            {lineCell}
           </tr>
         </tbody>
       </table>
