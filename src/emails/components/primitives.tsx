@@ -9,15 +9,20 @@ import { colors, typography, spacing } from "../tokens";
 import { renderInlineHtml } from "../helpers";
 
 // ─────────────────────────────────────────────
-// Section header — "01 / Number of the Month"
+// Section header — "📰 01 / News Briefing"
+// Optional emoji prefix per block type. Unicode emoji renders
+// universally across mail clients without needing image assets.
 // ─────────────────────────────────────────────
 export function SectionLabel({
   index,
   label,
+  emoji,
 }: {
   index?: string;
   label: string;
+  emoji?: string;
 }) {
+  const main = index ? `${index} / ${label}` : label;
   return (
     <Section style={{ marginBottom: spacing.sectionHeaderGap }}>
       <Text
@@ -27,7 +32,7 @@ export function SectionLabel({
           margin: 0,
         }}
       >
-        {index ? `${index} / ${label}` : label}
+        {emoji ? `${emoji}  ${main}` : main}
       </Text>
     </Section>
   );
@@ -36,10 +41,13 @@ export function SectionLabel({
 export function SectionLabelOnDark({
   index,
   label,
+  emoji,
 }: {
   index?: string;
   label: string;
+  emoji?: string;
 }) {
+  const main = index ? `${index} / ${label}` : label;
   return (
     <Section style={{ marginBottom: "24px" }}>
       <Text
@@ -51,7 +59,7 @@ export function SectionLabelOnDark({
           margin: 0,
         }}
       >
-        {index ? `${index} / ${label}` : label}
+        {emoji ? `${emoji}  ${main}` : main}
       </Text>
     </Section>
   );

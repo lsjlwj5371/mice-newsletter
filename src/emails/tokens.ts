@@ -26,9 +26,13 @@ export const colors = {
   bgFieldBriefing: "#f5f6fa",
 
   textHeadline: "#111111",
-  textBody: "#444444",
-  textMuted: "#666666",
-  textSoft: "#888888",
+  // Body text deliberately near-black: previous #444 read as gray on
+  // most clients, especially with the 13~15px body sizes. Pulling it
+  // close to the headline color (with size + weight still secondary)
+  // gives readers the contrast they expected.
+  textBody: "#1a1a1a",
+  textMuted: "#2a2a2a",
+  textSoft: "#666666",
   textFaint: "#999999",
 
   textOnDark: "#ffffff",
@@ -75,9 +79,9 @@ export const typography = {
     letterSpacing: "-0.5px",
   },
   bodyText: {
-    fontSize: "15px",
-    fontWeight: 300,
-    lineHeight: 1.7,
+    fontSize: "18px",
+    fontWeight: 400,
+    lineHeight: 1.75,
     letterSpacing: "-0.2px",
   },
   categoryTag: {

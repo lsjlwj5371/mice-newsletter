@@ -123,7 +123,7 @@ export function NewsletterHeaderBlock({
             style={{
               display: "inline-block",
               marginLeft: "14px",
-              fontSize: "13px",
+              fontSize: "16px",
               fontWeight: 400,
               color: colors.textMuted,
               verticalAlign: "middle",
@@ -134,9 +134,9 @@ export function NewsletterHeaderBlock({
           </span>
           <Text
             style={{
-              fontSize: "13px",
+              fontSize: "16px",
               color: colors.textSoft,
-              fontWeight: 300,
+              fontWeight: 400,
               margin: "10px 0 0 0",
             }}
           >
@@ -368,7 +368,7 @@ export function ReferralCtaBlock({
         <Column style={{ verticalAlign: "middle" }}>
           <Text
             style={{
-              fontSize: "13px",
+              fontSize: "16px",
               lineHeight: 1.7,
               color: colors.textBody,
               fontWeight: 400,
@@ -569,7 +569,11 @@ function StatFeature({
 }) {
   return (
     <MajorSection>
-      <SectionLabel index={index} label={block.data.englishLabel} />
+      <SectionLabel
+        index={index}
+        label={block.data.englishLabel}
+        emoji="📊"
+      />
       <Section>
         <Text style={{ margin: "0 0 16px 0" }}>
           <span
@@ -629,7 +633,11 @@ function NewsBriefing({
 }) {
   return (
     <MajorSection>
-      <SectionLabel index={index} label={block.data.englishLabel} />
+      <SectionLabel
+        index={index}
+        label={block.data.englishLabel}
+        emoji="📰"
+      />
       {block.data.items.map((item, i) => (
         <ItemGroup
           key={i}
@@ -658,7 +666,11 @@ function InOutComparison({
 }) {
   return (
     <MajorSection>
-      <SectionLabel index={index} label={block.data.englishLabel} />
+      <SectionLabel
+        index={index}
+        label={block.data.englishLabel}
+        emoji="🌏"
+      />
       <Row>
         <Column
           style={{
@@ -737,11 +749,11 @@ function InOutCard({
         </Heading>
         <Text
           style={{
-            fontSize: "13px",
+            fontSize: "16px",
             color: colors.textMuted,
             lineHeight: 1.75,
             margin: "0 0 12px 0",
-            fontWeight: 300,
+            fontWeight: 400,
           }}
         >
           {card.body}
@@ -785,6 +797,7 @@ function TechSignal({
     >
       <Section style={{ marginBottom: "20px" }}>
         <Text style={{ ...typography.sectionLabel, margin: 0 }}>
+          <span style={{ marginRight: "10px" }}>💡</span>
           <span style={{ color: colors.accentGold }}>{index}</span>
           <span style={{ color: "rgba(46,48,146,0.25)", margin: "0 6px" }}>/</span>
           <span style={{ color: colors.brandNavy, opacity: 0.75 }}>
@@ -862,10 +875,10 @@ function TechSignal({
               <Text
                 key={i}
                 style={{
-                  fontSize: "13.5px",
+                  fontSize: "16px",
                   color: colors.textBody,
                   lineHeight: 1.85,
-                  fontWeight: 300,
+                  fontWeight: 400,
                   margin: "0 0 16px 0",
                 }}
                 dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
@@ -899,7 +912,7 @@ function TechSignal({
                 fontSize: "12.5px",
                 color: colors.textMuted,
                 lineHeight: 1.75,
-                fontWeight: 300,
+                fontWeight: 400,
                 margin: 0,
               }}
               dangerouslySetInnerHTML={{
@@ -944,7 +957,11 @@ function TheoryToField({
 }) {
   return (
     <MajorSection>
-      <SectionLabel index={index} label={block.data.englishLabel} />
+      <SectionLabel
+        index={index}
+        label={block.data.englishLabel}
+        emoji="📚"
+      />
       {(block.data.sourceYear || block.data.sourceAuthor) && (
         <Section style={{ marginBottom: "18px" }}>
           <Row>
@@ -1026,10 +1043,10 @@ function TheoryToField({
           <Text
             key={`intro-${i}`}
             style={{
-              fontSize: "14px",
+              fontSize: "17px",
               color: colors.textBody,
               lineHeight: 1.95,
-              fontWeight: 300,
+              fontWeight: 400,
               margin: "0 0 16px 0",
             }}
             dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
@@ -1059,10 +1076,10 @@ function TheoryToField({
         </Text>
         <Text
           style={{
-            fontSize: "14px",
+            fontSize: "17px",
             color: colors.textBody,
             lineHeight: 1.85,
-            fontWeight: 300,
+            fontWeight: 400,
             margin: 0,
           }}
           dangerouslySetInnerHTML={{
@@ -1075,10 +1092,10 @@ function TheoryToField({
         <Text
           key={`outro-${i}`}
           style={{
-            fontSize: "14px",
+            fontSize: "17px",
             color: colors.textBody,
             lineHeight: 1.95,
-            fontWeight: 300,
+            fontWeight: 400,
             margin: "0 0 16px 0",
           }}
           dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
@@ -1088,7 +1105,7 @@ function TheoryToField({
       {block.data.closingNote && (
         <Text
           style={{
-            fontSize: "13px",
+            fontSize: "16px",
             fontStyle: "italic",
             color: colors.textSoft,
             lineHeight: 1.7,
@@ -1135,7 +1152,11 @@ function EditorTake({
 }) {
   return (
     <MajorSection>
-      <SectionLabel index={index} label={block.data.englishLabel} />
+      <SectionLabel
+        index={index}
+        label={block.data.englishLabel}
+        emoji="✏️"
+      />
       {block.data.eyebrow && (
         <Text
           style={{
@@ -1168,10 +1189,10 @@ function EditorTake({
       {block.data.leadParagraph && (
         <Text
           style={{
-            fontSize: "14px",
+            fontSize: "17px",
             color: colors.textBody,
             lineHeight: 1.95,
-            fontWeight: 300,
+            fontWeight: 400,
             margin: "0 0 8px 0",
           }}
         >
@@ -1209,10 +1230,10 @@ function EditorTake({
           <Text
             key={i}
             style={{
-              fontSize: "14px",
+              fontSize: "17px",
               color: colors.textBody,
               lineHeight: 1.95,
-              fontWeight: 300,
+              fontWeight: 400,
               margin: "0 0 16px 0",
             }}
             dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
@@ -1222,7 +1243,7 @@ function EditorTake({
       {block.data.closingNote && (
         <Text
           style={{
-            fontSize: "13px",
+            fontSize: "16px",
             fontStyle: "italic",
             color: colors.textSoft,
             lineHeight: 1.7,
@@ -1255,7 +1276,11 @@ function GroundkStory({
 
   return (
     <MajorSection noBorder>
-      <SectionLabel index={index} label={block.data.englishLabel} />
+      <SectionLabel
+        index={index}
+        label={block.data.englishLabel}
+        emoji="🎯"
+      />
 
       {/* Field Briefing — light tinted card */}
       {showFieldBriefing && (
@@ -1304,10 +1329,10 @@ function GroundkStory({
           >
             <Text
               style={{
-                fontSize: "13px",
+                fontSize: "16px",
                 color: colors.textBody,
                 lineHeight: 1.85,
-                fontWeight: 300,
+                fontWeight: 400,
                 margin: 0,
                 whiteSpace: "pre-line",
               }}
@@ -1399,7 +1424,7 @@ function GroundkStory({
             <Text
               key={i}
               style={{
-                fontSize: "13px",
+                fontSize: "16px",
                 color: colors.textMuted,
                 lineHeight: 1.85,
                 margin: "0 0 14px 0",
@@ -1460,7 +1485,11 @@ function ConsolidatedInsightSingleTopic({
   const chapters = block.data.chapters ?? [];
   return (
     <MajorSection>
-      <SectionLabel index={index} label={block.data.englishLabel} />
+      <SectionLabel
+        index={index}
+        label={block.data.englishLabel}
+        emoji="🔍"
+      />
 
       {block.data.topicLabel && (
         <Text
@@ -1513,7 +1542,7 @@ function ConsolidatedInsightSingleTopic({
         {block.data.leadParagraph ? (
           <Text
             style={{
-              fontSize: "15px",
+              fontSize: "18px",
               color: colors.textBody,
               lineHeight: 1.9,
               fontWeight: 400,
@@ -1564,10 +1593,10 @@ function ConsolidatedInsightSingleTopic({
             <Text
               key={j}
               style={{
-                fontSize: "14px",
+                fontSize: "17px",
                 color: colors.textBody,
                 lineHeight: 1.9,
-                fontWeight: 300,
+                fontWeight: 400,
                 margin: "0 0 14px 0",
               }}
               dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
@@ -1576,7 +1605,7 @@ function ConsolidatedInsightSingleTopic({
           {ch.pullQuote && (
             <Text
               style={{
-                fontSize: "15px",
+                fontSize: "18px",
                 fontWeight: 500,
                 fontStyle: "italic",
                 color: colors.textHeadline,
@@ -1640,7 +1669,11 @@ function ConsolidatedInsight({
   const legacyParts = block.data.parts ?? [];
   return (
     <MajorSection>
-      <SectionLabel index={index} label={block.data.englishLabel} />
+      <SectionLabel
+        index={index}
+        label={block.data.englishLabel}
+        emoji="🔍"
+      />
       {legacyParts.map((part, i) => (
         <Section
           key={i}
@@ -1687,10 +1720,10 @@ function ConsolidatedInsight({
             <Text
               key={j}
               style={{
-                fontSize: "14px",
+                fontSize: "17px",
                 color: colors.textBody,
                 lineHeight: 1.9,
-                fontWeight: 300,
+                fontWeight: 400,
                 margin: "0 0 14px 0",
               }}
               dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
@@ -1719,7 +1752,7 @@ function ConsolidatedInsight({
               </Text>
               <Text
                 style={{
-                  fontSize: "13px",
+                  fontSize: "16px",
                   color: "#555555",
                   lineHeight: 1.7,
                   margin: 0,
@@ -1748,7 +1781,11 @@ function EventRadar({
 }) {
   return (
     <MajorSection>
-      <SectionLabel index={index} label={block.data.englishLabel} />
+      <SectionLabel
+        index={index}
+        label={block.data.englishLabel}
+        emoji="📅"
+      />
       {block.data.events.map((ev, i) => (
         <Section
           key={i}
@@ -1813,10 +1850,10 @@ function EventRadar({
           )}
           <Text
             style={{
-              fontSize: "13.5px",
+              fontSize: "16px",
               color: colors.textBody,
               lineHeight: 1.85,
-              fontWeight: 300,
+              fontWeight: 400,
               margin: "0 0 12px 0",
             }}
             dangerouslySetInnerHTML={{ __html: renderInlineHtml(ev.body) }}
@@ -1849,7 +1886,7 @@ function EventRadar({
                   fontSize: "12.5px",
                   color: colors.textBody,
                   lineHeight: 1.7,
-                  fontWeight: 300,
+                  fontWeight: 400,
                   margin: 0,
                 }}
                 dangerouslySetInnerHTML={{
@@ -1885,7 +1922,11 @@ function BlogCardGrid({
   }
   return (
     <MajorSection>
-      <SectionLabel index={index} label={block.data.englishLabel} />
+      <SectionLabel
+        index={index}
+        label={block.data.englishLabel}
+        emoji="📝"
+      />
       {rows.map((row, rowIdx) => (
         <Row key={rowIdx} style={{ marginBottom: rowIdx === rows.length - 1 ? "0" : "14px" }}>
           {row.map((card, i) => (
@@ -1920,7 +1961,7 @@ function BlogCardGrid({
                 <Heading
                   as="h4"
                   style={{
-                    fontSize: "14px",
+                    fontSize: "17px",
                     fontWeight: 700,
                     color: colors.textHeadline,
                     lineHeight: 1.4,
@@ -1935,7 +1976,7 @@ function BlogCardGrid({
                     fontSize: "12px",
                     color: colors.textMuted,
                     lineHeight: 1.7,
-                    fontWeight: 300,
+                    fontWeight: 400,
                     margin: "0 0 12px 0",
                   }}
                 >
