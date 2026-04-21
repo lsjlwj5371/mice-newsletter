@@ -148,37 +148,95 @@ export function NewsletterHeaderBlock({
         {content.description}
       </Text>
 
-      {/* Meta bar (issue number) */}
+      {/* Meta bar (issue number + date). When the new structured fields
+          are set, render as:
+              ISSUE · 2026.04.28
+              VOL 001
+          Falling back to the legacy single-line `issueMeta` for drafts
+          created before this split.  */}
       <Section
         style={{
           paddingTop: "14px",
           borderTop: `1px solid ${colors.borderSoft}`,
         }}
       >
-        <Text
-          style={{
-            fontSize: "9px",
-            fontWeight: 700,
-            color: colors.textFaint,
-            letterSpacing: "2px",
-            textTransform: "uppercase",
-            margin: "0 0 3px 0",
-          }}
-        >
-          Issue
-        </Text>
-        <Text
-          style={{
-            fontSize: "12px",
-            color: colors.textMuted,
-            margin: 0,
-          }}
-        >
-          {content.issueMeta}
-        </Text>
+        {content.issueNumber !== undefined ||
+        content.issueDate ||
+        content.issueMeta ? (
+          content.issueNumber !== undefined || content.issueDate ? (
+            <>
+              <Text
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  color: colors.textFaint,
+                  letterSpacing: "2px",
+                  textTransform: "uppercase",
+                  margin: "0 0 6px 0",
+                }}
+              >
+                Issue
+                {content.issueDate
+                  ? ` · ${formatIssueDate(content.issueDate)}`
+                  : ""}
+              </Text>
+              {content.issueNumber !== undefined && (
+                <Text
+                  style={{
+                    fontSize: "22px",
+                    fontWeight: 800,
+                    color: colors.textHeadline,
+                    letterSpacing: "1.5px",
+                    margin: 0,
+                    fontFamily:
+                      "'Pretendard', 'Impact', 'Arial Black', Arial, sans-serif",
+                  }}
+                >
+                  VOL {formatIssueNumber(content.issueNumber)}
+                </Text>
+              )}
+            </>
+          ) : (
+            <>
+              <Text
+                style={{
+                  fontSize: "9px",
+                  fontWeight: 700,
+                  color: colors.textFaint,
+                  letterSpacing: "2px",
+                  textTransform: "uppercase",
+                  margin: "0 0 3px 0",
+                }}
+              >
+                Issue
+              </Text>
+              <Text
+                style={{
+                  fontSize: "12px",
+                  color: colors.textMuted,
+                  margin: 0,
+                }}
+              >
+                {content.issueMeta}
+              </Text>
+            </>
+          )
+        ) : null}
       </Section>
     </Section>
   );
+}
+
+/** YYYY-MM-DD → YYYY.MM.DD. Leaves any other format (e.g. "2026.04") alone. */
+function formatIssueDate(raw: string): string {
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}.${iso[2]}.${iso[3]}`;
+  return raw;
+}
+
+/** 1 → "001", 7 → "007", 42 → "042", 1000 → "1000". */
+function formatIssueNumber(n: number): string {
+  return n.toString().padStart(3, "0");
 }
 
 /**

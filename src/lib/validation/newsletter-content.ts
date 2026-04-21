@@ -15,6 +15,8 @@ const headerSchema = z.object({
   tagline: z.string(),
   industryTag: z.string(),
   issueMeta: z.string(),
+  issueNumber: z.number().int().min(0).max(9999).optional(),
+  issueDate: z.string().optional(),
   description: z.string(),
   wordmarkFontSize: z.number().int().min(10).max(120).optional(),
   wordmarkColor: z.string().optional(),

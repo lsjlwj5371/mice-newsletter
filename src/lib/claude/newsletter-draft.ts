@@ -876,6 +876,11 @@ export interface BlockInstructionEntry {
 
 export interface DraftGenerationInput {
   issueLabel: string;
+  /** Volume number for the header's "VOL 001" line. Optional — when
+   *  undefined the renderer falls back to issueMeta. */
+  issueNumber?: number;
+  /** Send date shown next to "ISSUE" in the header (ISO YYYY-MM-DD). */
+  issueDate?: string;
   /** Articles already filtered by the issue's collection period. */
   articlesByCategory: Record<ArticleCategory, Article[]>;
   /**
@@ -1163,7 +1168,12 @@ export async function generateNewsletterDraft(
   const content: NewsletterContent = {
     issueLabel: input.issueLabel,
     subject,
-    header: { ...template.header, issueMeta: input.issueLabel },
+    header: {
+      ...template.header,
+      issueMeta: input.issueLabel,
+      issueNumber: input.issueNumber,
+      issueDate: input.issueDate,
+    },
     referralCta: template.referralCta,
     blocks,
     footer: template.footer,

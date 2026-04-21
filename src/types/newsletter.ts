@@ -408,8 +408,20 @@ export interface HeaderContent {
   tagline: string;
   /** Industry tag e.g. "MICE · PCO · Event Industry" */
   industryTag: string;
-  /** Issue meta line e.g. "VOL.01 · 2026년 4월호" */
+  /**
+   * Legacy single-string meta line. Kept for back-compat: when the new
+   * structured fields below are empty, the renderer falls back to this.
+   * New drafts populate issueNumber + issueDate instead.
+   */
   issueMeta: string;
+  /** Structured issue number, e.g. 1 renders as "VOL 001". Auto-
+   *  increments based on existing newsletter count at draft creation.
+   *  Admin can override per-draft. */
+  issueNumber?: number;
+  /** Scheduled/intended send date shown next to the "ISSUE" label.
+   *  ISO date string (YYYY-MM-DD). Defaults to today at creation, but
+   *  admin can edit to match the actual planned send date. */
+  issueDate?: string;
   /** Extended description e.g. "업계 종사자를 위한 인사이트 레터 · by GroundK" */
   description: string;
   /** Wordmark font size in pixels. When unset, the renderer auto-scales

@@ -529,6 +529,11 @@ export interface BlockConfigInput {
 
 export interface CreateDraftWithBlocksInput {
   issueLabel: string;
+  /** Numeric volume number shown as "VOL 001" in the header. When
+   *  undefined the header falls back to the legacy issueMeta string. */
+  issueNumber?: number;
+  /** Intended send date shown next to the "ISSUE" label. ISO date. */
+  issueDate?: string;
   periodStart: string | null;
   periodEnd: string | null;
   perCategoryLimit: number;
@@ -664,6 +669,8 @@ export async function createDraftWithBlocksAction(
   try {
     draftResult = await generateNewsletterDraft({
       issueLabel,
+      issueNumber: input.issueNumber,
+      issueDate: input.issueDate,
       articlesByCategory,
       articlesByCategoryAllTime: needsAllTime
         ? articlesByCategoryAllTime

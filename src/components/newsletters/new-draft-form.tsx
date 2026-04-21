@@ -27,6 +27,12 @@ export function NewDraftForm({ defaultIssueNumber }: Props) {
   // editable for special editions ("창간호", "특별호 · YYYY" 등).
   const defaultIssueLabel = `${defaultIssueNumber}호`;
   const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const [issueNumber, setIssueNumber] = React.useState<number>(
+    defaultIssueNumber
+  );
+  const [issueDate, setIssueDate] = React.useState<string>(
+    formatDateForInput(today)
+  );
   const todayStr = formatDateForInput(today);
   const thirtyAgoStr = formatDateForInput(thirtyDaysAgo);
 
@@ -57,6 +63,8 @@ export function NewDraftForm({ defaultIssueNumber }: Props) {
       try {
         const result = await createDraftWithBlocksAction({
           issueLabel,
+          issueNumber,
+          issueDate,
           periodStart: usePeriod ? periodStart : null,
           periodEnd: usePeriod ? periodEnd : null,
           perCategoryLimit,
@@ -113,9 +121,46 @@ export function NewDraftForm({ defaultIssueNumber }: Props) {
             disabled={pending}
           />
           <p className="text-xs text-muted-foreground">
-            기존 뉴스레터 수를 바탕으로 다음 호 번호를 자동으로 제안합니다.
-            창간호·특별호 등 원하는 이름을 자유롭게 입력해도 됩니다.
+            관리 화면·발송 이력 목록에 표시되는 호 식별 라벨입니다. 창간호·특별호 등
+            원하는 이름을 자유롭게 입력해도 됩니다.
           </p>
+        </div>
+
+        {/* ── 헤더에 표시되는 ISSUE · 날짜 · VOL 번호 ─────── */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="issueNumber">VOL 번호</Label>
+            <Input
+              id="issueNumber"
+              type="number"
+              min={0}
+              max={9999}
+              value={issueNumber}
+              onChange={(e) => {
+                const v = e.target.value;
+                setIssueNumber(v === "" ? 0 : Math.max(0, Math.min(9999, Number(v))));
+              }}
+              disabled={pending}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              뉴스레터 헤더에 &quot;VOL {String(issueNumber).padStart(3, "0")}&quot;으로
+              표시됩니다. 3자리 미만이면 자동으로 0을 채웁니다. 기존 뉴스레터 수를
+              바탕으로 다음 번호를 제안합니다.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="issueDate">발송 날짜</Label>
+            <Input
+              id="issueDate"
+              type="date"
+              value={issueDate}
+              onChange={(e) => setIssueDate(e.target.value)}
+              disabled={pending}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              뉴스레터 헤더의 ISSUE 옆에 표시되는 날짜입니다.
+            </p>
+          </div>
         </div>
 
         <div className="space-y-2">
