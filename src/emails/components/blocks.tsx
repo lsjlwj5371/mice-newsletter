@@ -295,6 +295,7 @@ export function NewsletterFooterBlock({
   appUrl: string;
 }) {
   const logoSrc = content.logoSrc ?? `${appUrl}/logo.png`;
+  const logoWidth = content.logoWidth ?? 160;
 
   return (
     <Section
@@ -310,11 +311,11 @@ export function NewsletterFooterBlock({
           <Img
             src={logoSrc}
             alt={content.brandName}
-            width="160"
+            width={String(logoWidth)}
             style={{
               display: "block",
               marginBottom: "12px",
-              maxWidth: "160px",
+              maxWidth: `${logoWidth}px`,
               height: "auto",
             }}
           />

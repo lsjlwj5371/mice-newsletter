@@ -41,6 +41,9 @@ export interface UpdateTemplateInput {
     brandTagline: string;
     links: Array<{ label: string; href: string }>;
     unsubscribeHref: string;
+    /** Footer logo image URL. Empty/null → falls back to /logo.png. */
+    logoSrc?: string | null;
+    logoWidth?: number | null;
   };
 }
 
@@ -122,6 +125,28 @@ export async function updateTemplateSettingsAction(
     cleanedHeader.wordmarkLogoHeight = input.header.wordmarkLogoHeight;
   }
 
+  // Footer: strip empty logo fields the same way so clearing the URL
+  // restores the default /logo.png fallback.
+  const cleanedFooter: Record<string, unknown> = {
+    brandName: input.footer.brandName,
+    brandTagline: input.footer.brandTagline,
+    links: input.footer.links,
+    unsubscribeHref: input.footer.unsubscribeHref,
+  };
+  if (
+    input.footer.logoSrc !== null &&
+    input.footer.logoSrc !== undefined &&
+    input.footer.logoSrc.trim() !== ""
+  ) {
+    cleanedFooter.logoSrc = input.footer.logoSrc.trim();
+  }
+  if (
+    input.footer.logoWidth !== null &&
+    input.footer.logoWidth !== undefined
+  ) {
+    cleanedFooter.logoWidth = input.footer.logoWidth;
+  }
+
   const { error } = await supabase
     .from("template_settings")
     .upsert(
@@ -129,7 +154,7 @@ export async function updateTemplateSettingsAction(
         id: "default",
         header: cleanedHeader,
         referral_cta: input.referralCta,
-        footer: input.footer,
+        footer: cleanedFooter,
         updated_at: new Date().toISOString(),
         updated_by: admin.id,
       },
@@ -147,6 +172,7 @@ export async function updateTemplateSettingsAction(
   const propagated = await propagateTemplateToDrafts(
     supabase,
     cleanedHeader,
+    cleanedFooter,
     input
   );
 
@@ -183,6 +209,7 @@ export async function updateTemplateSettingsAction(
 async function propagateTemplateToDrafts(
   supabase: ReturnType<typeof createAdminClient>,
   cleanedHeader: Record<string, unknown>,
+  cleanedFooter: Record<string, unknown>,
   input: UpdateTemplateInput
 ): Promise<{ count: number; error?: string }> {
   try {
@@ -219,9 +246,7 @@ async function propagateTemplateToDrafts(
           ...input.referralCta,
         },
         footer: {
-          ...input.footer,
-          // Preserve any admin-customised per-draft logoSrc if present.
-          logoSrc: (content.footer as { logoSrc?: string } | undefined)?.logoSrc,
+          ...cleanedFooter,
         },
       };
 

@@ -385,6 +385,27 @@ export function TemplateEditor({ initial }: Props) {
           </div>
         </div>
 
+        {/* ── Footer logo (optional) ───────────────────────── */}
+        <div className="space-y-3 pt-4 border-t border-border">
+          <div>
+            <Label className="text-xs font-semibold">푸터 로고 이미지</Label>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              이메일 하단에 표시되는 로고입니다. 업로드하지 않으면 기본
+              <code className="mx-1 px-1 py-0.5 rounded bg-muted font-mono text-[10px]">
+                /logo.png
+              </code>
+              가 사용됩니다.
+            </p>
+          </div>
+          <FooterLogoField
+            value={footer.logoSrc ?? null}
+            width={footer.logoWidth ?? null}
+            onChangeUrl={(url) => setFooter({ ...footer, logoSrc: url })}
+            onChangeWidth={(w) => setFooter({ ...footer, logoWidth: w })}
+            disabled={pending}
+          />
+        </div>
+
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label>링크 ({footer.links.length}개)</Label>
@@ -619,6 +640,161 @@ function WordmarkLogoField({
               <>
                 <div className="text-lg mb-1">🖼️</div>
                 <div className="font-medium">로고 업로드</div>
+                <div className="text-xs mt-1">
+                  PNG · JPEG · WebP (투명 배경 PNG 권장)
+                </div>
+              </>
+            )}
+          </div>
+        </button>
+      )}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        onChange={handleFile}
+        className="hidden"
+      />
+      {error && (
+        <p className="text-xs text-rose-600 whitespace-pre-wrap">{error}</p>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Footer logo upload field. Same upload plumbing as the wordmark logo,
+// but sized by width rather than height because the footer layout
+// budgets a fixed column width for the brand block.
+// ─────────────────────────────────────────────
+function FooterLogoField({
+  value,
+  width,
+  onChangeUrl,
+  onChangeWidth,
+  disabled,
+}: {
+  value: string | null;
+  width: number | null;
+  onChangeUrl: (next: string | null) => void;
+  onChangeWidth: (next: number | null) => void;
+  disabled?: boolean;
+}) {
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/uploads/image", {
+        method: "POST",
+        body: fd,
+      });
+      const body = (await res.json()) as
+        | { ok: true; url: string }
+        | { ok: false; error: string };
+      if (!res.ok || !body.ok) {
+        setError(("error" in body && body.error) || `업로드 실패 (HTTP ${res.status})`);
+        return;
+      }
+      onChangeUrl(body.url);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`업로드 실패: ${msg}`);
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      {value ? (
+        <div className="space-y-2">
+          <div className="rounded-lg border border-border bg-muted/20 p-4 flex items-center justify-start">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={value}
+              alt="푸터 로고 미리보기"
+              style={{
+                display: "block",
+                width: `${width ?? 160}px`,
+                height: "auto",
+                maxWidth: "100%",
+              }}
+            />
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Label
+              htmlFor="footerLogoWidth"
+              className="text-xs text-muted-foreground"
+            >
+              이미지 너비 (px, 40~320)
+            </Label>
+            <Input
+              id="footerLogoWidth"
+              type="number"
+              min={40}
+              max={320}
+              step={4}
+              value={width ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                onChangeWidth(
+                  v === "" ? null : Math.max(40, Math.min(320, Number(v)))
+                );
+              }}
+              disabled={disabled}
+              placeholder="160"
+              className="w-24"
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading || disabled}
+            >
+              {uploading ? "업로드 중..." : "다른 이미지로 교체"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="text-rose-600"
+              onClick={() => {
+                onChangeUrl(null);
+                onChangeWidth(null);
+              }}
+              disabled={uploading || disabled}
+            >
+              로고 제거
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            제거하면 기본 /logo.png 로 돌아갑니다.
+          </p>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading || disabled}
+          className="w-full rounded-lg border-2 border-dashed border-border bg-muted/20 p-6 text-center hover:bg-muted/40 transition disabled:opacity-50"
+        >
+          <div className="text-sm text-muted-foreground">
+            {uploading ? (
+              <>업로드 중…</>
+            ) : (
+              <>
+                <div className="text-lg mb-1">🖼️</div>
+                <div className="font-medium">푸터 로고 업로드</div>
                 <div className="text-xs mt-1">
                   PNG · JPEG · WebP (투명 배경 PNG 권장)
                 </div>

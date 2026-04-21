@@ -49,6 +49,8 @@ export default async function SettingsPage() {
                 brandTagline: template.footer.brandTagline ?? "",
                 links: template.footer.links,
                 unsubscribeHref: template.footer.unsubscribeHref,
+                logoSrc: template.footer.logoSrc ?? null,
+                logoWidth: template.footer.logoWidth ?? null,
               },
             }}
           />

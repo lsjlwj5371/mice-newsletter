@@ -425,7 +425,10 @@ export interface FooterContent {
   brandTagline?: string;
   links: Array<{ label: string; href: string }>;
   unsubscribeHref: string;
+  /** Footer logo image URL. Falls back to `${appUrl}/logo.png` when unset. */
   logoSrc?: string;
+  /** Rendered width of the footer logo in pixels. Default 160. */
+  logoWidth?: number;
 }
 
 // ─────────────────────────────────────────────
