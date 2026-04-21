@@ -982,17 +982,57 @@ function BlockCard({
 // ─────────────────────────────────────────────
 type SourceUrlTarget =
   | { kind: "block"; current: string }
-  | { kind: "item"; itemIndex: number; itemLabel: string; current: string };
+  | { kind: "item"; itemIndex: number; itemLabel: string; current: string }
+  | { kind: "sub"; subKey: string; subLabel: string; current: string };
 
 function collectSourceUrlTargets(block: BlockInstance): SourceUrlTarget[] {
   const d = block.data as Record<string, unknown>;
   switch (block.type) {
+    case "opening_lede":
+    case "stat_feature":
     case "tech_signal":
     case "theory_to_field":
+    case "editor_take":
     case "consolidated_insight":
       return [
         { kind: "block", current: (d.sourceUrl as string | undefined) ?? "" },
       ];
+    case "in_out_comparison": {
+      const inItem = (d.inItem as Record<string, unknown> | undefined) ?? {};
+      const outItem = (d.outItem as Record<string, unknown> | undefined) ?? {};
+      return [
+        {
+          kind: "sub" as const,
+          subKey: "inItem",
+          subLabel: "IN · 국내",
+          current: (inItem.sourceUrl as string | undefined) ?? "",
+        },
+        {
+          kind: "sub" as const,
+          subKey: "outItem",
+          subLabel: "OUT · 글로벌",
+          current: (outItem.sourceUrl as string | undefined) ?? "",
+        },
+      ];
+    }
+    case "groundk_story": {
+      const fb = (d.fieldBriefing as Record<string, unknown> | undefined) ?? {};
+      const ps = (d.projectSketch as Record<string, unknown> | undefined) ?? {};
+      return [
+        {
+          kind: "sub" as const,
+          subKey: "fieldBriefing",
+          subLabel: "현장 브리핑",
+          current: (fb.sourceUrl as string | undefined) ?? "",
+        },
+        {
+          kind: "sub" as const,
+          subKey: "projectSketch",
+          subLabel: "프로젝트 스케치",
+          current: (ps.sourceUrl as string | undefined) ?? "",
+        },
+      ];
+    }
     case "news_briefing": {
       const items =
         (d.items as Array<Record<string, unknown>> | undefined) ?? [];
@@ -1043,19 +1083,28 @@ function SourceUrlEditor({
       <Label className="text-xs font-semibold">원문 링크 (선택)</Label>
       <p className="text-[11px] text-muted-foreground">
         URL을 입력하면 발송본에 &quot;원문 보기 →&quot; 링크가 표시됩니다. 비우면
-        링크가 렌더링되지 않습니다.
+        링크가 렌더링되지 않습니다. Claude가 직접 작성한 콘텐츠든 관리자가
+        직접 작성한 콘텐츠든 모두 사용할 수 있습니다.
       </p>
       <div className="space-y-2">
-        {targets.map((t, i) => (
-          <SourceUrlRow
-            key={`${t.kind}-${t.kind === "item" ? t.itemIndex : "block"}-${i}`}
-            newsletterId={newsletterId}
-            blockIndex={blockIndex}
-            target={t}
-            disabled={disabled}
-            onDone={onDone}
-          />
-        ))}
+        {targets.map((t, i) => {
+          const keyPart =
+            t.kind === "item"
+              ? `item-${t.itemIndex}`
+              : t.kind === "sub"
+              ? `sub-${t.subKey}`
+              : "block";
+          return (
+            <SourceUrlRow
+              key={`${keyPart}-${i}`}
+              newsletterId={newsletterId}
+              blockIndex={blockIndex}
+              target={t}
+              disabled={disabled}
+              onDone={onDone}
+            />
+          );
+        })}
       </div>
     </section>
   );
@@ -1095,6 +1144,7 @@ function SourceUrlRow({
         newsletterId,
         blockIndex,
         itemIndex: target.kind === "item" ? target.itemIndex : undefined,
+        subKey: target.kind === "sub" ? target.subKey : undefined,
         url: value.trim() || null,
       });
       if (res.ok) {
@@ -1110,6 +1160,11 @@ function SourceUrlRow({
       {target.kind === "item" && (
         <div className="text-[11px] text-muted-foreground mb-1">
           {target.itemLabel}
+        </div>
+      )}
+      {target.kind === "sub" && (
+        <div className="text-[11px] text-muted-foreground mb-1">
+          {target.subLabel}
         </div>
       )}
       <div className="flex items-center gap-2">

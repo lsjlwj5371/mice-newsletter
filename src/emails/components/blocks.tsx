@@ -228,6 +228,37 @@ function autoWordmarkFontSize(wordmark: string): number {
   return 24;
 }
 
+/**
+ * "원문 보기 →" link renderer used by every block that supports an
+ * opt-in admin-set sourceUrl. Emits nothing when the URL is empty so
+ * unused blocks don't leak empty paragraphs.
+ */
+function SourceLink({
+  url,
+  topMargin = "12px",
+}: {
+  url?: string;
+  topMargin?: string;
+}) {
+  if (!url || url.trim() === "") return null;
+  return (
+    <Text
+      style={{
+        fontSize: "12px",
+        color: colors.textSoft,
+        margin: `${topMargin} 0 0 0`,
+      }}
+    >
+      <Link
+        href={url}
+        style={{ color: colors.textSoft, textDecoration: "underline" }}
+      >
+        원문 보기 →
+      </Link>
+    </Text>
+  );
+}
+
 // ─────────────────────────────────────────────
 // FIXED: Referral CTA
 // ─────────────────────────────────────────────
@@ -431,6 +462,7 @@ function OpeningLede({ block }: { block: OpeningLedeBlock }) {
               {renderMultiline(block.data.subtext)}
             </Text>
           )}
+          <SourceLink url={block.data.sourceUrl} topMargin="16px" />
         </Section>
       </ImageWithBody>
     </MajorSection>
@@ -491,6 +523,7 @@ function StatFeature({
         >
           {block.data.source}
         </Text>
+        <SourceLink url={block.data.sourceUrl} topMargin="10px" />
       </Section>
     </MajorSection>
   );
@@ -637,6 +670,7 @@ function InOutCard({
             {card.source}
           </Text>
         )}
+        <SourceLink url={card.sourceUrl} topMargin="8px" />
       </Section>
     </Section>
   );
@@ -1112,6 +1146,7 @@ function EditorTake({
           {block.data.closingNote}
         </Text>
       )}
+      <SourceLink url={block.data.sourceUrl} topMargin="14px" />
     </MajorSection>
   );
 }
@@ -1195,6 +1230,10 @@ function GroundkStory({
               }}
             />
           </ImageWithBody>
+          <SourceLink
+            url={block.data.fieldBriefing.sourceUrl}
+            topMargin="12px"
+          />
         </Section>
       </Section>
       )}
@@ -1310,6 +1349,10 @@ function GroundkStory({
             ))}
           </Section>
         )}
+        <SourceLink
+          url={block.data.projectSketch.sourceUrl}
+          topMargin="14px"
+        />
       </Section>
       )}
     </MajorSection>

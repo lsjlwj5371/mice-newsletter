@@ -888,9 +888,15 @@ export interface SetGroundkStoryVisibilityInput {
 export interface SetBlockSourceUrlInput {
   newsletterId: string;
   blockIndex: number;
-  /** When set, patches the nested item at this index instead of the block's
-   *  top-level sourceUrl. Applies to news_briefing.items / event_radar.events. */
+  /**
+   * Targets a nested location within the block instead of the top-level
+   * sourceUrl. Shape:
+   *   - { itemIndex: n } → news_briefing.items[n] / event_radar.events[n]
+   *   - { subKey: "inItem" | "outItem" } → in_out_comparison's two cards
+   *   - { subKey: "fieldBriefing" | "projectSketch" } → groundk_story parts
+   */
   itemIndex?: number;
+  subKey?: string;
   url: string | null;
 }
 
@@ -928,8 +934,28 @@ export async function setBlockSourceUrlAction(
   const data = block.data as Record<string, unknown>;
   let updatedData: Record<string, unknown>;
 
-  if (input.itemIndex === undefined) {
-    // Block-level sourceUrl (tech_signal / theory_to_field / consolidated_insight)
+  if (input.subKey) {
+    // Named sub-section — in_out_comparison (inItem / outItem) or
+    // groundk_story (fieldBriefing / projectSketch).
+    const allowed: Record<string, string[]> = {
+      in_out_comparison: ["inItem", "outItem"],
+      groundk_story: ["fieldBriefing", "projectSketch"],
+    };
+    const keys = allowed[block.type];
+    if (!keys || !keys.includes(input.subKey)) {
+      return {
+        ok: false,
+        error: `${block.type} 블록은 "${input.subKey}" 하위 파트를 지원하지 않습니다.`,
+      };
+    }
+    const sub = (data[input.subKey] as Record<string, unknown>) ?? {};
+    const nextSub = { ...sub };
+    if (normalized) nextSub.sourceUrl = normalized;
+    else delete nextSub.sourceUrl;
+    updatedData = { ...data, [input.subKey]: nextSub };
+  } else if (input.itemIndex === undefined) {
+    // Block-level sourceUrl (opening_lede / stat_feature / tech_signal /
+    // theory_to_field / editor_take / consolidated_insight)
     updatedData = { ...data };
     if (normalized) updatedData.sourceUrl = normalized;
     else delete updatedData.sourceUrl;
@@ -984,6 +1010,7 @@ export async function setBlockSourceUrlAction(
     metadata: {
       blockIndex: input.blockIndex,
       itemIndex: input.itemIndex ?? null,
+      subKey: input.subKey ?? null,
       cleared: !normalized,
     },
   });

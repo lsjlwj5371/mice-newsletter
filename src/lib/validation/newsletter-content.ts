@@ -59,6 +59,7 @@ export const openingLedeDataSchema = z.object({
   subtext: z.string().optional(),
   imageUrl: z.string().optional(),
   imageLayout: imageLayoutSchema,
+  sourceUrl: z.string().optional(),
 });
 
 export const statFeatureDataSchema = z.object({
@@ -69,6 +70,7 @@ export const statFeatureDataSchema = z.object({
   source: z.string(),
   imageUrl: z.string().optional(),
   imageLayout: imageLayoutSchema,
+  sourceUrl: z.string().optional(),
 });
 
 const insightSchemaExported = z
@@ -98,6 +100,7 @@ const inOutCardSchemaExported = z.object({
   body: z.string(),
   source: z.string().optional(),
   imageUrl: z.string().optional(),
+  sourceUrl: z.string().optional(),
 });
 
 export const inOutComparisonDataSchema = z.object({
@@ -146,6 +149,7 @@ export const editorTakeDataSchema = z.object({
   closingNote: z.string().optional(),
   imageUrl: z.string().optional(),
   imageLayout: imageLayoutSchema,
+  sourceUrl: z.string().optional(),
 });
 
 export const groundkStoryDataSchema = z.object({
@@ -156,6 +160,7 @@ export const groundkStoryDataSchema = z.object({
     body: z.string(),
     imageUrl: z.string().optional(),
     imageLayout: imageLayoutSchema,
+    sourceUrl: z.string().optional(),
   }),
   projectSketch: z.object({
     projectMeta: z.string(),
@@ -166,6 +171,7 @@ export const groundkStoryDataSchema = z.object({
     tags: z.array(z.string()),
     imageUrl: z.string().optional(),
     imageLayout: imageLayoutSchema,
+    sourceUrl: z.string().optional(),
   }),
   showFieldBriefing: z.boolean().optional(),
   showProjectSketch: z.boolean().optional(),

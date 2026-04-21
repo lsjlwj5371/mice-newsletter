@@ -172,6 +172,8 @@ export interface OpeningLedeBlock extends BlockBase {
     subtext?: string;
     imageUrl?: string;
     imageLayout?: ImageLayout;
+    /** Optional admin-supplied origin URL; rendered as "원문 보기 →" link. */
+    sourceUrl?: string;
   };
 }
 
@@ -185,6 +187,8 @@ export interface StatFeatureBlock extends BlockBase {
     source: string;
     imageUrl?: string;
     imageLayout?: ImageLayout;
+    /** Optional admin-supplied origin URL; rendered as "원문 보기 →" link. */
+    sourceUrl?: string;
   };
 }
 
@@ -211,6 +215,8 @@ export interface MiceInOutCard {
   body: string;
   source?: string;
   imageUrl?: string;
+  /** Optional admin-supplied origin URL; rendered as "원문 보기 →" link. */
+  sourceUrl?: string;
 }
 
 export interface InOutComparisonBlock extends BlockBase {
@@ -269,6 +275,8 @@ export interface EditorTakeBlock extends BlockBase {
     closingNote?: string;
     imageUrl?: string;
     imageLayout?: ImageLayout;
+    /** Optional admin-supplied origin URL; rendered as "원문 보기 →" link. */
+    sourceUrl?: string;
   };
 }
 
@@ -278,6 +286,8 @@ export interface FieldBriefingPart {
   body: string;
   imageUrl?: string;
   imageLayout?: ImageLayout;
+  /** Optional admin-supplied origin URL; rendered as "원문 보기 →" link. */
+  sourceUrl?: string;
 }
 
 export interface ProjectSketchPart {
@@ -289,6 +299,8 @@ export interface ProjectSketchPart {
   tags: string[];
   imageUrl?: string;
   imageLayout?: ImageLayout;
+  /** Optional admin-supplied origin URL; rendered as "원문 보기 →" link. */
+  sourceUrl?: string;
 }
 
 export interface GroundkStoryBlock extends BlockBase {
