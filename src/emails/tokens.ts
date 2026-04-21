@@ -79,7 +79,7 @@ export const typography = {
     letterSpacing: "-0.5px",
   },
   bodyText: {
-    fontSize: "18px",
+    fontSize: "16px",
     fontWeight: 400,
     lineHeight: 1.75,
     letterSpacing: "-0.2px",

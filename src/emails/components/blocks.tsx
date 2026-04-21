@@ -1043,7 +1043,7 @@ function TheoryToField({
           <Text
             key={`intro-${i}`}
             style={{
-              fontSize: "17px",
+              fontSize: "16px",
               color: colors.textBody,
               lineHeight: 1.95,
               fontWeight: 400,
@@ -1076,7 +1076,7 @@ function TheoryToField({
         </Text>
         <Text
           style={{
-            fontSize: "17px",
+            fontSize: "16px",
             color: colors.textBody,
             lineHeight: 1.85,
             fontWeight: 400,
@@ -1092,7 +1092,7 @@ function TheoryToField({
         <Text
           key={`outro-${i}`}
           style={{
-            fontSize: "17px",
+            fontSize: "16px",
             color: colors.textBody,
             lineHeight: 1.95,
             fontWeight: 400,
@@ -1189,7 +1189,7 @@ function EditorTake({
       {block.data.leadParagraph && (
         <Text
           style={{
-            fontSize: "17px",
+            fontSize: "16px",
             color: colors.textBody,
             lineHeight: 1.95,
             fontWeight: 400,
@@ -1210,7 +1210,7 @@ function EditorTake({
         >
           <Text
             style={{
-              fontSize: "17px",
+              fontSize: "16px",
               fontWeight: 700,
               fontStyle: "italic",
               color: colors.brandNavy,
@@ -1230,7 +1230,7 @@ function EditorTake({
           <Text
             key={i}
             style={{
-              fontSize: "17px",
+              fontSize: "16px",
               color: colors.textBody,
               lineHeight: 1.95,
               fontWeight: 400,
@@ -1542,7 +1542,7 @@ function ConsolidatedInsightSingleTopic({
         {block.data.leadParagraph ? (
           <Text
             style={{
-              fontSize: "18px",
+              fontSize: "16px",
               color: colors.textBody,
               lineHeight: 1.9,
               fontWeight: 400,
@@ -1593,7 +1593,7 @@ function ConsolidatedInsightSingleTopic({
             <Text
               key={j}
               style={{
-                fontSize: "17px",
+                fontSize: "16px",
                 color: colors.textBody,
                 lineHeight: 1.9,
                 fontWeight: 400,
@@ -1605,7 +1605,7 @@ function ConsolidatedInsightSingleTopic({
           {ch.pullQuote && (
             <Text
               style={{
-                fontSize: "18px",
+                fontSize: "16px",
                 fontWeight: 500,
                 fontStyle: "italic",
                 color: colors.textHeadline,
@@ -1720,7 +1720,7 @@ function ConsolidatedInsight({
             <Text
               key={j}
               style={{
-                fontSize: "17px",
+                fontSize: "16px",
                 color: colors.textBody,
                 lineHeight: 1.9,
                 fontWeight: 400,
@@ -1814,7 +1814,7 @@ function EventRadar({
           <Heading
             as="h3"
             style={{
-              fontSize: "18px",
+              fontSize: "16px",
               fontWeight: 700,
               color: colors.textHeadline,
               lineHeight: 1.4,
@@ -1961,7 +1961,7 @@ function BlogCardGrid({
                 <Heading
                   as="h4"
                   style={{
-                    fontSize: "17px",
+                    fontSize: "16px",
                     fontWeight: 700,
                     color: colors.textHeadline,
                     lineHeight: 1.4,
