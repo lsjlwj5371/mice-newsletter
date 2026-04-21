@@ -254,9 +254,9 @@ function SourceLink({
         style={{
           display: "inline-block",
           padding: "8px 14px",
-          backgroundColor: "#f3f4f8",
-          color: colors.brandNavy,
-          border: `1px solid ${colors.borderStrong}`,
+          backgroundColor: colors.brandNavy,
+          color: colors.textOnDark,
+          border: "none",
           borderRadius: "6px",
           fontSize: "12px",
           fontWeight: 600,
