@@ -30,6 +30,10 @@ export const maxDuration = 30;
 
 const MAX_INPUT_BYTES = 10 * 1024 * 1024; // 10 MB incoming
 const TARGET_WIDTH = 640; // matches email container width
+// Full-bleed hero (MICE Insight): 2:1 ratio, 2x for HiDPI crispness.
+// Rendered at CSS 640x320; source is 1280x640 after cover-crop.
+const HERO_WIDTH = 1280;
+const HERO_HEIGHT = 640;
 const ACCEPTED_MIMES = [
   "image/png",
   "image/jpeg",
@@ -47,6 +51,13 @@ export async function POST(req: NextRequest) {
     typeof form.get("newsletterId") === "string"
       ? (form.get("newsletterId") as string)
       : null;
+  // `variant=hero` pre-crops to 2:1 for the MICE Insight full-bleed
+  // layout. Everything else uses the default aspect-preserving resize.
+  const variant =
+    typeof form.get("variant") === "string"
+      ? (form.get("variant") as string)
+      : null;
+  const isHero = variant === "hero";
 
   if (!(file instanceof File)) {
     return NextResponse.json(
@@ -92,20 +103,35 @@ export async function POST(req: NextRequest) {
     const needsResize = (meta.width ?? 0) > TARGET_WIDTH;
 
     if (file.type === "image/gif") {
-      // Keep gifs as gifs to preserve animation
-      const pipeline = needsResize
+      // Keep gifs as gifs to preserve animation. Hero variant on a GIF
+      // still gets center-cropped to 2:1 — attention strategy is not
+      // available on animated pipelines, so center is the sane default.
+      const pipeline = isHero
+        ? img.resize(HERO_WIDTH, HERO_HEIGHT, {
+            fit: "cover",
+            position: "center",
+          })
+        : needsResize
         ? img.resize({ width: TARGET_WIDTH, withoutEnlargement: true })
         : img;
       outputBuffer = await pipeline.gif().toBuffer();
       outputMime = "image/gif";
     } else {
       // Everything else → webp for best email compression (Gmail/Apple
-      // Mail/Outlook all support webp since 2022+)
-      const pipeline = needsResize
+      // Mail/Outlook all support webp since 2022+). Hero variant uses
+      // sharp's `attention` strategy to auto-pick the most salient
+      // region (faces, edges, high contrast) as the crop center.
+      const pipeline = isHero
+        ? img.rotate().resize(HERO_WIDTH, HERO_HEIGHT, {
+            fit: "cover",
+            position: sharp.strategy.attention,
+            withoutEnlargement: false,
+          })
+        : needsResize
         ? img.resize({ width: TARGET_WIDTH, withoutEnlargement: true })
         : img;
       outputBuffer = await pipeline
-        .rotate() // respect EXIF orientation
+        .rotate() // respect EXIF orientation (no-op when already rotated above)
         .webp({ quality: 82 })
         .toBuffer();
       outputMime = "image/webp";

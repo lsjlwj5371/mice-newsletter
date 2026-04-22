@@ -30,6 +30,10 @@ interface Props {
    *  this only when the renderer actually honors the layout (currently
    *  just event_radar's single-featured item). */
   allowItemLayout?: boolean;
+  /** Upload variant. `"hero"` pre-crops to 2:1 (1280×640) for the MICE
+   *  Insight full-bleed layout and hides the layout dropdown (hero
+   *  images don't participate in left/right wrap modes). */
+  variant?: "default" | "hero";
   /** Human-readable label shown above the widget. */
   label?: string;
   disabled?: boolean;
@@ -52,9 +56,11 @@ export function BlockImageSlot({
   slot,
   itemIndex,
   allowItemLayout,
+  variant = "default",
   label = "이미지",
   disabled,
 }: Props) {
+  const isHero = variant === "hero";
   const router = useRouter();
   const fileRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
@@ -89,6 +95,7 @@ export function BlockImageSlot({
       const fd = new FormData();
       fd.append("file", file);
       fd.append("newsletterId", newsletterId);
+      if (isHero) fd.append("variant", "hero");
 
       const res = await fetch("/api/uploads/image", {
         method: "POST",
@@ -159,8 +166,10 @@ export function BlockImageSlot({
           {/* Layout controls apply to block-level images by default.
               For item-based blocks (news_briefing items) they stay
               hidden because the card layout is fixed — but event_radar
-              (single featured event) opts in via allowItemLayout. */}
-          {(itemIndex === undefined || allowItemLayout) && (
+              (single featured event) opts in via allowItemLayout.
+              Hero slots always hide the dropdown: a full-bleed hero
+              doesn't participate in left/right/small layouts. */}
+          {!isHero && (itemIndex === undefined || allowItemLayout) && (
             <div className="flex items-center gap-2 flex-wrap">
               <Label className="text-xs text-muted-foreground">배치</Label>
               <select
@@ -223,6 +232,12 @@ export function BlockImageSlot({
                 <div className="text-xs mt-1">
                   PNG · JPEG · WebP · GIF (최대 10MB)
                 </div>
+                {isHero && (
+                  <div className="text-[11px] mt-2 text-muted-foreground/80 leading-relaxed">
+                    📐 풀 블리드 히어로 — 가로 사진(16:9 또는 3:2) 권장<br />
+                    업로드 시 2:1 비율로 자동 크롭됩니다.
+                  </div>
+                )}
               </>
             )}
           </div>

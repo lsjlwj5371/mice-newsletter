@@ -901,7 +901,16 @@ function BlockCard({
             <BlockImageSlot
               newsletterId={newsletterId}
               blockIndex={blockIndex}
-              label="이미지 (선택)"
+              label={
+                block.type === "consolidated_insight"
+                  ? "히어로 이미지 (선택) — 풀 블리드"
+                  : "이미지 (선택)"
+              }
+              /* consolidated_insight renders its image as the full-bleed
+                 hero, so upload with variant=hero to pre-crop to 2:1. */
+              variant={
+                block.type === "consolidated_insight" ? "hero" : "default"
+              }
               currentUrl={
                 ((block.data as { imageUrl?: string }).imageUrl ?? null) || null
               }

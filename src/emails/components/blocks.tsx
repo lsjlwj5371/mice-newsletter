@@ -1535,6 +1535,9 @@ function ConsolidatedInsightSingleTopic({
   isLast?: boolean;
 }) {
   const chapters = block.data.chapters ?? [];
+  const hasImage =
+    !!block.data.imageUrl && block.data.imageUrl.trim() !== "";
+
   return (
     <MajorSection isLast={isLast}>
       <SectionLabel
@@ -1543,69 +1546,140 @@ function ConsolidatedInsightSingleTopic({
         emoji="🔍"
       />
 
-      {block.data.topicLabel && (
-        <Text
-          style={{
-            fontSize: "11px",
-            fontWeight: 700,
-            letterSpacing: "2px",
-            color: colors.brandNavy,
-            textTransform: "uppercase",
-            opacity: 0.75,
-            margin: "0 0 6px 0",
-          }}
-        >
-          {block.data.topicLabel}
-        </Text>
-      )}
+      {/* ─────────────────────────────────────────────
+          Full-bleed hero: image (or gradient fallback) spans from the
+          card's left edge to right edge, escaping the wrapperPadding
+          via negative horizontal margins (-16px matches tokens.ts
+          `wrapperPadding: "40px 16px"`).
 
-      {block.data.topicMeta && (
-        <Text
-          style={{
-            fontSize: "12px",
-            color: colors.textSoft,
-            margin: "0 0 10px 0",
-          }}
-        >
-          {block.data.topicMeta}
-        </Text>
-      )}
-
-      {block.data.title && (
-        <Heading
-          as="h2"
-          style={{
-            fontSize: "26px",
-            fontWeight: 700,
-            color: colors.textHeadline,
-            lineHeight: 1.35,
-            letterSpacing: "-0.4px",
-            margin: "0 0 18px 0",
-          }}
-        >
-          {block.data.title}
-        </Heading>
-      )}
-
-      <ImageWithBody
-        src={block.data.imageUrl}
-        layout={block.data.imageLayout}
+          The overlay (chip + title + meta) sits as an absolutely
+          positioned block anchored to the bottom-left of the hero
+          with a dark-to-transparent gradient for readability on any
+          photo. A solid-color fallback bg color is set so Outlook
+          desktop — which ignores `position:absolute` and
+          `linear-gradient` — still gets a dark band directly under
+          the image in the normal block flow (graceful degradation:
+          image + dark title card stacked).
+        ───────────────────────────────────────────── */}
+      <Section
+        style={{
+          position: "relative",
+          margin: "4px -16px 24px -16px",
+          backgroundColor: "#14152a",
+          overflow: "hidden",
+        }}
       >
-        {block.data.leadParagraph ? (
-          <Text
+        {hasImage ? (
+          <Img
+            src={block.data.imageUrl!}
+            alt=""
+            width="640"
+            height="320"
             style={{
-              fontSize: "16px",
-              color: colors.textBody,
-              lineHeight: 1.9,
-              fontWeight: 400,
-              margin: "0 0 28px 0",
-            }}
-            dangerouslySetInnerHTML={{
-              __html: renderInlineHtml(block.data.leadParagraph),
+              display: "block",
+              width: "100%",
+              height: "auto",
+              border: 0,
+              margin: 0,
             }}
           />
-        ) : null}
-      </ImageWithBody>
+        ) : (
+          /* No image → render a 320px-tall gradient band so the
+             overlay still has something behind it. Outlook sees a
+             solid backgroundColor fallback via the parent Section. */
+          <div
+            style={{
+              width: "100%",
+              height: "320px",
+              backgroundImage:
+                "linear-gradient(135deg, #2E3092 0%, #1a1a2e 100%)",
+            }}
+          >
+            &nbsp;
+          </div>
+        )}
+
+        {/* Overlay. Modern clients position it over the bottom of the
+            image. Outlook drops position:absolute and renders it as a
+            normal block right under the image — which still reads as
+            a feature masthead. */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: "32px 24px 22px 24px",
+            backgroundImage:
+              "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.0) 100%)",
+            color: "#ffffff",
+          }}
+        >
+          {block.data.topicLabel && (
+            <span
+              style={{
+                display: "inline-block",
+                padding: "4px 10px",
+                borderRadius: "999px",
+                backgroundColor: "rgba(255,255,255,0.18)",
+                border: "1px solid rgba(255,255,255,0.35)",
+                color: "#ffffff",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "1.5px",
+                textTransform: "uppercase",
+                marginBottom: "10px",
+              }}
+            >
+              {block.data.topicLabel}
+            </span>
+          )}
+          {block.data.title && (
+            <Heading
+              as="h2"
+              style={{
+                fontSize: "26px",
+                fontWeight: 800,
+                color: "#ffffff",
+                lineHeight: 1.3,
+                letterSpacing: "-0.3px",
+                margin: "6px 0 0 0",
+              }}
+            >
+              {block.data.title}
+            </Heading>
+          )}
+          {block.data.topicMeta && (
+            <Text
+              style={{
+                fontSize: "13px",
+                color: "rgba(255,255,255,0.85)",
+                lineHeight: 1.5,
+                margin: "10px 0 0 0",
+              }}
+            >
+              {block.data.topicMeta}
+            </Text>
+          )}
+        </div>
+      </Section>
+
+      {/* Lead paragraph now sits under the hero in the normal flow.
+          No ImageWithBody — hero is the image. */}
+      {block.data.leadParagraph && (
+        <Text
+          style={{
+            fontSize: "16px",
+            color: colors.textBody,
+            lineHeight: 1.9,
+            fontWeight: 400,
+            margin: "0 0 28px 0",
+          }}
+          dangerouslySetInnerHTML={{
+            __html: renderInlineHtml(block.data.leadParagraph),
+          }}
+        />
+      )}
 
       {chapters.map((ch, i) => (
         <Section
