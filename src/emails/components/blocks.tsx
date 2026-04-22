@@ -485,13 +485,12 @@ export function NewsletterFooterBlock({
     <Img
       src={miceLogoSrc}
       alt="MICE人"
-      width="44"
-      height="44"
+      width="56"
+      height="56"
       style={{
         display: "block",
-        width: "44px",
-        height: "44px",
-        borderRadius: "50%",
+        width: "56px",
+        height: "56px",
       }}
     />
   );
@@ -499,13 +498,12 @@ export function NewsletterFooterBlock({
     <Img
       src={groundkLogoSrc}
       alt="GroundK"
-      width="44"
-      height="44"
+      width="56"
+      height="56"
       style={{
         display: "block",
-        width: "44px",
-        height: "44px",
-        borderRadius: "50%",
+        width: "56px",
+        height: "56px",
       }}
     />
   );
