@@ -1156,7 +1156,10 @@ export interface SetBlockImageLayoutInput {
   newsletterId: string;
   blockIndex: number;
   layout: ImageLayout;
+  /** groundk_story sub-part (fieldBriefing / projectSketch). */
   slot?: "fieldBriefing" | "projectSketch";
+  /** event_radar events[] / news_briefing items[] index. */
+  itemIndex?: number;
 }
 
 export async function setBlockImageLayoutAction(
@@ -1202,6 +1205,34 @@ export async function setBlockImageLayoutAction(
         ...data,
         [input.slot]: { ...sub, imageLayout: input.layout },
       },
+    } as NewsletterContent["blocks"][number];
+  } else if (input.itemIndex !== undefined) {
+    // Nested item in an array-based block (event_radar.events /
+    // news_briefing.items). Patch that single item's imageLayout.
+    const nestedKey =
+      block.type === "event_radar"
+        ? "events"
+        : block.type === "news_briefing"
+        ? "items"
+        : null;
+    if (!nestedKey) {
+      return {
+        ok: false,
+        error: `${block.type} 블록은 항목별 레이아웃을 지원하지 않습니다.`,
+      };
+    }
+    const nested = (data[nestedKey] as Array<Record<string, unknown>>) ?? [];
+    if (input.itemIndex < 0 || input.itemIndex >= nested.length) {
+      return { ok: false, error: "해당 항목을 찾을 수 없습니다." };
+    }
+    const nextNested = [...nested];
+    nextNested[input.itemIndex] = {
+      ...nextNested[input.itemIndex],
+      imageLayout: input.layout,
+    };
+    updatedBlock = {
+      ...block,
+      data: { ...data, [nestedKey]: nextNested },
     } as NewsletterContent["blocks"][number];
   } else {
     updatedBlock = {

@@ -371,13 +371,18 @@ export interface EventRadarItem {
   /** Optional official event URL (published in the rendered card). */
   sourceUrl?: string;
   imageUrl?: string;
+  /** Per-event image placement (full / small-top / small-bottom / left /
+   *  right). Default "full". */
+  imageLayout?: ImageLayout;
 }
 
 export interface EventRadarBlock extends BlockBase {
   type: "event_radar";
   data: {
     englishLabel: string; // "Event Radar"
-    events: EventRadarItem[]; // 2~4
+    /** 1 entry going forward; arrays of 2+ from older drafts still
+     *  validate but new generations emit exactly one featured event. */
+    events: EventRadarItem[];
   };
 }
 

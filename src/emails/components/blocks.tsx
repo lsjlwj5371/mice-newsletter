@@ -1834,30 +1834,18 @@ function EventRadar({
           >
             📅 {ev.dateMeta}
           </Text>
-          {ev.imageUrl && (
-            <Img
-              src={ev.imageUrl}
-              alt=""
+          <ImageWithBody src={ev.imageUrl} layout={ev.imageLayout}>
+            <Text
               style={{
-                display: "block",
-                width: "100%",
-                maxWidth: "100%",
-                height: "auto",
-                borderRadius: "8px",
-                margin: "0 0 14px 0",
+                fontSize: "16px",
+                color: colors.textBody,
+                lineHeight: 1.85,
+                fontWeight: 400,
+                margin: "0 0 12px 0",
               }}
+              dangerouslySetInnerHTML={{ __html: renderInlineHtml(ev.body) }}
             />
-          )}
-          <Text
-            style={{
-              fontSize: "16px",
-              color: colors.textBody,
-              lineHeight: 1.85,
-              fontWeight: 400,
-              margin: "0 0 12px 0",
-            }}
-            dangerouslySetInnerHTML={{ __html: renderInlineHtml(ev.body) }}
-          />
+          </ImageWithBody>
           {ev.whyItMatters && (
             <Section
               style={{

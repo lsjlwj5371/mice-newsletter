@@ -855,7 +855,11 @@ function BlockCard({
             <div className="space-y-4">
               {(
                 (block.data as {
-                  events?: Array<{ title?: string; imageUrl?: string }>;
+                  events?: Array<{
+                    title?: string;
+                    imageUrl?: string;
+                    imageLayout?: ImageLayout;
+                  }>;
                 }).events ?? []
               ).map((ev, i) => (
                 <BlockImageSlot
@@ -863,10 +867,12 @@ function BlockCard({
                   newsletterId={newsletterId}
                   blockIndex={blockIndex}
                   itemIndex={i}
-                  label={`행사 ${i + 1}${
+                  allowItemLayout
+                  label={`행사${
                     ev.title ? ` — ${ev.title.slice(0, 30)}` : ""
                   } 이미지 (선택)`}
                   currentUrl={ev.imageUrl ?? null}
+                  currentLayout={ev.imageLayout ?? null}
                   disabled={pending || disabled}
                 />
               ))}

@@ -25,6 +25,11 @@ interface Props {
   slot?: "fieldBriefing" | "projectSketch";
   /** For event_radar / news_briefing: which nested item this slot targets. */
   itemIndex?: number;
+  /** For item-based blocks (event_radar / news_briefing), force-show the
+   *  layout dropdown even though per-item slots normally hide it. Use
+   *  this only when the renderer actually honors the layout (currently
+   *  just event_radar's single-featured item). */
+  allowItemLayout?: boolean;
   /** Human-readable label shown above the widget. */
   label?: string;
   disabled?: boolean;
@@ -46,6 +51,7 @@ export function BlockImageSlot({
   currentLayout,
   slot,
   itemIndex,
+  allowItemLayout,
   label = "이미지",
   disabled,
 }: Props) {
@@ -63,6 +69,7 @@ export function BlockImageSlot({
         blockIndex,
         layout,
         slot,
+        itemIndex,
       });
       if (!res.ok) {
         setError(res.error);
@@ -149,11 +156,11 @@ export function BlockImageSlot({
               className="block w-full max-h-64 object-contain"
             />
           </div>
-          {/* Layout controls only apply to block-level images. Per-item
-              thumbnails (event_radar events / news_briefing items) use
-              the card's built-in layout, so we hide the dropdown when
-              this slot targets a specific item. */}
-          {itemIndex === undefined && (
+          {/* Layout controls apply to block-level images by default.
+              For item-based blocks (news_briefing items) they stay
+              hidden because the card layout is fixed — but event_radar
+              (single featured event) opts in via allowItemLayout. */}
+          {(itemIndex === undefined || allowItemLayout) && (
             <div className="flex items-center gap-2 flex-wrap">
               <Label className="text-xs text-muted-foreground">배치</Label>
               <select

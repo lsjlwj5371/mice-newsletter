@@ -79,13 +79,14 @@ const BLOCK_SCHEMA_PROMPT: Record<BlockType, string> = {
 - 각 챕터 본문은 **2~4개의 두터운 단락**으로 충분히 깊이 있게 씁니다. 분량이 길어지는 것은 환영합니다 — 얕은 설명을 여러 챕터에 흩뿌리는 것보다 한 챕터를 깊게 파는 편이 낫습니다.
 - **최종 결론은 마지막 챕터(예: "05 · 정리" 또는 "04 · 실무 의미")에서 직접 마무리하십시오.** 별도의 "GroundK Take" 박스는 생성하지 않습니다. 마지막 챕터의 본문이 읽는 사람에게 "이 한 건의 소식이 MICE 실무에 어떤 결정을 요구하는가"까지 자연스럽게 전달되어야 합니다.
 - \`_citedIndices\`는 본문에서 실제로 근거로 삼은 기사 **한 건의 번호**만 담습니다 (예: \`[3]\`). 배경 참고만 한 다른 기사는 포함하지 않습니다.`,
-  event_radar: `{ "englishLabel": "Event Radar", "events": [정확히 2~4개. 각 event = { "categoryTag": "Conference · 아시아 / Expo · 국내 / Workshop · 글로벌 등 (분류 + 지역)", "title": "행사 공식 명칭", "dateMeta": "개최일과 장소를 한 줄로 (예: 2026.06.12 – 14 · 서울 COEX)", "body": "2~3문장. 어떤 행사인지, 누가 주최하는지, 일반 업계인이 왜 놓치기 쉬운지.", "whyItMatters": "(선택) 1문장으로 MICE 실무자가 이 행사를 알아야 할 이유. 생략 가능.", "sourceUrl": "관리자가 제공한 URL 그대로. 없으면 빈 문자열." }] }
+  event_radar: `{ "englishLabel": "Event Radar", "events": [정확히 1개. event = { "categoryTag": "Conference · 아시아 / Expo · 국내 / Workshop · 글로벌 등 (분류 + 지역)", "title": "행사 공식 명칭", "dateMeta": "개최일과 장소를 한 줄로 (예: 2026.06.12 – 14 · 서울 COEX)", "body": "3~5문장. 어떤 행사인지, 누가 주최하는지, 일반 업계인이 왜 놓치기 쉬운지, 어떤 인사이트를 얻을 수 있는지 충분히 서술.", "whyItMatters": "(선택) 1~2문장으로 MICE 실무자가 이 행사를 알아야 할 이유. 생략 가능.", "sourceUrl": "관리자가 제공한 URL 그대로. 없으면 빈 문자열." }] }
 
 ## event_radar 전용 지침 (매우 중요)
+- 이 블록은 호당 **정확히 하나의 행사**만 집중 소개합니다. 여러 행사를 얕게 나열하지 말고, 선정한 하나를 깊이 있게 다루십시오.
 - 이 블록의 목적은 **일반 MICE 종사자가 정보에 접근하기 어려운, 개최 예정 행사**를 큐레이션하는 것입니다. 대형·보도량이 많은 행사(예: CES, MWC, WTM 국제관광박람회급)는 **피하고**, 규모는 작더라도 전문성이 높거나 지역 한정·초청제 등 노출이 낮은 행사를 우선합니다.
 - **관리자가 제공한 URL의 실제 본문에 명시된 사실**(명칭·일정·장소·주최)만 그대로 옮겨 쓰십시오. 제공 본문에 없는 세부(참가비, 연사, 프로그램 등)는 추정·생성하지 말고 생략합니다.
 - 제공된 후보 기사에만 근거가 있을 때도 마찬가지로 기사에 명시된 사실만 씁니다.
-- 근거가 부족해 채울 수 없는 행사라면 그 항목은 만들지 말고 개수를 줄이십시오. 2개 미만으로 줄어드는 경우에만 RSS 후보에서 가장 가까운 행사 관련 기사를 한 건 활용합니다.
+- 근거가 부족해 단 하나의 행사도 신뢰성 있게 다룰 수 없다면 placeholder를 출력하십시오 (뒤의 서버 로직이 처리).
 - sourceUrl은 반드시 관리자가 붙여 넣은 URL 또는 후보 기사의 url만 씁니다. 임의 URL 생성 금지.`,
   blog_card_grid: `{ "englishLabel": "GroundK Blog", "cards": [2~6개. 각 card = { "label": "Field Note / Project Story / Industry Insight / Tech & MICE 중 하나", "title": "제목", "description": "2~3줄의 설명", "linkUrl": "https://blog.naver.com/groundk" }] }`,
 };
@@ -354,17 +355,10 @@ function getPlaceholderData(type: BlockType): unknown {
         events: [
           {
             categoryTag: "Conference · 지역",
-            title: "행사 공식 명칭을 입력하세요.",
+            title: "이달의 주목할 행사 명칭을 입력하세요.",
             dateMeta: "YYYY.MM.DD · 장소",
-            body: "이 행사가 무엇인지 2~3문장으로 작성하세요.",
+            body: "행사 설명 3~5문장. 어떤 행사인지, 주최는 누구인지, 왜 주목해야 하는지.",
             whyItMatters: "MICE 실무자가 이 행사를 알아야 할 이유 (선택).",
-            sourceUrl: "",
-          },
-          {
-            categoryTag: "Expo · 지역",
-            title: "두 번째 행사 명칭",
-            dateMeta: "YYYY.MM.DD · 장소",
-            body: "행사 설명.",
             sourceUrl: "",
           },
         ],

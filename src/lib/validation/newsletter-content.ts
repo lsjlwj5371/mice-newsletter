@@ -238,6 +238,7 @@ export const eventRadarDataSchema = z.object({
         whyItMatters: z.string().optional(),
         sourceUrl: z.string().optional(),
         imageUrl: z.string().optional(),
+        imageLayout: imageLayoutSchema,
       })
     )
     .min(1),
