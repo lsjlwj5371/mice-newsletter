@@ -462,8 +462,12 @@ export function NewsletterFooterBlock({
   content: FooterContent;
   appUrl: string;
 }) {
-  const logoSrc = content.logoSrc ?? `${appUrl}/logo.png`;
-  const logoWidth = content.logoWidth ?? 160;
+  // Centered footer composition:
+  //   1) Unsubscribe line (with inline "여기" link)
+  //   2) "MICE人 Sponsored by GroundK" — brand wordmarks inline-colored
+  //   3) Two circular gray logos side-by-side (MICE人 + GroundK)
+  const miceLogoSrc = `${appUrl}/footer-mice-logo.png`;
+  const groundkLogoSrc = `${appUrl}/footer-groundk-logo.png`;
 
   return (
     <Section
@@ -471,88 +475,97 @@ export function NewsletterFooterBlock({
         marginTop: "32px",
         paddingTop: "0",
         paddingBottom: "40px",
+        textAlign: "center",
       }}
     >
-      <Row>
-        <Column width="60%" style={{ verticalAlign: "top" }}>
-          <Img
-            src={logoSrc}
-            alt={content.brandName}
-            width={String(logoWidth)}
-            style={{
-              display: "block",
-              marginBottom: "12px",
-              maxWidth: `${logoWidth}px`,
-              height: "auto",
-            }}
-          />
-          {content.brandTagline && (
-            <Text
-              style={{
-                fontSize: "11px",
-                color: colors.textFaint,
-                margin: "0 0 10px 0",
-                letterSpacing: "0.3px",
-              }}
-            >
-              {content.brandTagline}
-            </Text>
-          )}
-          <Text
-            style={{
-              ...typography.footerLink,
-              color: colors.textMuted,
-              margin: 0,
-            }}
-          >
-            {content.links.map((link, i) => (
-              <React.Fragment key={i}>
-                <Link
-                  href={link.href}
-                  style={{ color: colors.textMuted, textDecoration: "none" }}
-                >
-                  {link.label}
-                </Link>
-                {i < content.links.length - 1 && <br />}
-              </React.Fragment>
-            ))}
-          </Text>
-        </Column>
-        <Column
-          width="40%"
-          align="right"
-          style={{ verticalAlign: "bottom" }}
+      {/* Row 1: unsubscribe notice — centered, one line on desktop */}
+      <Text
+        style={{
+          ...typography.footerSmall,
+          color: colors.textMuted,
+          textAlign: "center",
+          margin: "0 0 18px 0",
+        }}
+      >
+        수신을 원치 않으시면{" "}
+        <Link
+          href={content.unsubscribeHref}
+          style={{
+            color: colors.textHeadline,
+            textDecoration: "underline",
+            fontWeight: 600,
+          }}
         >
-          {/* Intentionally empty — the unsubscribe line is now rendered
-              on its own full-width row below so it fits on one line
-              across typical email/web widths. */}
-        </Column>
-      </Row>
-      <Row>
-        <Column>
-          <Text
-            style={{
-              ...typography.footerSmall,
-              color: colors.textFaint,
-              textAlign: "right",
-              margin: "20px 0 0 0",
-              whiteSpace: "nowrap",
-            }}
-          >
-            수신을 원치 않으시면{" "}
-            <Link
-              href={content.unsubscribeHref}
-              style={{
-                color: colors.textHeadline,
-                textDecoration: "underline",
-              }}
-            >
-              여기
-            </Link>
-            에서 수신 거부하실 수 있습니다.
-          </Text>
-        </Column>
-      </Row>
+          여기
+        </Link>
+        에서 수신 거부하실 수 있습니다.
+      </Text>
+
+      {/* Row 2: "MICE人 Sponsored by GroundK" with brand colors. */}
+      <Text
+        style={{
+          fontSize: "14px",
+          fontWeight: 700,
+          textAlign: "center",
+          margin: "0 0 16px 0",
+          letterSpacing: "-0.1px",
+        }}
+      >
+        <span style={{ color: "#C51C69" }}>MICE人</span>
+        <span style={{ color: colors.textMuted, fontWeight: 400 }}>
+          {" "}Sponsored by{" "}
+        </span>
+        <span style={{ color: "#2E3092" }}>GroundK</span>
+      </Text>
+
+      {/* Row 3: two circular gray brand logos, centered side-by-side.
+          Wrapped in a <table> so email clients render the two images
+          on the same row reliably (flexbox/inline-block gets
+          inconsistent treatment across Outlook). */}
+      <table
+        role="presentation"
+        cellPadding={0}
+        cellSpacing={0}
+        border={0}
+        align="center"
+        style={{
+          margin: "0 auto",
+          borderCollapse: "collapse",
+        }}
+      >
+        <tbody>
+          <tr>
+            <td style={{ padding: "0 8px" }}>
+              <Img
+                src={miceLogoSrc}
+                alt="MICE人"
+                width="44"
+                height="44"
+                style={{
+                  display: "block",
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "50%",
+                }}
+              />
+            </td>
+            <td style={{ padding: "0 8px" }}>
+              <Img
+                src={groundkLogoSrc}
+                alt="GroundK"
+                width="44"
+                height="44"
+                style={{
+                  display: "block",
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "50%",
+                }}
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </Section>
   );
 }
