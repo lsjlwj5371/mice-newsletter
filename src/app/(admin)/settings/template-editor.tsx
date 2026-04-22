@@ -357,107 +357,32 @@ export function TemplateEditor({ initial }: Props) {
         <div>
           <h2 className="text-sm font-semibold">푸터</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            푸터에 노출할 브랜드 정보와 외부 링크입니다.
+            현재 푸터는 고정 디자인입니다 — 수신 거부 안내 문구, &quot;MICE人
+            Sponsored by GroundK&quot; 브랜드 라인, 두 개의 원형 로고
+            (MICE人 · GroundK) 가 중앙 정렬로 렌더링됩니다.
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <Label htmlFor="brandName">브랜드명</Label>
-            <Input
-              id="brandName"
-              value={footer.brandName}
-              onChange={(e) =>
-                setFooter({ ...footer, brandName: e.target.value })
-              }
-              disabled={pending}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="brandTagline">브랜드 태그라인</Label>
-            <Input
-              id="brandTagline"
-              value={footer.brandTagline}
-              onChange={(e) =>
-                setFooter({ ...footer, brandTagline: e.target.value })
-              }
-              disabled={pending}
-            />
-          </div>
-        </div>
 
-        {/* ── Footer logo (optional) ───────────────────────── */}
-        <div className="space-y-3 pt-4 border-t border-border">
-          <div>
-            <Label className="text-xs font-semibold">푸터 로고 이미지</Label>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              이메일 하단에 표시되는 로고입니다. 업로드하지 않으면 기본
-              <code className="mx-1 px-1 py-0.5 rounded bg-muted font-mono text-[10px]">
-                /logo.png
-              </code>
-              가 사용됩니다.
-            </p>
+        {/* ── Static footer assets overview ───────────────────── */}
+        <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 space-y-3">
+          <div className="text-xs font-semibold text-muted-foreground">
+            푸터 이미지 (정적 에셋)
           </div>
-          <FooterLogoField
-            value={footer.logoSrc ?? null}
-            width={footer.logoWidth ?? null}
-            onChangeUrl={(url) => setFooter({ ...footer, logoSrc: url })}
-            onChangeWidth={(w) => setFooter({ ...footer, logoWidth: w })}
-            disabled={pending}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label>링크 ({footer.links.length}개)</Label>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={addFooterLink}
-              disabled={pending || footer.links.length >= 10}
-            >
-              + 링크 추가
-            </Button>
-          </div>
-          <div className="space-y-2">
-            {footer.links.map((link, i) => (
-              <div key={i} className="flex gap-2 items-start">
-                <Input
-                  placeholder="라벨"
-                  value={link.label}
-                  onChange={(e) =>
-                    updateFooterLink(i, { label: e.target.value })
-                  }
-                  disabled={pending}
-                  className="w-40"
-                />
-                <Input
-                  placeholder="https://…"
-                  value={link.href}
-                  onChange={(e) =>
-                    updateFooterLink(i, { href: e.target.value })
-                  }
-                  disabled={pending}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => removeFooterLink(i)}
-                  disabled={pending}
-                  className="text-rose-600"
-                >
-                  제거
-                </Button>
-              </div>
-            ))}
-            {footer.links.length === 0 && (
-              <p className="text-xs text-muted-foreground italic">
-                링크가 없습니다. &quot;링크 추가&quot;로 등록하세요.
-              </p>
-            )}
-          </div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            두 로고는 코드 레벨 에셋으로 관리됩니다. 교체하려면 아래 경로의
+            파일을 새 이미지로 덮어쓴 뒤 다시 배포하세요.
+          </p>
+          <ul className="text-[11px] font-mono text-muted-foreground space-y-1">
+            <li>
+              MICE人 로고: <code className="px-1 py-0.5 rounded bg-background">public/footer-mice-logo.png</code>
+            </li>
+            <li>
+              GroundK 로고: <code className="px-1 py-0.5 rounded bg-background">public/footer-groundk-logo.jpg</code>
+            </li>
+          </ul>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            브랜드 라인 색상은 <span className="font-mono">MICE人 #C51C69</span>, <span className="font-mono">GroundK #2E3092</span> 로 고정되어 있습니다.
+          </p>
         </div>
 
         <div className="space-y-1">
