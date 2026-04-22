@@ -87,6 +87,52 @@ export default function Newsletter({ content, appUrl }: Props) {
           fontWeight={900}
           fontStyle="normal"
         />
+        {/* Mobile overrides. iOS Mail / Apple Mail / Gmail mobile apps
+            all support @media in <style>. Outlook desktop ignores —
+            which is fine, desktop is where the 2-column layouts shine. */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+@media (max-width: 480px) {
+  /* Image + body row in ImageWithBody left/right layouts: stack. */
+  .stack-on-mobile > tbody > tr > td {
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+  .stack-on-mobile .mobile-img {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 14px 0 !important;
+  }
+
+  /* Header row: brand block + issue meta badge → stack. */
+  .header-row > tbody > tr > td {
+    display: block !important;
+    width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    text-align: left !important;
+  }
+  .header-meta-col {
+    margin-top: 14px !important;
+    text-align: left !important;
+  }
+
+  /* Referral CTA row: message + button → stack. */
+  .cta-row > tbody > tr > td {
+    display: block !important;
+    width: 100% !important;
+    text-align: left !important;
+  }
+  .cta-button-col {
+    margin-top: 16px !important;
+    text-align: left !important;
+  }
+}
+            `,
+          }}
+        />
       </Head>
       <Preview>{content.subject}</Preview>
       {/* Outer Body: soft neutral canvas behind the newsletter card so
@@ -136,8 +182,13 @@ export default function Newsletter({ content, appUrl }: Props) {
             <NewsletterHeaderBlock content={content.header} />
             <ReferralCtaBlock content={content.referralCta} />
 
-            {indexedBlocks.map(({ block, index }) => (
-              <BlockRenderer key={block.id} block={block} index={index} />
+            {indexedBlocks.map(({ block, index }, i) => (
+              <BlockRenderer
+                key={block.id}
+                block={block}
+                index={index}
+                isLast={i === indexedBlocks.length - 1}
+              />
             ))}
 
             <NewsletterFooterBlock content={content.footer} appUrl={appUrl} />

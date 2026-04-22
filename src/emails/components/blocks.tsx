@@ -81,9 +81,27 @@ export function NewsletterHeaderBlock({
 
       {/* Header row: brand block on the left, issue meta badge on the
           right — masthead-style so the date + VOL are the first thing a
-          reader's eye hits after the brand, without crowding the body. */}
-      <Row>
-        <Column style={{ verticalAlign: "top", width: "68%" }}>
+          reader's eye hits after the brand, without crowding the body.
+          The .header-row className lets the mobile stylesheet collapse
+          the row into a vertical stack below 480px so the tagline +
+          description get full width for single-line rendering. */}
+      <table
+        role="presentation"
+        cellPadding={0}
+        cellSpacing={0}
+        border={0}
+        width="100%"
+        className="header-row"
+        style={{ borderCollapse: "collapse" }}
+      >
+        <tbody>
+          <tr>
+            <td
+              style={{
+                verticalAlign: "top",
+                width: "68%",
+              }}
+            >
           {/* Wordmark: image if the admin uploaded a logo, otherwise
               the text wordmark with length-based auto-scaling. */}
           {content.wordmarkLogoUrl ? (
@@ -142,18 +160,21 @@ export function NewsletterHeaderBlock({
           >
             {content.description}
           </Text>
-        </Column>
-        <Column
-          style={{
-            verticalAlign: "top",
-            width: "32%",
-            paddingLeft: "16px",
-          }}
-          align="right"
-        >
-          <IssueMetaBadge content={content} />
-        </Column>
-      </Row>
+            </td>
+            <td
+              className="header-meta-col"
+              style={{
+                verticalAlign: "top",
+                width: "32%",
+                paddingLeft: "16px",
+                textAlign: "right",
+              }}
+            >
+              <IssueMetaBadge content={content} />
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </Section>
   );
 }
@@ -364,41 +385,57 @@ export function ReferralCtaBlock({
         marginBottom: "8px",
       }}
     >
-      <Row>
-        <Column style={{ verticalAlign: "middle" }}>
-          <Text
-            style={{
-              fontSize: "16px",
-              lineHeight: 1.7,
-              color: colors.textBody,
-              fontWeight: 400,
-              margin: 0,
-            }}
-          >
-            {content.message}
-          </Text>
-        </Column>
-        <Column
-          align="right"
-          style={{ verticalAlign: "middle", width: "140px" }}
-        >
-          <Link
-            href={content.buttonHref}
-            style={{
-              display: "inline-block",
-              backgroundColor: colors.brandNavy,
-              color: colors.textOnDark,
-              textDecoration: "none",
-              ...typography.ctaButton,
-              padding: "10px 18px",
-              borderRadius: "4px",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {content.buttonLabel} →
-          </Link>
-        </Column>
-      </Row>
+      {/* Native <table> (instead of React-Email Row/Column) so the
+          .cta-row className can be targeted by the mobile stylesheet to
+          collapse into a single column below 480px. */}
+      <table
+        role="presentation"
+        cellPadding={0}
+        cellSpacing={0}
+        border={0}
+        width="100%"
+        className="cta-row"
+        style={{ borderCollapse: "collapse" }}
+      >
+        <tbody>
+          <tr>
+            <td style={{ verticalAlign: "middle" }}>
+              <Text
+                style={{
+                  fontSize: "16px",
+                  lineHeight: 1.7,
+                  color: colors.textBody,
+                  fontWeight: 400,
+                  margin: 0,
+                }}
+              >
+                {content.message}
+              </Text>
+            </td>
+            <td
+              className="cta-button-col"
+              align="right"
+              style={{ verticalAlign: "middle", width: "140px" }}
+            >
+              <Link
+                href={content.buttonHref}
+                style={{
+                  display: "inline-block",
+                  backgroundColor: colors.brandNavy,
+                  color: colors.textOnDark,
+                  textDecoration: "none",
+                  ...typography.ctaButton,
+                  padding: "10px 18px",
+                  borderRadius: "4px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {content.buttonLabel} →
+              </Link>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </Section>
   );
 }
@@ -512,10 +549,17 @@ export function NewsletterFooterBlock({
 // ─────────────────────────────────────────────
 // BLOCK: opening_lede
 // ─────────────────────────────────────────────
-function OpeningLede({ block }: { block: OpeningLedeBlock }) {
+function OpeningLede({
+  block,
+  isLast,
+}: {
+  block: OpeningLedeBlock;
+  isLast?: boolean;
+}) {
   return (
     <MajorSection
       noBorder
+      isLast={isLast}
       style={{ paddingTop: "8px", paddingBottom: "20px" }}
     >
       <ImageWithBody
@@ -563,12 +607,14 @@ function OpeningLede({ block }: { block: OpeningLedeBlock }) {
 function StatFeature({
   block,
   index,
+  isLast,
 }: {
   block: StatFeatureBlock;
   index: string;
+  isLast?: boolean;
 }) {
   return (
-    <MajorSection>
+    <MajorSection isLast={isLast}>
       <SectionLabel
         index={index}
         label={block.data.englishLabel}
@@ -627,12 +673,14 @@ function StatFeature({
 function NewsBriefing({
   block,
   index,
+  isLast,
 }: {
   block: NewsBriefingBlock;
   index: string;
+  isLast?: boolean;
 }) {
   return (
-    <MajorSection>
+    <MajorSection isLast={isLast}>
       <SectionLabel
         index={index}
         label={block.data.englishLabel}
@@ -660,12 +708,14 @@ function NewsBriefing({
 function InOutComparison({
   block,
   index,
+  isLast,
 }: {
   block: InOutComparisonBlock;
   index: string;
+  isLast?: boolean;
 }) {
   return (
-    <MajorSection>
+    <MajorSection isLast={isLast}>
       <SectionLabel
         index={index}
         label={block.data.englishLabel}
@@ -782,166 +832,119 @@ function InOutCard({
 function TechSignal({
   block,
   index,
+  isLast,
 }: {
   block: TechSignalBlock;
   index: string;
+  isLast?: boolean;
 }) {
   return (
-    <Section
-      style={{
-        backgroundColor: colors.bgTechAccent,
-        padding: "36px 28px",
-        borderRadius: "14px",
-        margin: `${spacing.sectionVertical} 0`,
-      }}
-    >
-      <Section style={{ marginBottom: "20px" }}>
-        <Text style={{ ...typography.sectionLabel, margin: 0 }}>
-          <span style={{ marginRight: "10px" }}>💡</span>
-          <span style={{ color: colors.accentGold }}>{index}</span>
-          <span style={{ color: "rgba(46,48,146,0.25)", margin: "0 6px" }}>/</span>
-          <span style={{ color: colors.brandNavy, opacity: 0.75 }}>
-            {block.data.englishLabel.toUpperCase()}
-          </span>
+    <MajorSection isLast={isLast}>
+      <SectionLabel
+        index={index}
+        label={block.data.englishLabel}
+        emoji="💡"
+      />
+
+      {/* Topic tag (accent gold) + date meta — kept as inline identifiers
+          because tech_signal tracks "이달의 테크 키워드". Flattened into
+          the block body now that the outer tinted card is gone. */}
+      <Text
+        style={{
+          fontSize: "11px",
+          fontWeight: 700,
+          letterSpacing: "2px",
+          color: colors.accentGold,
+          textTransform: "uppercase",
+          margin: "0 0 6px 0",
+        }}
+      >
+        ● {block.data.topicLabel}
+      </Text>
+      {block.data.topicMeta && (
+        <Text
+          style={{
+            fontSize: "12px",
+            color: colors.textSoft,
+            letterSpacing: "0.3px",
+            margin: "0 0 14px 0",
+          }}
+        >
+          {block.data.topicMeta}
         </Text>
-      </Section>
+      )}
+
+      <Heading
+        as="h2"
+        style={{
+          fontSize: "22px",
+          fontWeight: 700,
+          color: colors.textHeadline,
+          lineHeight: 1.35,
+          letterSpacing: "-0.3px",
+          margin: "0 0 16px 0",
+        }}
+      >
+        {block.data.title}
+      </Heading>
+
+      <ImageWithBody
+        src={block.data.imageUrl}
+        layout={block.data.imageLayout}
+      >
+        {block.data.paragraphs.map((p, i) => (
+          <Text
+            key={i}
+            style={{
+              fontSize: "16px",
+              color: colors.textBody,
+              lineHeight: 1.85,
+              fontWeight: 400,
+              margin: "0 0 16px 0",
+            }}
+            dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
+          />
+        ))}
+      </ImageWithBody>
 
       <Section
         style={{
-          backgroundColor: colors.bgWhite,
-          border: `1px solid ${colors.borderTechAccent}`,
-          borderRadius: "12px",
-          overflow: "hidden",
+          backgroundColor: colors.bgInsightSoft,
+          borderLeft: `3px solid ${colors.brandNavy}`,
+          borderRadius: "0 8px 8px 0",
+          padding: "14px 16px",
+          marginTop: "12px",
         }}
       >
-        <Section
+        <Text
           style={{
-            backgroundColor: colors.bgTechAccentSoft,
-            borderBottom: `1px solid ${colors.borderTechAccent}`,
-            padding: "10px 20px",
+            fontSize: "10px",
+            fontWeight: 700,
+            letterSpacing: "2px",
+            color: colors.brandNavy,
+            textTransform: "uppercase",
+            opacity: 0.7,
+            margin: "0 0 6px 0",
           }}
         >
-          <Row>
-            <Column style={{ verticalAlign: "middle" }}>
-              <Text
-                style={{
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  letterSpacing: "2px",
-                  color: colors.accentGold,
-                  textTransform: "uppercase",
-                  margin: 0,
-                }}
-              >
-                ● {block.data.topicLabel}
-              </Text>
-            </Column>
-            {block.data.topicMeta && (
-              <Column align="right" style={{ verticalAlign: "middle" }}>
-                <Text
-                  style={{
-                    fontSize: "10px",
-                    color: colors.textSoft,
-                    letterSpacing: "0.5px",
-                    margin: 0,
-                  }}
-                >
-                  {block.data.topicMeta}
-                </Text>
-              </Column>
-            )}
-          </Row>
-        </Section>
-
-        <Section style={{ padding: "24px" }}>
-          <Heading
-            as="h2"
-            style={{
-              fontSize: "20px",
-              fontWeight: 700,
-              color: colors.textHeadline,
-              lineHeight: 1.4,
-              letterSpacing: "-0.2px",
-              margin: "0 0 16px 0",
-            }}
-          >
-            {block.data.title}
-          </Heading>
-          <ImageWithBody
-            src={block.data.imageUrl}
-            layout={block.data.imageLayout}
-          >
-            {block.data.paragraphs.map((p, i) => (
-              <Text
-                key={i}
-                style={{
-                  fontSize: "16px",
-                  color: colors.textBody,
-                  lineHeight: 1.85,
-                  fontWeight: 400,
-                  margin: "0 0 16px 0",
-                }}
-                dangerouslySetInnerHTML={{ __html: renderInlineHtml(p) }}
-              />
-            ))}
-          </ImageWithBody>
-          <Section
-            style={{
-              backgroundColor: colors.bgInsightSoft,
-              borderLeft: `3px solid ${colors.brandNavy}`,
-              borderRadius: "0 8px 8px 0",
-              padding: "14px 16px",
-              marginTop: "12px",
-            }}
-          >
-            <Text
-              style={{
-                fontSize: "10px",
-                fontWeight: 700,
-                letterSpacing: "2px",
-                color: colors.brandNavy,
-                textTransform: "uppercase",
-                opacity: 0.7,
-                margin: "0 0 6px 0",
-              }}
-            >
-              MICE 관점
-            </Text>
-            <Text
-              style={{
-                fontSize: "12.5px",
-                color: colors.textMuted,
-                lineHeight: 1.75,
-                fontWeight: 400,
-                margin: 0,
-              }}
-              dangerouslySetInnerHTML={{
-                __html: renderInlineHtml(block.data.miceInsight),
-              }}
-            />
-          </Section>
-          {block.data.sourceUrl && block.data.sourceUrl.trim() !== "" && (
-            <Text
-              style={{
-                fontSize: "12px",
-                color: colors.textSoft,
-                margin: "12px 0 0 0",
-              }}
-            >
-              <Link
-                href={block.data.sourceUrl}
-                style={{
-                  color: colors.textSoft,
-                  textDecoration: "underline",
-                }}
-              >
-                원문 보기 →
-              </Link>
-            </Text>
-          )}
-        </Section>
+          MICE 관점
+        </Text>
+        <Text
+          style={{
+            fontSize: "14px",
+            color: colors.textBody,
+            lineHeight: 1.75,
+            fontWeight: 400,
+            margin: 0,
+          }}
+          dangerouslySetInnerHTML={{
+            __html: renderInlineHtml(block.data.miceInsight),
+          }}
+        />
       </Section>
-    </Section>
+
+      <SourceLink url={block.data.sourceUrl} topMargin="14px" />
+    </MajorSection>
   );
 }
 
@@ -951,12 +954,14 @@ function TechSignal({
 function TheoryToField({
   block,
   index,
+  isLast,
 }: {
   block: TheoryToFieldBlock;
   index: string;
+  isLast?: boolean;
 }) {
   return (
-    <MajorSection>
+    <MajorSection isLast={isLast}>
       <SectionLabel
         index={index}
         label={block.data.englishLabel}
@@ -1146,12 +1151,14 @@ function TheoryToField({
 function EditorTake({
   block,
   index,
+  isLast,
 }: {
   block: EditorTakeBlock;
   index: string;
+  isLast?: boolean;
 }) {
   return (
-    <MajorSection>
+    <MajorSection isLast={isLast}>
       <SectionLabel
         index={index}
         label={block.data.englishLabel}
@@ -1266,16 +1273,18 @@ function EditorTake({
 function GroundkStory({
   block,
   index,
+  isLast,
 }: {
   block: GroundkStoryBlock;
   index: string;
+  isLast?: boolean;
 }) {
   // Missing flag is treated as "show" so pre-existing drafts keep both parts.
   const showFieldBriefing = block.data.showFieldBriefing !== false;
   const showProjectSketch = block.data.showProjectSketch !== false;
 
   return (
-    <MajorSection noBorder>
+    <MajorSection noBorder isLast={isLast}>
       <SectionLabel
         index={index}
         label={block.data.englishLabel}
@@ -1478,13 +1487,15 @@ function GroundkStory({
 function ConsolidatedInsightSingleTopic({
   block,
   index,
+  isLast,
 }: {
   block: ConsolidatedInsightBlock;
   index: string;
+  isLast?: boolean;
 }) {
   const chapters = block.data.chapters ?? [];
   return (
-    <MajorSection>
+    <MajorSection isLast={isLast}>
       <SectionLabel
         index={index}
         label={block.data.englishLabel}
@@ -1654,21 +1665,27 @@ function ConsolidatedInsightSingleTopic({
 function ConsolidatedInsight({
   block,
   index,
+  isLast,
 }: {
   block: ConsolidatedInsightBlock;
   index: string;
+  isLast?: boolean;
 }) {
   // Prefer the new single-topic chapter-based layout; fall back to the
   // legacy multi-theme layout if the draft predates the schema change.
   if (block.data.chapters && block.data.chapters.length > 0) {
     return (
-      <ConsolidatedInsightSingleTopic block={block} index={index} />
+      <ConsolidatedInsightSingleTopic
+        block={block}
+        index={index}
+        isLast={isLast}
+      />
     );
   }
 
   const legacyParts = block.data.parts ?? [];
   return (
-    <MajorSection>
+    <MajorSection isLast={isLast}>
       <SectionLabel
         index={index}
         label={block.data.englishLabel}
@@ -1775,12 +1792,14 @@ function ConsolidatedInsight({
 function EventRadar({
   block,
   index,
+  isLast,
 }: {
   block: EventRadarBlock;
   index: string;
+  isLast?: boolean;
 }) {
   return (
-    <MajorSection>
+    <MajorSection isLast={isLast}>
       <SectionLabel
         index={index}
         label={block.data.englishLabel}
@@ -1899,9 +1918,11 @@ function EventRadar({
 function BlogCardGrid({
   block,
   index,
+  isLast,
 }: {
   block: BlogCardGridBlock;
   index: string;
+  isLast?: boolean;
 }) {
   // Pair cards into rows of 2 for email-safe layout
   const rows: Array<typeof block.data.cards> = [];
@@ -1909,7 +1930,7 @@ function BlogCardGrid({
     rows.push(block.data.cards.slice(i, i + 2));
   }
   return (
-    <MajorSection>
+    <MajorSection isLast={isLast}>
       <SectionLabel
         index={index}
         label={block.data.englishLabel}
@@ -2001,33 +2022,41 @@ function BlogCardGrid({
 export function BlockRenderer({
   block,
   index,
+  isLast,
 }: {
   block: BlockInstance;
   index: string;
+  /** Set on the final block of the issue; suppresses its trailing
+   *  section divider + tightens bottom padding before the footer. */
+  isLast?: boolean;
 }) {
   switch (block.type) {
     case "opening_lede":
-      return <OpeningLede block={block} />;
+      return <OpeningLede block={block} isLast={isLast} />;
     case "stat_feature":
-      return <StatFeature block={block} index={index} />;
+      return <StatFeature block={block} index={index} isLast={isLast} />;
     case "news_briefing":
-      return <NewsBriefing block={block} index={index} />;
+      return <NewsBriefing block={block} index={index} isLast={isLast} />;
     case "in_out_comparison":
-      return <InOutComparison block={block} index={index} />;
+      return (
+        <InOutComparison block={block} index={index} isLast={isLast} />
+      );
     case "tech_signal":
-      return <TechSignal block={block} index={index} />;
+      return <TechSignal block={block} index={index} isLast={isLast} />;
     case "theory_to_field":
-      return <TheoryToField block={block} index={index} />;
+      return <TheoryToField block={block} index={index} isLast={isLast} />;
     case "editor_take":
-      return <EditorTake block={block} index={index} />;
+      return <EditorTake block={block} index={index} isLast={isLast} />;
     case "groundk_story":
-      return <GroundkStory block={block} index={index} />;
+      return <GroundkStory block={block} index={index} isLast={isLast} />;
     case "consolidated_insight":
-      return <ConsolidatedInsight block={block} index={index} />;
+      return (
+        <ConsolidatedInsight block={block} index={index} isLast={isLast} />
+      );
     case "event_radar":
-      return <EventRadar block={block} index={index} />;
+      return <EventRadar block={block} index={index} isLast={isLast} />;
     case "blog_card_grid":
-      return <BlogCardGrid block={block} index={index} />;
+      return <BlogCardGrid block={block} index={index} isLast={isLast} />;
     default: {
       const _exhaustive: never = block;
       void _exhaustive;
@@ -2161,13 +2190,20 @@ function ImageWithBody({
     );
   }
 
-  // left / right — 2-column Row layout. Image column is ~40%. Use
-  // valign=top so short-image / long-body stays aligned to the top.
-  const imageCol = (
-    <Column
+  // left / right — 2-column table layout. Uses a native <table> so the
+  // `.stack-on-mobile` className can collapse the row into a single
+  // column below 480px via the head stylesheet — on phones the image
+  // always sits above the body at full width, matching "full" mode.
+  const imageCell = (
+    <td
       key="img"
       width="40%"
-      style={{ verticalAlign: "top", paddingRight: mode === "left" ? "18px" : 0, paddingLeft: mode === "right" ? "18px" : 0 }}
+      className="mobile-img"
+      style={{
+        verticalAlign: "top",
+        paddingRight: mode === "left" ? "18px" : 0,
+        paddingLeft: mode === "right" ? "18px" : 0,
+      }}
     >
       <Img
         src={src}
@@ -2180,22 +2216,30 @@ function ImageWithBody({
           borderRadius: "8px",
         }}
       />
-    </Column>
+    </td>
   );
-  const bodyCol = (
-    <Column
-      key="body"
-      width="60%"
-      style={{ verticalAlign: "top" }}
-    >
+  const bodyCell = (
+    <td key="body" width="60%" style={{ verticalAlign: "top" }}>
       {children}
-    </Column>
+    </td>
   );
   return (
-    <Row>
-      {mode === "left" ? imageCol : bodyCol}
-      {mode === "left" ? bodyCol : imageCol}
-    </Row>
+    <table
+      role="presentation"
+      cellPadding={0}
+      cellSpacing={0}
+      border={0}
+      width="100%"
+      className="stack-on-mobile"
+      style={{ borderCollapse: "collapse" }}
+    >
+      <tbody>
+        <tr>
+          {mode === "left" ? imageCell : bodyCell}
+          {mode === "left" ? bodyCell : imageCell}
+        </tr>
+      </tbody>
+    </table>
   );
 }
 

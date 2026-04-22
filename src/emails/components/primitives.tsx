@@ -214,10 +214,14 @@ export function InsightBox({
 export function MajorSection({
   children,
   noBorder = false,
+  isLast = false,
   style,
 }: {
   children: React.ReactNode;
   noBorder?: boolean;
+  /** When true, suppresses the trailing divider AND tightens the bottom
+   *  padding so the final block sits cleanly against the footer border. */
+  isLast?: boolean;
   style?: React.CSSProperties;
 }) {
   return (
@@ -225,13 +229,13 @@ export function MajorSection({
       <Section
         style={{
           paddingTop: spacing.sectionVertical,
-          paddingBottom: spacing.sectionVertical,
+          paddingBottom: isLast ? "12px" : spacing.sectionVertical,
           ...style,
         }}
       >
         {children}
       </Section>
-      {!noBorder && <SectionDivider />}
+      {!noBorder && !isLast && <SectionDivider />}
     </>
   );
 }
