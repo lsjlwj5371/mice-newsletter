@@ -2190,56 +2190,44 @@ function ImageWithBody({
     );
   }
 
-  // left / right — 2-column table layout. Uses a native <table> so the
-  // `.stack-on-mobile` className can collapse the row into a single
-  // column below 480px via the head stylesheet — on phones the image
-  // always sits above the body at full width, matching "full" mode.
-  const imageCell = (
-    <td
-      key="img"
-      width="40%"
-      className="mobile-img"
+  // left / right — magazine-style text wrap using CSS float. Body text
+  // flows alongside the image until the image ends, then continues at
+  // full width below. The previous 2-column table version left a big
+  // empty gap under short images whenever the body was long.
+  //
+  // Compatibility: Apple Mail / Gmail (web+mobile) / Samsung Mail /
+  // Naver all honor `float`. Outlook desktop (Word engine) ignores it
+  // → image renders block and text flows below — same as the `full`
+  // layout, a graceful fallback. Mobile override: the `.float-image`
+  // class in the head stylesheet strips float + forces full width
+  // below 480px so phones always see image-on-top stacked.
+  const floatImg = (
+    <Img
+      src={src}
+      alt={alt}
+      className="float-image"
       style={{
-        verticalAlign: "top",
-        paddingRight: mode === "left" ? "18px" : 0,
-        paddingLeft: mode === "right" ? "18px" : 0,
+        float: mode,
+        width: "45%",
+        maxWidth: "280px",
+        height: "auto",
+        borderRadius: "8px",
+        marginRight: mode === "left" ? "18px" : 0,
+        marginLeft: mode === "right" ? "18px" : 0,
+        marginBottom: "10px",
+        display: "block",
       }}
-    >
-      <Img
-        src={src}
-        alt={alt}
-        style={{
-          display: "block",
-          width: "100%",
-          maxWidth: "100%",
-          height: "auto",
-          borderRadius: "8px",
-        }}
-      />
-    </td>
-  );
-  const bodyCell = (
-    <td key="body" width="60%" style={{ verticalAlign: "top" }}>
-      {children}
-    </td>
+    />
   );
   return (
-    <table
-      role="presentation"
-      cellPadding={0}
-      cellSpacing={0}
-      border={0}
-      width="100%"
-      className="stack-on-mobile"
-      style={{ borderCollapse: "collapse" }}
-    >
-      <tbody>
-        <tr>
-          {mode === "left" ? imageCell : bodyCell}
-          {mode === "left" ? bodyCell : imageCell}
-        </tr>
-      </tbody>
-    </table>
+    <>
+      {floatImg}
+      {children}
+      {/* Clear the float so the next sibling (insight box, source
+          link, etc) starts on its own row. `fontSize: 0` keeps the
+          clearing div zero-height. */}
+      <div style={{ clear: "both", fontSize: 0, lineHeight: 0 }} />
+    </>
   );
 }
 

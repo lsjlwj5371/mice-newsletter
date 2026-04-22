@@ -94,13 +94,24 @@ export default function Newsletter({ content, appUrl }: Props) {
           dangerouslySetInnerHTML={{
             __html: `
 @media (max-width: 480px) {
-  /* Image + body row in ImageWithBody left/right layouts: stack. */
+  /* Image + body row in ImageWithBody left/right layouts: stack.
+     (Legacy 2-col variant — kept for any older renderings.) */
   .stack-on-mobile > tbody > tr > td {
     display: block !important;
     width: 100% !important;
     padding: 0 !important;
   }
   .stack-on-mobile .mobile-img {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 14px 0 !important;
+  }
+  /* Float-based left/right wrap: drop the float and force full width
+     so on mobile the image sits on top with the body below it — same
+     pattern as "full" layout. */
+  .float-image {
+    float: none !important;
+    display: block !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 0 14px 0 !important;
