@@ -467,7 +467,7 @@ export function NewsletterFooterBlock({
   //   2) "MICE人 Sponsored by GroundK" — brand wordmarks inline-colored
   //   3) Two circular gray logos side-by-side (MICE人 + GroundK)
   const miceLogoSrc = `${appUrl}/footer-mice-logo.png`;
-  const groundkLogoSrc = `${appUrl}/footer-groundk-logo.png`;
+  const groundkLogoSrc = `${appUrl}/footer-groundk-logo.jpg`;
 
   return (
     <Section
