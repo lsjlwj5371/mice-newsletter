@@ -384,12 +384,18 @@ export function ReferralCtaBlock({
   return (
     <Section
       style={{
-        backgroundColor: colors.bgInsight,
-        padding: "22px 24px",
-        borderRadius: "8px",
-        marginBottom: "8px",
+        marginTop: "60px",
+        paddingTop: "32px",
+        borderTop: `2px solid ${colors.borderStrong}`,
       }}
     >
+      <div
+        style={{
+          backgroundColor: colors.bgInsight,
+          padding: "22px 24px",
+          borderRadius: "8px",
+        }}
+      >
       {/* Native <table> (instead of React-Email Row/Column) so the
           .cta-row className can be targeted by the mobile stylesheet to
           collapse into a single column below 480px. */}
@@ -441,6 +447,7 @@ export function ReferralCtaBlock({
           </tr>
         </tbody>
       </table>
+      </div>
     </Section>
   );
 }
@@ -461,10 +468,9 @@ export function NewsletterFooterBlock({
   return (
     <Section
       style={{
-        marginTop: "60px",
-        paddingTop: "40px",
+        marginTop: "32px",
+        paddingTop: "0",
         paddingBottom: "40px",
-        borderTop: `2px solid ${colors.borderStrong}`,
       }}
     >
       <Row>
