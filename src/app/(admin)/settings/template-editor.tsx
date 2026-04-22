@@ -385,6 +385,38 @@ export function TemplateEditor({ initial }: Props) {
           </p>
         </div>
 
+        {/* ── Footer logo links ───────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="miceLogoHref">MICE人 로고 링크</Label>
+            <Input
+              id="miceLogoHref"
+              value={footer.miceLogoHref ?? ""}
+              onChange={(e) =>
+                setFooter({ ...footer, miceLogoHref: e.target.value })
+              }
+              disabled={pending}
+              placeholder="https://linktr.ee/mice_in"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="groundkLogoHref">GroundK 로고 링크</Label>
+            <Input
+              id="groundkLogoHref"
+              value={footer.groundkLogoHref ?? ""}
+              onChange={(e) =>
+                setFooter({ ...footer, groundkLogoHref: e.target.value })
+              }
+              disabled={pending}
+              placeholder="(준비 중 — 비워두면 링크 없음)"
+            />
+          </div>
+        </div>
+        <p className="text-[11px] text-muted-foreground -mt-2">
+          각 로고를 클릭하면 이동할 URL입니다. 비워두면 해당 로고는 링크
+          없이 이미지만 표시됩니다.
+        </p>
+
         <div className="space-y-1">
           <Label htmlFor="unsubscribeHref">구독 해지 URL</Label>
           <Input

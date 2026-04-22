@@ -464,6 +464,10 @@ export interface FooterContent {
   logoSrc?: string;
   /** Rendered width of the footer logo in pixels. Default 160. */
   logoWidth?: number;
+  /** Link target for the MICE人 footer logo. */
+  miceLogoHref?: string;
+  /** Link target for the GroundK footer logo. */
+  groundkLogoHref?: string;
 }
 
 // ─────────────────────────────────────────────

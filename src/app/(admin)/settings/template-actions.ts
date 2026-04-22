@@ -44,6 +44,9 @@ export interface UpdateTemplateInput {
     /** Footer logo image URL. Empty/null → falls back to /logo.png. */
     logoSrc?: string | null;
     logoWidth?: number | null;
+    /** Click-through URLs for the two circular footer logos. */
+    miceLogoHref?: string | null;
+    groundkLogoHref?: string | null;
   };
 }
 
@@ -145,6 +148,20 @@ export async function updateTemplateSettingsAction(
     input.footer.logoWidth !== undefined
   ) {
     cleanedFooter.logoWidth = input.footer.logoWidth;
+  }
+  if (
+    input.footer.miceLogoHref !== null &&
+    input.footer.miceLogoHref !== undefined &&
+    input.footer.miceLogoHref.trim() !== ""
+  ) {
+    cleanedFooter.miceLogoHref = input.footer.miceLogoHref.trim();
+  }
+  if (
+    input.footer.groundkLogoHref !== null &&
+    input.footer.groundkLogoHref !== undefined &&
+    input.footer.groundkLogoHref.trim() !== ""
+  ) {
+    cleanedFooter.groundkLogoHref = input.footer.groundkLogoHref.trim();
   }
 
   const { error } = await supabase

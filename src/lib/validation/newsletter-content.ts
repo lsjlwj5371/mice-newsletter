@@ -39,6 +39,8 @@ const footerSchema = z.object({
   unsubscribeHref: z.string(),
   logoSrc: z.string().optional(),
   logoWidth: z.number().int().min(40).max(320).optional(),
+  miceLogoHref: z.string().optional(),
+  groundkLogoHref: z.string().optional(),
 });
 
 // Block-level shared wrapper ────────────────────────────

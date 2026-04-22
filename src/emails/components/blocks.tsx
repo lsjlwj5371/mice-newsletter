@@ -469,6 +469,47 @@ export function NewsletterFooterBlock({
   const miceLogoSrc = `${appUrl}/footer-mice-logo.png`;
   const groundkLogoSrc = `${appUrl}/footer-groundk-logo.jpg`;
 
+  // Wrap a logo image in a Link when an href is configured, otherwise
+  // render the bare Img — keeps the footer valid even while one of the
+  // brand URLs is still TBD.
+  const wrapInLink = (node: React.ReactNode, href?: string) =>
+    href && href.trim() !== "" ? (
+      <Link href={href} style={{ textDecoration: "none" }}>
+        {node}
+      </Link>
+    ) : (
+      node
+    );
+
+  const miceLogoImg = (
+    <Img
+      src={miceLogoSrc}
+      alt="MICE人"
+      width="44"
+      height="44"
+      style={{
+        display: "block",
+        width: "44px",
+        height: "44px",
+        borderRadius: "50%",
+      }}
+    />
+  );
+  const groundkLogoImg = (
+    <Img
+      src={groundkLogoSrc}
+      alt="GroundK"
+      width="44"
+      height="44"
+      style={{
+        display: "block",
+        width: "44px",
+        height: "44px",
+        borderRadius: "50%",
+      }}
+    />
+  );
+
   return (
     <Section
       style={{
@@ -536,32 +577,10 @@ export function NewsletterFooterBlock({
         <tbody>
           <tr>
             <td style={{ padding: "0 8px" }}>
-              <Img
-                src={miceLogoSrc}
-                alt="MICE人"
-                width="44"
-                height="44"
-                style={{
-                  display: "block",
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "50%",
-                }}
-              />
+              {wrapInLink(miceLogoImg, content.miceLogoHref)}
             </td>
             <td style={{ padding: "0 8px" }}>
-              <Img
-                src={groundkLogoSrc}
-                alt="GroundK"
-                width="44"
-                height="44"
-                style={{
-                  display: "block",
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "50%",
-                }}
-              />
+              {wrapInLink(groundkLogoImg, content.groundkLogoHref)}
             </td>
           </tr>
         </tbody>

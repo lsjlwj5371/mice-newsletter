@@ -34,6 +34,8 @@ const FOOTER_FALLBACK: FooterContent = {
     { label: "rideus.co.kr", href: "https://rideus.co.kr" },
   ],
   unsubscribeHref: "{{UNSUBSCRIBE_HREF}}",
+  miceLogoHref: "https://linktr.ee/mice_in",
+  groundkLogoHref: "",
 };
 
 export interface TemplateSettings {

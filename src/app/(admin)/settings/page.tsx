@@ -51,6 +51,8 @@ export default async function SettingsPage() {
                 unsubscribeHref: template.footer.unsubscribeHref,
                 logoSrc: template.footer.logoSrc ?? null,
                 logoWidth: template.footer.logoWidth ?? null,
+                miceLogoHref: template.footer.miceLogoHref ?? null,
+                groundkLogoHref: template.footer.groundkLogoHref ?? null,
               },
             }}
           />
