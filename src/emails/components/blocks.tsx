@@ -138,6 +138,7 @@ export function NewsletterHeaderBlock({
             </span>
           )}
           <span
+            className="header-tagline"
             style={{
               display: "inline-block",
               marginLeft: "14px",
@@ -146,16 +147,19 @@ export function NewsletterHeaderBlock({
               color: colors.textMuted,
               verticalAlign: "middle",
               letterSpacing: "-0.1px",
+              whiteSpace: "nowrap",
             }}
           >
             {content.tagline}
           </span>
           <Text
+            className="header-description"
             style={{
               fontSize: "16px",
               color: colors.textSoft,
               fontWeight: 400,
               margin: "10px 0 0 0",
+              whiteSpace: "nowrap",
             }}
           >
             {content.description}
@@ -193,6 +197,7 @@ function IssueMetaBadge({ content }: { content: HeaderContent }) {
 
   return (
     <div
+      className="issue-meta-badge"
       style={{
         display: "inline-block",
         textAlign: "right",

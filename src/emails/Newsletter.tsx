@@ -129,6 +129,23 @@ export default function Newsletter({ content, appUrl }: Props) {
     margin-top: 14px !important;
     text-align: left !important;
   }
+  /* Shrink tagline + description so they fit on a single line at
+     ~390px viewports. Combined with white-space:nowrap on the
+     elements themselves, this keeps the masthead on one line each. */
+  .header-tagline {
+    font-size: 13px !important;
+    margin-left: 10px !important;
+  }
+  .header-description {
+    font-size: 13px !important;
+  }
+  /* Issue badge: header-meta-col is now left-aligned, so align the
+     badge's internal text to the left too — otherwise VOL 001 and the
+     Issue row right-hug a 110px min-width box, which looks off. */
+  .issue-meta-badge {
+    text-align: left !important;
+    min-width: 0 !important;
+  }
 
   /* Referral CTA row: message + button → stack. */
   .cta-row > tbody > tr > td {
