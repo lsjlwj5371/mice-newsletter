@@ -208,7 +208,6 @@ export default function Newsletter({ content, appUrl }: Props) {
 
           <div style={{ padding: spacing.wrapperPadding }}>
             <NewsletterHeaderBlock content={content.header} />
-            <ReferralCtaBlock content={content.referralCta} />
 
             {indexedBlocks.map(({ block, index }, i) => (
               <BlockRenderer
@@ -219,6 +218,7 @@ export default function Newsletter({ content, appUrl }: Props) {
               />
             ))}
 
+            <ReferralCtaBlock content={content.referralCta} />
             <NewsletterFooterBlock content={content.footer} appUrl={appUrl} />
           </div>
         </Container>
