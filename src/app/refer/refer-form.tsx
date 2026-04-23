@@ -105,12 +105,6 @@ function Success({
       <div style={{ fontSize: 48, marginBottom: 12 }}>✓</div>
       <h1 style={styles.h1}>{title}</h1>
       <p style={styles.desc}>{body}</p>
-      <p style={styles.footnote}>
-        문의:{" "}
-        <a href="mailto:groundk21@gmail.com" style={styles.link}>
-          groundk21@gmail.com
-        </a>
-      </p>
     </>
   );
 }

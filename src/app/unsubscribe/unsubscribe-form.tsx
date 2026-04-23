@@ -72,32 +72,20 @@ function Success({
   brand: string;
 }) {
   const title =
-    result.status === "unsubscribed"
-      ? "수신 거부 완료"
-      : result.status === "already"
+    result.status === "already"
       ? "이미 수신 거부된 이메일입니다"
-      : "확인되지 않은 이메일입니다";
+      : "수신 거부 완료";
 
   const body =
-    result.status === "unsubscribed"
-      ? `${result.email} 은(는) 이제 ${brand} 뉴스레터를 받지 않습니다.`
-      : result.status === "already"
+    result.status === "already"
       ? `${result.email} 은(는) 이미 수신 거부 처리된 상태입니다.`
-      : `${result.email} 로 발송된 기록이 확인되지 않습니다. 이메일 주소를 다시 확인해 주시거나, 다른 계정의 구독 메일에서 다시 시도해 주세요.`;
+      : `${result.email} 은(는) 이제 ${brand} 뉴스레터를 받지 않습니다.`;
 
   return (
     <>
-      <div style={{ fontSize: 48, marginBottom: 12 }}>
-        {result.status === "not_found" ? "⚠️" : "✓"}
-      </div>
+      <div style={{ fontSize: 48, marginBottom: 12 }}>✓</div>
       <h1 style={styles.h1}>{title}</h1>
       <p style={styles.desc}>{body}</p>
-      <p style={styles.footnote}>
-        문의:{" "}
-        <a href="mailto:groundk21@gmail.com" style={styles.link}>
-          groundk21@gmail.com
-        </a>
-      </p>
     </>
   );
 }

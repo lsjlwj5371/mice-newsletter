@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 
@@ -65,6 +66,8 @@ export async function selfReferralSignupAction(
       metadata: { email, via: "token_less_refer_form" },
     });
 
+    revalidatePath("/ncp-sync");
+    revalidatePath("/recipients");
     return { ok: true, status: "reactivated", email };
   }
 
@@ -90,5 +93,7 @@ export async function selfReferralSignupAction(
     metadata: { email, via: "token_less_refer_form" },
   });
 
+  revalidatePath("/ncp-sync");
+  revalidatePath("/recipients");
   return { ok: true, status: "created", email };
 }
