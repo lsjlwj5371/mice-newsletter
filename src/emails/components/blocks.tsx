@@ -1631,6 +1631,7 @@ function ConsolidatedInsightSingleTopic({
         >
           {block.data.topicLabel && (
             <span
+              className="hero-chip"
               style={{
                 display: "inline-block",
                 padding: "4px 10px",
@@ -1651,6 +1652,7 @@ function ConsolidatedInsightSingleTopic({
           {block.data.title && (
             <Heading
               as="h2"
+              className="hero-title"
               style={{
                 fontSize: "26px",
                 fontWeight: 800,
@@ -1665,6 +1667,7 @@ function ConsolidatedInsightSingleTopic({
           )}
           {block.data.topicMeta && (
             <Text
+              className="hero-meta"
               style={{
                 fontSize: "13px",
                 color: "rgba(255,255,255,0.85)",
