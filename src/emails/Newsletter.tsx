@@ -147,29 +147,9 @@ export default function Newsletter({ content, appUrl }: Props) {
     min-width: 0 !important;
   }
 
-  /* MICE Insight full-bleed hero — mobile typography tightening.
-     Image shows at natural aspect (no cropping regardless of source);
-     caption band just needs smaller type to feel phone-native. */
-  .hero-caption {
-    padding: 18px 18px 20px 18px !important;
-  }
-  .hero-chip {
-    font-size: 10px !important;
-    padding: 3px 8px !important;
-    margin-bottom: 8px !important;
-    letter-spacing: 1px !important;
-  }
-  .hero-title {
-    font-size: 18px !important;
-    line-height: 1.3 !important;
-    margin-top: 4px !important;
-    letter-spacing: -0.2px !important;
-  }
-  .hero-meta {
-    font-size: 12px !important;
-    margin-top: 8px !important;
-    line-height: 1.4 !important;
-  }
+  /* MICE Insight hero: image-only full-bleed, no caption band.
+     Admin bakes gradient / overlay text into the image itself, so no
+     mobile-specific overlay typography overrides are needed here. */
 
   /* Referral CTA row: message + button → stack. */
   .cta-row > tbody > tr > td {

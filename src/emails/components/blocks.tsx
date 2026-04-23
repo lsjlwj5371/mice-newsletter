@@ -1546,38 +1546,22 @@ function ConsolidatedInsightSingleTopic({
         emoji="🔍"
       />
 
-      {/* Full-bleed hero — "cover band" layout.
-          Bulletproof across every mail client (including Samsung Mail,
-          Gmail Android, Naver, Daum, Outlook desktop).
-
-          The image renders as a regular block-level <img> at its
-          natural aspect ratio, so it NEVER crops — what the admin
-          uploaded is what the reader sees. Directly under it, a
-          dark caption band holds the chip, title, and meta. Both
-          elements span from the card's left edge to the right edge
-          via negative horizontal margins on the wrapper div
-          (supported everywhere; tables collapse negative margins).
-
-          Previous attempts using position:absolute, negative
-          margin-top, or <td background> + valign=bottom + gradient
-          each failed in at least one common client — Samsung Mail
-          strips linear-gradient + valign, Gmail sanitizes negative
-          margins, some renderers drop position entirely. Dropping
-          the overlay-on-image trick removes every single compat
-          failure mode while keeping the editorial feel: full-bleed
-          photo + dark title strip reads like an album cover /
-          magazine masthead pairing. */}
-      <div
-        style={{
-          marginTop: "4px",
-          marginBottom: "24px",
-          marginLeft: "-16px",
-          marginRight: "-16px",
-          backgroundColor: "#14152a",
-          overflow: "hidden",
-        }}
-      >
-        {hasImage ? (
+      {/* Full-bleed hero — image-only.
+          Admin bakes any gradient / text treatment directly into the
+          image before upload, so this wrapper carries no caption band
+          or CSS overlay. Negative horizontal margins let the image
+          reach both card edges; image renders at natural aspect
+          (width:100%, height:auto) so it never crops. */}
+      {hasImage && (
+        <div
+          style={{
+            marginTop: "4px",
+            marginBottom: "20px",
+            marginLeft: "-16px",
+            marginRight: "-16px",
+            overflow: "hidden",
+          }}
+        >
           <Img
             src={block.data.imageUrl!}
             alt=""
@@ -1591,83 +1575,55 @@ function ConsolidatedInsightSingleTopic({
               margin: 0,
             }}
           />
-        ) : (
-          /* No image → navy gradient band as a visual stand-in so
-             even imageless drafts still read as a "chapter opener". */
-          <div
-            style={{
-              width: "100%",
-              height: "180px",
-              backgroundImage:
-                "linear-gradient(135deg, #2E3092 0%, #1a1a2e 100%)",
-            }}
-          >
-            &nbsp;
-          </div>
-        )}
+        </div>
+      )}
 
-        {/* Dark caption band under the image.
-            .hero-* classes let the mobile stylesheet shrink the
-            typography without touching desktop. */}
-        <div
-          className="hero-caption"
+      {/* Topic block — chip, title, meta. Rendered in the normal body
+          flow on the light card background (not overlaid on the
+          image). */}
+      {block.data.topicLabel && (
+        <Text
           style={{
-            padding: "22px 24px 24px 24px",
-            color: "#ffffff",
-            backgroundColor: "#14152a",
+            fontSize: "11px",
+            fontWeight: 700,
+            letterSpacing: "2px",
+            color: colors.brandNavy,
+            textTransform: "uppercase",
+            opacity: 0.75,
+            margin: "0 0 6px 0",
           }}
         >
-          {block.data.topicLabel && (
-            <span
-              className="hero-chip"
-              style={{
-                display: "inline-block",
-                padding: "4px 10px",
-                borderRadius: "999px",
-                backgroundColor: "rgba(255,255,255,0.12)",
-                border: "1px solid rgba(255,255,255,0.28)",
-                color: "#ffffff",
-                fontSize: "11px",
-                fontWeight: 700,
-                letterSpacing: "1.5px",
-                textTransform: "uppercase",
-                marginBottom: "12px",
-              }}
-            >
-              {block.data.topicLabel}
-            </span>
-          )}
-          {block.data.title && (
-            <Heading
-              as="h2"
-              className="hero-title"
-              style={{
-                fontSize: "24px",
-                fontWeight: 800,
-                color: "#ffffff",
-                lineHeight: 1.3,
-                letterSpacing: "-0.3px",
-                margin: "8px 0 0 0",
-              }}
-            >
-              {renderMultiline(block.data.title)}
-            </Heading>
-          )}
-          {block.data.topicMeta && (
-            <Text
-              className="hero-meta"
-              style={{
-                fontSize: "13px",
-                color: "rgba(255,255,255,0.78)",
-                lineHeight: 1.5,
-                margin: "10px 0 0 0",
-              }}
-            >
-              {block.data.topicMeta}
-            </Text>
-          )}
-        </div>
-      </div>
+          {block.data.topicLabel}
+        </Text>
+      )}
+
+      {block.data.title && (
+        <Heading
+          as="h2"
+          style={{
+            fontSize: "26px",
+            fontWeight: 700,
+            color: colors.textHeadline,
+            lineHeight: 1.35,
+            letterSpacing: "-0.4px",
+            margin: "0 0 10px 0",
+          }}
+        >
+          {renderMultiline(block.data.title)}
+        </Heading>
+      )}
+
+      {block.data.topicMeta && (
+        <Text
+          style={{
+            fontSize: "12px",
+            color: colors.textSoft,
+            margin: "0 0 18px 0",
+          }}
+        >
+          {block.data.topicMeta}
+        </Text>
+      )}
 
       {/* Lead paragraph now sits under the hero in the normal flow.
           No ImageWithBody — hero is the image. */}
