@@ -1561,16 +1561,21 @@ function ConsolidatedInsightSingleTopic({
           the image in the normal block flow (graceful degradation:
           image + dark title card stacked).
         ───────────────────────────────────────────── */}
-      {/* IMPORTANT: a plain <div> (not <Section>) is used as the outer
-          wrapper. React-Email's Section renders as <table width="100%">,
-          and tables don't actually extend past their parent cell when
-          given negative margins — the right edge stays flush with the
-          wrapperPadding, leaving an asymmetric gap. A block-level div
-          honors negative margins properly in Apple Mail / Gmail /
-          Naver / Daum, so the hero really touches both card edges. */}
+      {/* IMPORTANT: full-bleed wrapper is a plain <div> (not <Section>)
+          so negative horizontal margins actually extend past the
+          wrapperPadding. React-Email's Section renders as
+          <table width="100%">, and tables don't honor negative margin
+          expansion — the right edge would stay flush inside the
+          padding, creating an asymmetric gap.
+
+          Overlay technique: instead of position:absolute (which some
+          email pipelines/clients strip or ignore, causing the overlay
+          to render as a dark block STACKED under the image), we pull
+          the overlay upward with a negative margin-top so it sits
+          directly ON the bottom of the image. Works in every client
+          including Outlook desktop. */}
       <div
         style={{
-          position: "relative",
           marginTop: "4px",
           marginBottom: "24px",
           marginLeft: "-16px",
@@ -1595,8 +1600,7 @@ function ConsolidatedInsightSingleTopic({
           />
         ) : (
           /* No image → render a 320px-tall gradient band so the
-             overlay still has something behind it. Outlook sees a
-             solid backgroundColor fallback via the parent Section. */
+             overlay still has something behind it. */
           <div
             style={{
               width: "100%",
@@ -1609,23 +1613,28 @@ function ConsolidatedInsightSingleTopic({
           </div>
         )}
 
-        {/* Overlay. Desktop: absolutely positioned over the bottom of
-            the image with a gradient. Mobile (≤480px): flipped to a
-            normal-flow dark block directly under the image — the
-            mobile stylesheet in Newsletter.tsx targets .hero-overlay
-            and drops position/gradient, so chip + title + meta always
-            fit in full and never get clipped by the shorter hero
-            height on narrow screens. */}
+        {/* Overlay.
+            - marginTop is negative so this block overlaps the bottom
+              portion of the image above it.
+            - backgroundImage gradient fades from transparent at the
+              top (so the image shows through) to near-black at the
+              bottom (so text is readable).
+            - Extra padding-top gives the gradient room to breathe
+              into the image; padding-bottom tightens near the card
+              edge.
+            Mobile (<=480px) overrides the negative margin + padding
+            + font sizes via the head stylesheet so the overlay still
+            fits inside the shorter hero. */}
         <div
           className="hero-overlay"
           style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: "32px 24px 22px 24px",
+            marginTop: "-150px",
+            paddingTop: "90px",
+            paddingBottom: "22px",
+            paddingLeft: "24px",
+            paddingRight: "24px",
             backgroundImage:
-              "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.0) 100%)",
+              "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.0) 100%)",
             color: "#ffffff",
           }}
         >

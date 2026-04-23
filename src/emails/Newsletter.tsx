@@ -147,14 +147,19 @@ export default function Newsletter({ content, appUrl }: Props) {
     min-width: 0 !important;
   }
 
-  /* MICE Insight full-bleed hero: keep the overlay absolutely
-     positioned over the image on mobile too, but shrink the type +
-     padding so chip / title / meta actually fit inside the shorter
-     hero (200px tall at ~400px viewport = 2:1). Otherwise the content
-     exceeds the image height and gets clipped by the wrapper's
-     overflow:hidden — which is what was happening before. */
+  /* MICE Insight full-bleed hero: overlay sits on top of the image
+     via a negative margin-top (instead of position:absolute, which
+     some clients strip). Desktop pulls up 150px into a 320px-tall
+     hero. Mobile hero is only ~200px tall at 400px viewport, so
+     pull up less (~100px) and shrink all typography + padding so
+     chip / title / meta fit inside the overlap zone without either
+     crowding the image or overflowing past it. */
   .hero-overlay {
-    padding: 18px 16px 14px 16px !important;
+    margin-top: -100px !important;
+    padding-top: 48px !important;
+    padding-bottom: 14px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
   }
   .hero-overlay .hero-chip {
     font-size: 10px !important;
