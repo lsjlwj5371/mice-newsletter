@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { BlockImageSlot } from "./block-image-slot";
 import { SendPanel } from "./send-panel";
+import { HtmlSourceDialog } from "./html-source-dialog";
 import { ArticlePicker } from "@/components/articles/article-picker";
 import {
   NEWSLETTER_STATUS_LABELS,
@@ -78,6 +79,7 @@ export function DraftEditor({
   );
   const [savePending, startSave] = React.useTransition();
   const [regeneratePending, startRegenerate] = React.useTransition();
+  const [htmlSourceOpen, setHtmlSourceOpen] = React.useState(false);
   const [message, setMessage] = React.useState<{
     type: "success" | "error";
     text: string;
@@ -143,6 +145,13 @@ export function DraftEditor({
           · 마지막 초안 생성: {formatDateTime(newsletter.last_drafted_at)}
         </span>
         <div className="ml-auto flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setHtmlSourceOpen(true)}
+            title="렌더링된 HTML 소스를 창에 열어 복사합니다"
+          >
+            &lt;/&gt; HTML 코드 보기
+          </Button>
           <a
             href={`/api/newsletters/${newsletter.id}/html?download=1`}
             download
@@ -309,6 +318,11 @@ export function DraftEditor({
           </div>
         )}
       </div>
+      <HtmlSourceDialog
+        open={htmlSourceOpen}
+        onOpenChange={setHtmlSourceOpen}
+        newsletterId={newsletter.id}
+      />
     </>
   );
 }
