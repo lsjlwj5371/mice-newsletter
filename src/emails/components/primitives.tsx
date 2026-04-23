@@ -6,7 +6,7 @@
 import * as React from "react";
 import { Section, Row, Column, Text, Heading, Hr, Img } from "@react-email/components";
 import { colors, typography, spacing } from "../tokens";
-import { renderInlineHtml } from "../helpers";
+import { renderInlineHtml, renderMultiline } from "../helpers";
 
 // ─────────────────────────────────────────────
 // Section header — "📰 01 / News Briefing"
@@ -110,7 +110,7 @@ export function ItemGroup({
           margin: "0 0 12px 0",
         }}
       >
-        {title}
+        {renderMultiline(title)}
       </Heading>
       {imageUrl && (
         <Img

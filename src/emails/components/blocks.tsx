@@ -18,7 +18,7 @@ import {
   Link,
 } from "@react-email/components";
 import { colors, typography, spacing } from "../tokens";
-import { renderInlineHtml } from "../helpers";
+import { renderInlineHtml, renderMultiline } from "../helpers";
 import {
   SectionLabel,
   ItemGroup,
@@ -836,7 +836,7 @@ function InOutCard({
             letterSpacing: "-0.3px",
           }}
         >
-          {card.title}
+          {renderMultiline(card.title)}
         </Heading>
         <Text
           style={{
@@ -926,7 +926,7 @@ function TechSignal({
           margin: "0 0 16px 0",
         }}
       >
-        {block.data.title}
+        {renderMultiline(block.data.title)}
       </Heading>
 
       <ImageWithBody
@@ -1078,7 +1078,7 @@ function TheoryToField({
           display: "inline-block",
         }}
       >
-        {block.data.title}
+        {renderMultiline(block.data.title)}
       </Heading>
 
       <ImageWithBody
@@ -1665,7 +1665,7 @@ function ConsolidatedInsightSingleTopic({
                 margin: "6px 0 0 0",
               }}
             >
-              {block.data.title}
+              {renderMultiline(block.data.title)}
             </Heading>
           )}
           {block.data.topicMeta && (
@@ -1737,7 +1737,7 @@ function ConsolidatedInsightSingleTopic({
               margin: "0 0 14px 0",
             }}
           >
-            {ch.heading}
+            {renderMultiline(ch.heading)}
           </Heading>
           {ch.paragraphs.map((p, j) => (
             <Text
@@ -1980,7 +1980,7 @@ function EventRadar({
               margin: "0 0 6px 0",
             }}
           >
-            {ev.title}
+            {renderMultiline(ev.title)}
           </Heading>
           <Text
             style={{
@@ -2117,7 +2117,7 @@ function BlogCardGrid({
                     margin: "0 0 10px 0",
                   }}
                 >
-                  {card.title}
+                  {renderMultiline(card.title)}
                 </Heading>
                 <Text
                   style={{
@@ -2212,16 +2212,6 @@ export function isNumberedBlock(type: BlockInstance["type"]): boolean {
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
-function renderMultiline(s: string): React.ReactNode {
-  const parts = s.split("\n");
-  return parts.map((line, i) => (
-    <React.Fragment key={i}>
-      {line}
-      {i < parts.length - 1 && <br />}
-    </React.Fragment>
-  ));
-}
-
 /**
  * Inline image renderer for newsletter blocks.
  * Keeps consistent styling (rounded corners, responsive width) and

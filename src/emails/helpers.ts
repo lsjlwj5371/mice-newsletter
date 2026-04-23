@@ -41,3 +41,23 @@ export function cleanText(s: string): string {
   if (!s) return "";
   return s.replace(/\*\*/g, "");
 }
+
+/**
+ * Split a string on newlines and return React nodes interleaved with
+ * `<br/>` tags. Use for headings / titles that can't go through
+ * `dangerouslySetInnerHTML` but still need admin-controlled line
+ * breaks (press Enter in the UI or insert `\n` via JSON edit).
+ */
+import * as React from "react";
+export function renderMultiline(s: string): React.ReactNode {
+  if (!s) return "";
+  const parts = s.split(/\r?\n/);
+  return parts.map((line, i) =>
+    React.createElement(
+      React.Fragment,
+      { key: i },
+      line,
+      i < parts.length - 1 ? React.createElement("br") : null
+    )
+  );
+}
