@@ -49,10 +49,23 @@ export async function GET(
     );
   }
 
-  const html = await render(
+  const rawHtml = await render(
     <Newsletter content={parsed.data} appUrl={appUrl} />,
     { pretty: true }
   );
+
+  // Our internal send-queue replaces {{UNSUBSCRIBE_HREF}} and
+  // {{REFERRAL_HREF}} with per-recipient signed-token URLs at send
+  // time. When admins export this HTML to paste into a third-party
+  // sender (e.g. Naver Cloud), those per-recipient tokens don't exist
+  // yet — leaving the literal placeholders in the HTML causes the
+  // unsubscribe/referral buttons to error out in the reader's client.
+  // Swap them with token-less form pages hosted on this app so the
+  // buttons always work: readers land on a form that asks for their
+  // email and we update `recipients` from there.
+  const html = rawHtml
+    .replaceAll("{{UNSUBSCRIBE_HREF}}", `${appUrl}/unsubscribe`)
+    .replaceAll("{{REFERRAL_HREF}}", `${appUrl}/refer`);
 
   const safeLabel = (newsletter.issue_label || "newsletter")
     .replace(/[^a-zA-Z0-9가-힣_\- .]/g, "_")

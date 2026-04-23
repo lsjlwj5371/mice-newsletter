@@ -42,6 +42,8 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/u/") ||
     pathname.startsWith("/r/") ||
     pathname.startsWith("/f/") ||
+    pathname === "/unsubscribe" ||
+    pathname === "/refer" ||
     pathname.startsWith("/api/cron/") ||
     pathname.startsWith("/api/unsubscribe/") ||
     pathname.startsWith("/_next/") ||
