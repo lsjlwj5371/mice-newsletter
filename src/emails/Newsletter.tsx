@@ -147,19 +147,16 @@ export default function Newsletter({ content, appUrl }: Props) {
     min-width: 0 !important;
   }
 
-  /* MICE Insight full-bleed hero: overlay sits on top of the image
-     via a negative margin-top (instead of position:absolute, which
-     some clients strip). Desktop pulls up 150px into a 320px-tall
-     hero. Mobile hero is only ~200px tall at 400px viewport, so
-     pull up less (~100px) and shrink all typography + padding so
-     chip / title / meta fit inside the overlap zone without either
-     crowding the image or overflowing past it. */
+  /* MICE Insight full-bleed hero — mobile overrides.
+     Desktop: 320px-tall <td> with background-image + bottom-aligned
+     overlay div (90px top padding for the gradient fade).
+     Mobile: shrink the cell to 200px and reduce overlay padding so
+     the text block fits neatly within the hero. */
+  .hero-cell {
+    height: 200px !important;
+  }
   .hero-overlay {
-    margin-top: -100px !important;
-    padding-top: 48px !important;
-    padding-bottom: 14px !important;
-    padding-left: 16px !important;
-    padding-right: 16px !important;
+    padding: 48px 16px 14px 16px !important;
   }
   .hero-overlay .hero-chip {
     font-size: 10px !important;

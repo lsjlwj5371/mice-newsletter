@@ -1563,17 +1563,22 @@ function ConsolidatedInsightSingleTopic({
         ───────────────────────────────────────────── */}
       {/* IMPORTANT: full-bleed wrapper is a plain <div> (not <Section>)
           so negative horizontal margins actually extend past the
-          wrapperPadding. React-Email's Section renders as
-          <table width="100%">, and tables don't honor negative margin
-          expansion — the right edge would stay flush inside the
-          padding, creating an asymmetric gap.
+          wrapperPadding (tables don't honor negative margin
+          expansion, creating an asymmetric right-edge gap).
 
-          Overlay technique: instead of position:absolute (which some
-          email pipelines/clients strip or ignore, causing the overlay
-          to render as a dark block STACKED under the image), we pull
-          the overlay upward with a negative margin-top so it sits
-          directly ON the bottom of the image. Works in every client
-          including Outlook desktop. */}
+          Overlay technique — use <td background> + backgroundImage
+          + valign="bottom" instead of position:absolute or negative
+          margin-top. Both of those are stripped/ignored by too many
+          clients (Gmail sanitizer drops negative margin-top; some
+          render chains strip position:absolute) which was causing
+          the overlay to stack UNDER the image instead of sitting on
+          top of it. The <td background> pattern is the email
+          standard: the image becomes the cell's background, and the
+          child div with the gradient sits at the bottom of the cell
+          via vertical-align:bottom. Works in Apple Mail / Gmail
+          (web+app) / Naver / Daum; Outlook desktop falls back to the
+          bgcolor (solid dark band with text), which is a graceful
+          degradation. */}
       <div
         style={{
           marginTop: "4px",
@@ -1584,61 +1589,50 @@ function ConsolidatedInsightSingleTopic({
           overflow: "hidden",
         }}
       >
-        {hasImage ? (
-          <Img
-            src={block.data.imageUrl!}
-            alt=""
-            width="640"
-            height="320"
-            style={{
-              display: "block",
-              width: "100%",
-              height: "auto",
-              border: 0,
-              margin: 0,
-            }}
-          />
-        ) : (
-          /* No image → render a 320px-tall gradient band so the
-             overlay still has something behind it. */
-          <div
-            style={{
-              width: "100%",
-              height: "320px",
-              backgroundImage:
-                "linear-gradient(135deg, #2E3092 0%, #1a1a2e 100%)",
-            }}
-          >
-            &nbsp;
-          </div>
-        )}
-
-        {/* Overlay.
-            - marginTop is negative so this block overlaps the bottom
-              portion of the image above it.
-            - backgroundImage gradient fades from transparent at the
-              top (so the image shows through) to near-black at the
-              bottom (so text is readable).
-            - Extra padding-top gives the gradient room to breathe
-              into the image; padding-bottom tightens near the card
-              edge.
-            Mobile (<=480px) overrides the negative margin + padding
-            + font sizes via the head stylesheet so the overlay still
-            fits inside the shorter hero. */}
-        <div
-          className="hero-overlay"
-          style={{
-            marginTop: "-150px",
-            paddingTop: "90px",
-            paddingBottom: "22px",
-            paddingLeft: "24px",
-            paddingRight: "24px",
-            backgroundImage:
-              "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.0) 100%)",
-            color: "#ffffff",
-          }}
+        <table
+          role="presentation"
+          cellPadding={0}
+          cellSpacing={0}
+          border={0}
+          width="100%"
+          style={{ borderCollapse: "collapse" }}
         >
-          {block.data.topicLabel && (
+          <tbody>
+            <tr>
+              <td
+                className="hero-cell"
+                {...({
+                  ...(hasImage ? { background: block.data.imageUrl } : {}),
+                  bgcolor: "#14152a",
+                } as React.TdHTMLAttributes<HTMLTableCellElement>)}
+                height={320}
+                valign="bottom"
+                style={{
+                  ...(hasImage
+                    ? {
+                        backgroundImage: `url(${block.data.imageUrl})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                        backgroundRepeat: "no-repeat",
+                      }
+                    : {
+                        backgroundImage:
+                          "linear-gradient(135deg, #2E3092 0%, #1a1a2e 100%)",
+                      }),
+                  height: "320px",
+                  verticalAlign: "bottom",
+                }}
+              >
+                <div
+                  className="hero-overlay"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.0) 100%)",
+                    padding: "90px 24px 22px 24px",
+                    color: "#ffffff",
+                  }}
+                >
+                  {block.data.topicLabel && (
             <span
               className="hero-chip"
               style={{
@@ -1687,7 +1681,11 @@ function ConsolidatedInsightSingleTopic({
               {block.data.topicMeta}
             </Text>
           )}
-        </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       {/* Lead paragraph now sits under the hero in the normal flow.
