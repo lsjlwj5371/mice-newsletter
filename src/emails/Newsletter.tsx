@@ -148,14 +148,16 @@ export default function Newsletter({ content, appUrl }: Props) {
   }
 
   /* MICE Insight hero — HTML text overlaid on admin-gradiented image.
-     td-background layout; mobile shrinks the fixed cell height and
-     overlay padding + typography so the text band fits over the
-     image's baked gradient region on narrow viewports. */
+     td-background layout; mobile cell height is tuned to match a 2:1
+     image aspect at the typical mobile card width (≈374px inside the
+     card), so admin-uploaded 2:1 images fill the cell exactly with
+     background-size:cover — no edge cropping. Overlay padding + type
+     shrink so the text band fits over the image's baked gradient. */
   .hero-cell {
-    height: 220px !important;
+    height: 190px !important;
   }
   .hero-overlay {
-    padding: 50px 16px 16px 16px !important;
+    padding: 40px 16px 14px 16px !important;
   }
   .hero-chip {
     font-size: 10px !important;
