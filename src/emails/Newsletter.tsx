@@ -147,32 +147,27 @@ export default function Newsletter({ content, appUrl }: Props) {
     min-width: 0 !important;
   }
 
-  /* MICE Insight full-bleed hero — mobile overrides.
-     Desktop: 320px-tall <td> with background-image + bottom-aligned
-     overlay div (90px top padding for the gradient fade).
-     Mobile: shrink the cell to 200px and reduce overlay padding so
-     the text block fits neatly within the hero. */
-  .hero-cell {
-    height: 200px !important;
+  /* MICE Insight full-bleed hero — mobile typography tightening.
+     Image shows at natural aspect (no cropping regardless of source);
+     caption band just needs smaller type to feel phone-native. */
+  .hero-caption {
+    padding: 18px 18px 20px 18px !important;
   }
-  .hero-overlay {
-    padding: 48px 16px 14px 16px !important;
-  }
-  .hero-overlay .hero-chip {
+  .hero-chip {
     font-size: 10px !important;
     padding: 3px 8px !important;
-    margin-bottom: 6px !important;
+    margin-bottom: 8px !important;
     letter-spacing: 1px !important;
   }
-  .hero-overlay .hero-title {
-    font-size: 17px !important;
+  .hero-title {
+    font-size: 18px !important;
     line-height: 1.3 !important;
     margin-top: 4px !important;
     letter-spacing: -0.2px !important;
   }
-  .hero-overlay .hero-meta {
-    font-size: 11px !important;
-    margin-top: 6px !important;
+  .hero-meta {
+    font-size: 12px !important;
+    margin-top: 8px !important;
     line-height: 1.4 !important;
   }
 

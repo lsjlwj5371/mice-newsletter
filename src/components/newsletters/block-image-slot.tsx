@@ -234,8 +234,8 @@ export function BlockImageSlot({
                 </div>
                 {isHero && (
                   <div className="text-[11px] mt-2 text-muted-foreground/80 leading-relaxed">
-                    📐 풀 블리드 히어로 — 가로 사진(16:9 또는 3:2) 권장<br />
-                    업로드 시 2:1 비율로 자동 크롭됩니다.
+                    📐 풀 블리드 히어로 — 가로 사진 권장<br />
+                    원본 비율 그대로 표시됩니다 (잘림 없음)
                   </div>
                 )}
               </>
