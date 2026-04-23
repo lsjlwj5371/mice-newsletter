@@ -147,6 +147,20 @@ export default function Newsletter({ content, appUrl }: Props) {
     min-width: 0 !important;
   }
 
+  /* MICE Insight full-bleed hero: the overlay is absolutely positioned
+     on desktop (sits over the bottom of the image with a gradient).
+     On mobile the hero becomes narrow enough that overlay content can
+     exceed the image height and get clipped by the wrapper's
+     overflow:hidden. Flip the overlay to a normal-flow dark block
+     directly under the image — the chip + title + meta then always
+     render in full regardless of image aspect. */
+  .hero-overlay {
+    position: static !important;
+    background-image: none !important;
+    background-color: #14152a !important;
+    padding: 20px 20px 22px 20px !important;
+  }
+
   /* Referral CTA row: message + button → stack. */
   .cta-row > tbody > tr > td {
     display: block !important;

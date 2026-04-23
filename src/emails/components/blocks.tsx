@@ -1609,11 +1609,15 @@ function ConsolidatedInsightSingleTopic({
           </div>
         )}
 
-        {/* Overlay. Modern clients position it over the bottom of the
-            image. Outlook drops position:absolute and renders it as a
-            normal block right under the image — which still reads as
-            a feature masthead. */}
+        {/* Overlay. Desktop: absolutely positioned over the bottom of
+            the image with a gradient. Mobile (≤480px): flipped to a
+            normal-flow dark block directly under the image — the
+            mobile stylesheet in Newsletter.tsx targets .hero-overlay
+            and drops position/gradient, so chip + title + meta always
+            fit in full and never get clipped by the shorter hero
+            height on narrow screens. */}
         <div
+          className="hero-overlay"
           style={{
             position: "absolute",
             bottom: 0,
