@@ -147,9 +147,29 @@ export default function Newsletter({ content, appUrl }: Props) {
     min-width: 0 !important;
   }
 
-  /* MICE Insight hero: image-only full-bleed, no caption band.
-     Admin bakes gradient / overlay text into the image itself, so no
-     mobile-specific overlay typography overrides are needed here. */
+  /* MICE Insight hero — HTML text overlaid on admin-gradiented image.
+     Mobile shrinks the overlay typography + padding so content fits
+     within the darker bottom region of the scaled-down image. */
+  .hero-overlay {
+    padding: 18px 18px 18px 18px !important;
+  }
+  .hero-chip {
+    font-size: 10px !important;
+    padding: 3px 8px !important;
+    margin-bottom: 6px !important;
+    letter-spacing: 1px !important;
+  }
+  .hero-title {
+    font-size: 18px !important;
+    line-height: 1.3 !important;
+    margin-top: 4px !important;
+    letter-spacing: -0.2px !important;
+  }
+  .hero-meta {
+    font-size: 11px !important;
+    margin-top: 6px !important;
+    line-height: 1.4 !important;
+  }
 
   /* Referral CTA row: message + button → stack. */
   .cta-row > tbody > tr > td {

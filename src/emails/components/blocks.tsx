@@ -1546,22 +1546,38 @@ function ConsolidatedInsightSingleTopic({
         emoji="🔍"
       />
 
-      {/* Full-bleed hero — image-only.
-          Admin bakes any gradient / text treatment directly into the
-          image before upload, so this wrapper carries no caption band
-          or CSS overlay. Negative horizontal margins let the image
-          reach both card edges; image renders at natural aspect
-          (width:100%, height:auto) so it never crops. */}
-      {hasImage && (
-        <div
-          style={{
-            marginTop: "4px",
-            marginBottom: "20px",
-            marginLeft: "-16px",
-            marginRight: "-16px",
-            overflow: "hidden",
-          }}
-        >
+      {/* Full-bleed hero — HTML text overlay on admin-gradiented image.
+
+          The admin bakes a dark bottom gradient into the uploaded
+          image (ending in #14152a), so the HTML-side overlay only
+          has to provide the text. Layout:
+
+          - Outer div is position:relative, with backgroundColor
+            matching the image's gradient endpoint (#14152a). This
+            means: in clients that honor position:absolute, the text
+            overlay sits on the image as intended. In clients that
+            strip position (some mobile Gmail, Samsung Mail),
+            the overlay div falls into normal flow BELOW the image,
+            but on a #14152a background that blends seamlessly with
+            the image's baked-in gradient endpoint. No visible break
+            between image and text either way.
+
+          - Image renders at natural aspect (width:100%, height:auto),
+            so no cropping regardless of source aspect ratio.
+
+          - Negative horizontal margins escape wrapperPadding. */}
+      <div
+        style={{
+          position: "relative",
+          marginTop: "4px",
+          marginBottom: "24px",
+          marginLeft: "-16px",
+          marginRight: "-16px",
+          backgroundColor: "#14152a",
+          overflow: "hidden",
+        }}
+      >
+        {hasImage ? (
           <Img
             src={block.data.imageUrl!}
             alt=""
@@ -1575,55 +1591,87 @@ function ConsolidatedInsightSingleTopic({
               margin: 0,
             }}
           />
+        ) : (
+          /* No image → navy gradient placeholder so even imageless
+             drafts still read as a "chapter opener". */
+          <div
+            style={{
+              width: "100%",
+              height: "220px",
+              backgroundImage:
+                "linear-gradient(135deg, #2E3092 0%, #1a1a2e 100%)",
+            }}
+          >
+            &nbsp;
+          </div>
+        )}
+
+        {/* Overlay block — positioned absolute at the bottom of the
+            image on supporting clients; falls into normal flow under
+            the image on stripping clients (still readable thanks to
+            the #14152a wrapper bg). */}
+        <div
+          className="hero-overlay"
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: "26px 24px 24px 24px",
+            color: "#ffffff",
+          }}
+        >
+          {block.data.topicLabel && (
+            <span
+              className="hero-chip"
+              style={{
+                display: "inline-block",
+                padding: "4px 10px",
+                borderRadius: "999px",
+                backgroundColor: "rgba(255,255,255,0.15)",
+                border: "1px solid rgba(255,255,255,0.32)",
+                color: "#ffffff",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "1.5px",
+                textTransform: "uppercase",
+                marginBottom: "10px",
+              }}
+            >
+              {block.data.topicLabel}
+            </span>
+          )}
+          {block.data.title && (
+            <Heading
+              as="h2"
+              className="hero-title"
+              style={{
+                fontSize: "24px",
+                fontWeight: 800,
+                color: "#ffffff",
+                lineHeight: 1.3,
+                letterSpacing: "-0.3px",
+                margin: "6px 0 0 0",
+              }}
+            >
+              {renderMultiline(block.data.title)}
+            </Heading>
+          )}
+          {block.data.topicMeta && (
+            <Text
+              className="hero-meta"
+              style={{
+                fontSize: "13px",
+                color: "rgba(255,255,255,0.82)",
+                lineHeight: 1.5,
+                margin: "10px 0 0 0",
+              }}
+            >
+              {block.data.topicMeta}
+            </Text>
+          )}
         </div>
-      )}
-
-      {/* Topic block — chip, title, meta. Rendered in the normal body
-          flow on the light card background (not overlaid on the
-          image). */}
-      {block.data.topicLabel && (
-        <Text
-          style={{
-            fontSize: "11px",
-            fontWeight: 700,
-            letterSpacing: "2px",
-            color: colors.brandNavy,
-            textTransform: "uppercase",
-            opacity: 0.75,
-            margin: "0 0 6px 0",
-          }}
-        >
-          {block.data.topicLabel}
-        </Text>
-      )}
-
-      {block.data.title && (
-        <Heading
-          as="h2"
-          style={{
-            fontSize: "26px",
-            fontWeight: 700,
-            color: colors.textHeadline,
-            lineHeight: 1.35,
-            letterSpacing: "-0.4px",
-            margin: "0 0 10px 0",
-          }}
-        >
-          {renderMultiline(block.data.title)}
-        </Heading>
-      )}
-
-      {block.data.topicMeta && (
-        <Text
-          style={{
-            fontSize: "12px",
-            color: colors.textSoft,
-            margin: "0 0 18px 0",
-          }}
-        >
-          {block.data.topicMeta}
-        </Text>
-      )}
+      </div>
 
       {/* Lead paragraph now sits under the hero in the normal flow.
           No ImageWithBody — hero is the image. */}
