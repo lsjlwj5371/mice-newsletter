@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { RecipientFormDialog } from "./recipient-form-dialog";
+import { RecipientBulkImportDialog } from "./recipient-bulk-import-dialog";
 import {
   RECIPIENT_STATUSES,
   STATUS_LABELS,
@@ -25,6 +26,7 @@ export function RecipientToolbar({ totalCount, filteredCount }: Props) {
 
   const [searchValue, setSearchValue] = React.useState(currentSearch);
   const [createOpen, setCreateOpen] = React.useState(false);
+  const [bulkOpen, setBulkOpen] = React.useState(false);
 
   // Debounced search submission
   React.useEffect(() => {
@@ -76,10 +78,16 @@ export function RecipientToolbar({ totalCount, filteredCount }: Props) {
           </span>
         </div>
 
-        <Button onClick={() => setCreateOpen(true)}>+ 수신자 추가</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkOpen(true)}>
+            일괄 추가
+          </Button>
+          <Button onClick={() => setCreateOpen(true)}>+ 수신자 추가</Button>
+        </div>
       </div>
 
       <RecipientFormDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <RecipientBulkImportDialog open={bulkOpen} onOpenChange={setBulkOpen} />
     </>
   );
 }
