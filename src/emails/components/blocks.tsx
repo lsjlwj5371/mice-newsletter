@@ -1561,10 +1561,20 @@ function ConsolidatedInsightSingleTopic({
           the image in the normal block flow (graceful degradation:
           image + dark title card stacked).
         ───────────────────────────────────────────── */}
-      <Section
+      {/* IMPORTANT: a plain <div> (not <Section>) is used as the outer
+          wrapper. React-Email's Section renders as <table width="100%">,
+          and tables don't actually extend past their parent cell when
+          given negative margins — the right edge stays flush with the
+          wrapperPadding, leaving an asymmetric gap. A block-level div
+          honors negative margins properly in Apple Mail / Gmail /
+          Naver / Daum, so the hero really touches both card edges. */}
+      <div
         style={{
           position: "relative",
-          margin: "4px -16px 24px -16px",
+          marginTop: "4px",
+          marginBottom: "24px",
+          marginLeft: "-16px",
+          marginRight: "-16px",
           backgroundColor: "#14152a",
           overflow: "hidden",
         }}
@@ -1662,7 +1672,7 @@ function ConsolidatedInsightSingleTopic({
             </Text>
           )}
         </div>
-      </Section>
+      </div>
 
       {/* Lead paragraph now sits under the hero in the normal flow.
           No ImageWithBody — hero is the image. */}
