@@ -148,10 +148,14 @@ export default function Newsletter({ content, appUrl }: Props) {
   }
 
   /* MICE Insight hero — HTML text overlaid on admin-gradiented image.
-     Mobile shrinks the overlay typography + padding so content fits
-     within the darker bottom region of the scaled-down image. */
+     td-background layout; mobile shrinks the fixed cell height and
+     overlay padding + typography so the text band fits over the
+     image's baked gradient region on narrow viewports. */
+  .hero-cell {
+    height: 220px !important;
+  }
   .hero-overlay {
-    padding: 18px 18px 18px 18px !important;
+    padding: 50px 16px 16px 16px !important;
   }
   .hero-chip {
     font-size: 10px !important;

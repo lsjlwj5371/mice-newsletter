@@ -1546,29 +1546,28 @@ function ConsolidatedInsightSingleTopic({
         emoji="🔍"
       />
 
-      {/* Full-bleed hero — HTML text overlay on admin-gradiented image.
+      {/* Full-bleed hero — td-background overlay, no CSS gradient.
+          Admin bakes any gradient effect directly into the uploaded
+          image, so the HTML side only provides the text overlay.
 
-          The admin bakes a dark bottom gradient into the uploaded
-          image (ending in #14152a), so the HTML-side overlay only
-          has to provide the text. Layout:
+          Structure (same as the pre-revert 'bulletproof' version):
+            <div>                                ← full-bleed wrapper
+              <table><tr>
+                <td background={url}             ← image as cell bg
+                    valign="bottom" height=320>
+                  <div class="hero-overlay">     ← chip/title/meta
+                </td>
+              </tr></table>
+            </div>
 
-          - Outer div is position:relative, with backgroundColor
-            matching the image's gradient endpoint (#14152a). This
-            means: in clients that honor position:absolute, the text
-            overlay sits on the image as intended. In clients that
-            strip position (some mobile Gmail, Samsung Mail),
-            the overlay div falls into normal flow BELOW the image,
-            but on a #14152a background that blends seamlessly with
-            the image's baked-in gradient endpoint. No visible break
-            between image and text either way.
-
-          - Image renders at natural aspect (width:100%, height:auto),
-            so no cropping regardless of source aspect ratio.
-
-          - Negative horizontal margins escape wrapperPadding. */}
+          Works across Apple Mail / Gmail (web+app) / Naver / Daum.
+          Outlook desktop falls back to bgcolor (solid #14152a) + the
+          overlay text — loses only the background image. Tweak from
+          the earlier version: the linear-gradient `backgroundImage`
+          on the overlay div is GONE, because the admin's uploaded
+          image already carries its own gradient. */}
       <div
         style={{
-          position: "relative",
           marginTop: "4px",
           marginBottom: "24px",
           marginLeft: "-16px",
@@ -1577,100 +1576,103 @@ function ConsolidatedInsightSingleTopic({
           overflow: "hidden",
         }}
       >
-        {hasImage ? (
-          <Img
-            src={block.data.imageUrl!}
-            alt=""
-            width="640"
-            style={{
-              display: "block",
-              width: "100%",
-              maxWidth: "100%",
-              height: "auto",
-              border: 0,
-              margin: 0,
-            }}
-          />
-        ) : (
-          /* No image → navy gradient placeholder so even imageless
-             drafts still read as a "chapter opener". */
-          <div
-            style={{
-              width: "100%",
-              height: "220px",
-              backgroundImage:
-                "linear-gradient(135deg, #2E3092 0%, #1a1a2e 100%)",
-            }}
-          >
-            &nbsp;
-          </div>
-        )}
-
-        {/* Overlay block — positioned absolute at the bottom of the
-            image on supporting clients; falls into normal flow under
-            the image on stripping clients (still readable thanks to
-            the #14152a wrapper bg). */}
-        <div
-          className="hero-overlay"
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: "26px 24px 24px 24px",
-            color: "#ffffff",
-          }}
+        <table
+          role="presentation"
+          cellPadding={0}
+          cellSpacing={0}
+          border={0}
+          width="100%"
+          style={{ borderCollapse: "collapse" }}
         >
-          {block.data.topicLabel && (
-            <span
-              className="hero-chip"
-              style={{
-                display: "inline-block",
-                padding: "4px 10px",
-                borderRadius: "999px",
-                backgroundColor: "rgba(255,255,255,0.15)",
-                border: "1px solid rgba(255,255,255,0.32)",
-                color: "#ffffff",
-                fontSize: "11px",
-                fontWeight: 700,
-                letterSpacing: "1.5px",
-                textTransform: "uppercase",
-                marginBottom: "10px",
-              }}
-            >
-              {block.data.topicLabel}
-            </span>
-          )}
-          {block.data.title && (
-            <Heading
-              as="h2"
-              className="hero-title"
-              style={{
-                fontSize: "24px",
-                fontWeight: 800,
-                color: "#ffffff",
-                lineHeight: 1.3,
-                letterSpacing: "-0.3px",
-                margin: "6px 0 0 0",
-              }}
-            >
-              {renderMultiline(block.data.title)}
-            </Heading>
-          )}
-          {block.data.topicMeta && (
-            <Text
-              className="hero-meta"
-              style={{
-                fontSize: "13px",
-                color: "rgba(255,255,255,0.82)",
-                lineHeight: 1.5,
-                margin: "10px 0 0 0",
-              }}
-            >
-              {block.data.topicMeta}
-            </Text>
-          )}
-        </div>
+          <tbody>
+            <tr>
+              <td
+                className="hero-cell"
+                {...({
+                  ...(hasImage ? { background: block.data.imageUrl } : {}),
+                  bgcolor: "#14152a",
+                } as React.TdHTMLAttributes<HTMLTableCellElement>)}
+                height={320}
+                valign="bottom"
+                style={{
+                  ...(hasImage
+                    ? {
+                        backgroundImage: `url(${block.data.imageUrl})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                        backgroundRepeat: "no-repeat",
+                      }
+                    : {
+                        /* No image → flat dark panel; admin adds
+                           any gradient treatment via the uploaded
+                           image itself when one is present. */
+                        backgroundColor: "#14152a",
+                      }),
+                  height: "320px",
+                  verticalAlign: "bottom",
+                }}
+              >
+                <div
+                  className="hero-overlay"
+                  style={{
+                    padding: "90px 24px 24px 24px",
+                    color: "#ffffff",
+                  }}
+                >
+                  {block.data.topicLabel && (
+                    <span
+                      className="hero-chip"
+                      style={{
+                        display: "inline-block",
+                        padding: "4px 10px",
+                        borderRadius: "999px",
+                        backgroundColor: "rgba(255,255,255,0.15)",
+                        border: "1px solid rgba(255,255,255,0.32)",
+                        color: "#ffffff",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        letterSpacing: "1.5px",
+                        textTransform: "uppercase",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      {block.data.topicLabel}
+                    </span>
+                  )}
+                  {block.data.title && (
+                    <Heading
+                      as="h2"
+                      className="hero-title"
+                      style={{
+                        fontSize: "26px",
+                        fontWeight: 800,
+                        color: "#ffffff",
+                        lineHeight: 1.3,
+                        letterSpacing: "-0.3px",
+                        margin: "6px 0 0 0",
+                      }}
+                    >
+                      {renderMultiline(block.data.title)}
+                    </Heading>
+                  )}
+                  {block.data.topicMeta && (
+                    <Text
+                      className="hero-meta"
+                      style={{
+                        fontSize: "13px",
+                        color: "rgba(255,255,255,0.85)",
+                        lineHeight: 1.5,
+                        margin: "10px 0 0 0",
+                      }}
+                    >
+                      {block.data.topicMeta}
+                    </Text>
+                  )}
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       {/* Lead paragraph now sits under the hero in the normal flow.
