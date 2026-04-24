@@ -26,7 +26,7 @@ export default async function UnsubscribePage({ params }: Props) {
   if (!claims || claims.kind !== "u") {
     return renderErrorShell(
       "링크가 유효하지 않습니다.",
-      "이미 만료되었거나 잘못된 해지 링크입니다. 원본 이메일에서 다시 시도하거나 운영팀에 문의해 주세요."
+      "이미 만료되었거나 잘못된 해지 링크입니다. 원본 이메일에서 다시 시도해 주세요."
     );
   }
 
