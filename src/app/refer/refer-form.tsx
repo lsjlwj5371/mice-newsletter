@@ -66,12 +66,6 @@ export function ReferForm({ brand, tagline }: Props) {
                 <p style={styles.error}>{result.error}</p>
               )}
             </form>
-            <p style={styles.footnote}>
-              문의:{" "}
-              <a href="mailto:groundk21@gmail.com" style={styles.link}>
-                groundk21@gmail.com
-              </a>
-            </p>
           </>
         )}
       </div>
