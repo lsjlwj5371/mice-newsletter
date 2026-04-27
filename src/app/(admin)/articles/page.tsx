@@ -12,6 +12,11 @@ export const dynamic = "force-dynamic";
 interface SearchParams {
   q?: string;
   category?: string;
+  /** Comma-separated list of importance scores to include, e.g. "1,2,3".
+   *  Replaces the legacy `min_importance` (single threshold) parameter.
+   *  When omitted, all scores are shown. */
+  importance?: string;
+  /** Legacy single-threshold filter, still honored for old bookmarks. */
   min_importance?: string;
   /** 'new' | 'pinned' | 'used' | 'archived' | undefined(all) */
   view?: string;
@@ -54,7 +59,22 @@ export default async function ArticlesPage({
     query = query.contains("categories", [params.category]);
   }
 
-  if (params.min_importance) {
+  // New multi-select importance filter: importance=1,2,3 → only those
+  // exact scores are kept. Falls back to the legacy single-threshold
+  // param so existing bookmarks/links keep working.
+  // Special value "none" → admin unticked all five → return zero rows.
+  if (params.importance === "none") {
+    // Force empty result without throwing — match an impossible score.
+    query = query.eq("importance", -1);
+  } else if (params.importance) {
+    const wanted = params.importance
+      .split(",")
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => !Number.isNaN(n) && n >= 1 && n <= 5);
+    if (wanted.length > 0 && wanted.length < 5) {
+      query = query.in("importance", wanted);
+    }
+  } else if (params.min_importance) {
     const minImp = parseInt(params.min_importance, 10);
     if (!Number.isNaN(minImp) && minImp >= 1 && minImp <= 5) {
       query = query.gte("importance", minImp);

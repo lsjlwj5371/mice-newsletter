@@ -49,7 +49,30 @@ export function ArticleList({ articles, counts, currentView }: Props) {
 
   const currentSearch = params.get("q") ?? "";
   const currentCategory = params.get("category") ?? "all";
-  const currentImportance = params.get("min_importance") ?? "all";
+
+  // Multi-select importance filter — comma-separated list of scores in
+  // the URL ("importance=1,2,3"). Empty / missing = show all five.
+  // Also reads the legacy `min_importance` param so older bookmarks
+  // still produce a sensible initial selection.
+  const importanceParam = params.get("importance");
+  const legacyMinImportance = params.get("min_importance");
+  const selectedScores = React.useMemo<Set<number>>(() => {
+    if (importanceParam) {
+      return new Set(
+        importanceParam
+          .split(",")
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => !Number.isNaN(n) && n >= 1 && n <= 5)
+      );
+    }
+    if (legacyMinImportance) {
+      const n = parseInt(legacyMinImportance, 10);
+      if (!Number.isNaN(n) && n >= 1 && n <= 5) {
+        return new Set([5, 4, 3, 2, 1].filter((s) => s >= n));
+      }
+    }
+    return new Set([1, 2, 3, 4, 5]);
+  }, [importanceParam, legacyMinImportance]);
 
   const [searchValue, setSearchValue] = React.useState(currentSearch);
   const [selected, setSelected] = React.useState<Article | null>(null);
@@ -123,6 +146,39 @@ export function ArticleList({ articles, counts, currentView }: Props) {
     router.replace(`/articles?${next.toString()}`);
   }
 
+  /**
+   * Toggle a single importance score on/off in the multi-select filter.
+   * URL semantics:
+   *  - all 5 scores selected → omit `importance` param entirely (= show all)
+   *  - subset selected       → `importance=1,3,5` (sorted ascending)
+   *  - none selected         → `importance=none` (no rows match;
+   *                             admin can re-tick to escape)
+   */
+  function toggleImportance(score: number) {
+    const next = new Set(selectedScores);
+    if (next.has(score)) next.delete(score);
+    else next.add(score);
+
+    const url = new URLSearchParams(params.toString());
+    // Drop legacy param either way — once admin uses the new control we
+    // commit to the new URL shape.
+    url.delete("min_importance");
+
+    if (next.size === 0) {
+      url.set("importance", "none");
+    } else if (next.size === 5) {
+      url.delete("importance");
+    } else {
+      url.set(
+        "importance",
+        Array.from(next)
+          .sort((a, b) => a - b)
+          .join(",")
+      );
+    }
+    router.replace(`/articles?${url.toString()}`);
+  }
+
   function switchView(view: string) {
     const next = new URLSearchParams(params.toString());
     next.set("view", view);
@@ -184,17 +240,34 @@ export function ArticleList({ articles, counts, currentView }: Props) {
             </option>
           ))}
         </Select>
-        <Select
-          value={currentImportance}
-          onChange={(e) => setQuery("min_importance", e.target.value)}
-          className="max-w-[160px]"
-        >
-          <option value="all">모든 중요도</option>
-          <option value="5">5점만</option>
-          <option value="4">4점 이상</option>
-          <option value="3">3점 이상</option>
-          <option value="2">2점 이상</option>
-        </Select>
+        {/* Multi-select importance filter — admin ticks any combination
+            of 1~5 점. Default (모두 체크) shows all rows. Visually a
+            row of small toggle chips so it stays compact. */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs text-muted-foreground mr-1">중요도</span>
+          {[5, 4, 3, 2, 1].map((score) => {
+            const checked = selectedScores.has(score);
+            return (
+              <label
+                key={score}
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 h-8 rounded-md border text-xs cursor-pointer transition select-none",
+                  checked
+                    ? "border-foreground/40 bg-foreground/5 text-foreground font-medium"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted"
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleImportance(score)}
+                  className="h-3 w-3"
+                />
+                <span>★ {score}</span>
+              </label>
+            );
+          })}
+        </div>
         <span className="text-xs text-muted-foreground ml-auto">
           {articles.length}건 표시
         </span>
