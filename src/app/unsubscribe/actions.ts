@@ -3,21 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
+import { enqueueRemoveRequest } from "@/lib/ncp-sync/queue";
 
 export type UnsubscribeResult =
-  | { ok: true; status: "unsubscribed" | "already"; email: string }
+  | { ok: true; status: "queued" | "already_pending"; email: string }
   | { ok: false; error: string };
 
 /**
  * Token-less unsubscribe handler used by the generic /unsubscribe page.
  *
- * Since all actual sending is done via Naver Cloud — our system has no
- * record of who actually received each newsletter — we don't verify
- * that the submitted email was ever one of ours. Whatever the visitor
- * types, we record as unsubscribed. If the email isn't in our
- * `recipients` table yet, we create a new row with status='unsubscribed'
- * so it still flows into the 'NCP 제거 대기' queue for the admin to
- * action on the NCP side.
+ * 본 콘솔은 외부 사용자의 수신 거부를 NCP 동기화 큐(`ncp_sync_requests`)로만
+ * 기록하고, 실제 NCP 주소록 반영은 관리자가 수기로 처리한다. recipients
+ * 테이블은 절대 건드리지 않는다 — 사용자 해지가 우리 콘솔의 메인 수신자
+ * 리스트(관리자 전용)에 영향을 미칠 가능성을 코드 레벨에서 봉쇄.
  */
 export async function unsubscribeByEmailAction(
   emailRaw: string
@@ -28,69 +26,29 @@ export async function unsubscribeByEmailAction(
   }
 
   const supabase = createAdminClient();
-  const nowIso = new Date().toISOString();
 
-  const { data: existing } = await supabase
-    .from("recipients")
-    .select("id, email, status")
-    .ilike("email", email)
-    .maybeSingle();
+  const enq = await enqueueRemoveRequest(supabase, {
+    email,
+    sourceKind: "self_form",
+  });
 
-  if (existing) {
-    if (existing.status === "unsubscribed") {
-      // Idempotent — already in the unsub state. Nothing new to sync.
-      return { ok: true, status: "already", email };
-    }
-    const { error } = await supabase
-      .from("recipients")
-      .update({
-        status: "unsubscribed",
-        unsubscribed_at: nowIso,
-        unsubscribe_reason: "self_form",
-        // Clear any prior NCP removal mark so admins see it in the
-        // 'NCP 제거 대기' queue again.
-        ncp_removed_at: null,
-      })
-      .eq("id", existing.id);
-
-    if (error) return { ok: false, error: error.message };
-
-    await logAudit({
-      adminId: null,
-      action: "recipient.self_unsubscribe",
-      entity: "recipient",
-      entityId: existing.id,
-      metadata: { email, via: "token_less_form" },
-    });
-  } else {
-    // Not in our DB yet (sent via Naver Cloud against their address
-    // book). Create a stub row so the unsubscribe still lands in the
-    // NCP 제거 대기 queue. The row will have no name / organization —
-    // the admin only needs the email to remove from NCP.
-    const { data: inserted, error } = await supabase
-      .from("recipients")
-      .insert({
-        email,
-        status: "unsubscribed",
-        source: "manual",
-        unsubscribed_at: nowIso,
-        unsubscribe_reason: "self_form_unknown",
-      })
-      .select("id")
-      .single();
-
-    if (error) return { ok: false, error: error.message };
-
-    await logAudit({
-      adminId: null,
-      action: "recipient.self_unsubscribe",
-      entity: "recipient",
-      entityId: inserted?.id,
-      metadata: { email, via: "token_less_form", created_stub: true },
-    });
+  if (enq.error) {
+    return { ok: false, error: enq.error };
   }
 
+  await logAudit({
+    adminId: null,
+    action: enq.inserted
+      ? "ncp_sync.remove_request_queued"
+      : "ncp_sync.remove_request_duplicate",
+    entity: "ncp_sync_request",
+    metadata: { email, source: "self_form" },
+  });
+
   revalidatePath("/ncp-sync");
-  revalidatePath("/recipients");
-  return { ok: true, status: "unsubscribed", email };
+  return {
+    ok: true,
+    status: enq.inserted ? "queued" : "already_pending",
+    email,
+  };
 }

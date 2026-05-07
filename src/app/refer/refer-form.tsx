@@ -80,19 +80,13 @@ function Success({
   result: Extract<ReferralSignupResult, { ok: true }>;
   brand: string;
 }) {
-  const title =
-    result.status === "already_active"
-      ? "이미 구독 중이신 이메일입니다"
-      : result.status === "reactivated"
-      ? "구독이 다시 활성화되었습니다"
-      : "구독 신청 완료";
+  const isDup = result.status === "already_pending";
 
-  const body =
-    result.status === "already_active"
-      ? `${result.email} 은(는) 이미 ${brand} 을(를) 구독 중입니다. 메일이 안 오신다면 스팸함을 확인해 주세요.`
-      : result.status === "reactivated"
-      ? `${result.email} 의 구독이 다시 활성화되었습니다. 다음 호부터 정상 발송됩니다.`
-      : `${result.email} 로 다음 호부터 발송됩니다. 관리자가 확인 후 최종 반영됩니다.`;
+  const title = isDup ? "이미 신청이 접수된 이메일입니다" : "구독 신청 완료";
+
+  const body = isDup
+    ? `${result.email} 은(는) 이미 ${brand} 구독 신청이 접수되어 처리 대기 중입니다. 곧 발송 대상에 반영됩니다.`
+    : `${result.email} 로 구독 신청이 접수되었습니다. 관리자 확인 후 다음 호부터 발송됩니다.`;
 
   return (
     <>

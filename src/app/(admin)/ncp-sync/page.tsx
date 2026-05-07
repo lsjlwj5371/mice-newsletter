@@ -10,6 +10,17 @@ interface SearchParams {
   removes?: string;
 }
 
+interface RawRow {
+  id: string;
+  email: string;
+  name: string | null;
+  organization: string | null;
+  referrer_email: string | null;
+  source_kind: string;
+  requested_at: string;
+  completed_at: string | null;
+}
+
 export default async function NcpSyncPage({
   searchParams,
 }: {
@@ -21,79 +32,61 @@ export default async function NcpSyncPage({
   const addView: NcpView = params.adds === "done" ? "done" : "pending";
   const removeView: NcpView = params.removes === "done" ? "done" : "pending";
 
-  // ─── NCP 추가 큐 (pending or done) ───
-  // status='pending' = /refer 또는 /r/[token] 으로 막 가입한 검토 대기 수신자
-  // status='active'  = 관리자가 직접 /recipients 에서 추가했거나 이미 승격된 수신자
-  // 두 상태 모두 NCP 추가 큐 후보. ncp_added_at 으로 대기/완료 구분.
+  // ─── NCP 추가 큐 (대기 or 완료) ───
   const addsBase = supabase
-    .from("recipients")
+    .from("ncp_sync_requests")
     .select(
-      "id,email,name,organization,position,source,status,created_at,referred_by,ncp_added_at"
+      "id,email,name,organization,referrer_email,source_kind,requested_at,completed_at"
     )
-    .in("status", ["active", "pending"]);
+    .eq("request_type", "add");
   const addsQuery =
     addView === "pending"
       ? addsBase
-          .is("ncp_added_at", null)
-          .order("created_at", { ascending: false })
+          .is("completed_at", null)
+          .order("requested_at", { ascending: false })
       : addsBase
-          .not("ncp_added_at", "is", null)
-          .order("ncp_added_at", { ascending: false });
+          .not("completed_at", "is", null)
+          .order("completed_at", { ascending: false });
   const { data: adds } = await addsQuery.limit(500);
 
-  // ─── NCP 제거 큐 (pending or done) ───
+  // ─── NCP 제거 큐 (대기 or 완료) ───
   const removesBase = supabase
-    .from("recipients")
+    .from("ncp_sync_requests")
     .select(
-      "id,email,name,organization,status,unsubscribed_at,created_at,ncp_removed_at"
+      "id,email,name,organization,referrer_email,source_kind,requested_at,completed_at"
     )
-    .in("status", ["unsubscribed", "bounced"]);
+    .eq("request_type", "remove");
   const removesQuery =
     removeView === "pending"
       ? removesBase
-          .is("ncp_removed_at", null)
-          .order("unsubscribed_at", { ascending: false, nullsFirst: false })
+          .is("completed_at", null)
+          .order("requested_at", { ascending: false })
       : removesBase
-          .not("ncp_removed_at", "is", null)
-          .order("ncp_removed_at", { ascending: false });
+          .not("completed_at", "is", null)
+          .order("completed_at", { ascending: false });
   const { data: removes } = await removesQuery.limit(500);
 
-  // 추천인 이메일을 함께 보여주기 위해 referrer lookup
-  const referrerIds = (adds ?? [])
-    .map((r) => r.referred_by)
-    .filter((v): v is string => !!v);
-  let referrerMap: Record<string, string> = {};
-  if (referrerIds.length > 0) {
-    const { data: refs } = await supabase
-      .from("recipients")
-      .select("id,email")
-      .in("id", referrerIds);
-    referrerMap = Object.fromEntries(
-      (refs ?? []).map((r) => [r.id, r.email])
-    );
-  }
-
-  const addRows: NcpPendingRow[] = (adds ?? []).map((r) => ({
-    id: r.id,
-    email: r.email,
-    name: r.name ?? null,
-    organization: r.organization ?? null,
-    position: r.position ?? null,
-    source: r.source,
-    at: r.created_at,
-    completedAt: r.ncp_added_at ?? null,
-    referrerEmail: r.referred_by ? referrerMap[r.referred_by] ?? null : null,
-  }));
-
-  const removeRows: NcpPendingRow[] = (removes ?? []).map((r) => ({
+  const addRows: NcpPendingRow[] = ((adds ?? []) as RawRow[]).map((r) => ({
     id: r.id,
     email: r.email,
     name: r.name ?? null,
     organization: r.organization ?? null,
     position: null,
-    source: r.status,
-    at: r.unsubscribed_at ?? r.created_at,
-    completedAt: r.ncp_removed_at ?? null,
+    source: r.source_kind,
+    at: r.requested_at,
+    completedAt: r.completed_at ?? null,
+    referrerEmail: r.referrer_email ?? null,
+  }));
+
+  const removeRows: NcpPendingRow[] = ((removes ?? []) as RawRow[]).map((r) => ({
+    id: r.id,
+    email: r.email,
+    name: r.name ?? null,
+    organization: r.organization ?? null,
+    position: null,
+    source: r.source_kind,
+    at: r.requested_at,
+    completedAt: r.completed_at ?? null,
     referrerEmail: null,
   }));
 
@@ -101,7 +94,7 @@ export default async function NcpSyncPage({
     <>
       <PageHeader
         title="NCP 동기화"
-        description="수신자 추천·수신 거부 요청을 모아서 네이버 Cloud 주소록에 수동 반영하는 작업용 큐입니다. 완료된 항목은 '완료됨' 토글로 확인할 수 있습니다."
+        description="뉴스레터의 추천/거부 링크로 들어온 외부 사용자의 신청을 모아 보여주는 큐입니다. 본 콘솔의 수신자 리스트와 별도로 관리되며, 관리자가 NCP 주소록에 수기로 반영한 뒤 '처리 완료' 로 마킹하세요."
       />
       <div className="px-8 py-6">
         <NcpSyncClient

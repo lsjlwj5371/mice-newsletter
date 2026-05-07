@@ -1,7 +1,9 @@
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyToken } from "@/lib/tokens";
 import { logAudit } from "@/lib/audit";
 import { loadTemplateSettings } from "@/lib/template-settings";
+import { enqueueRemoveRequest } from "@/lib/ncp-sync/queue";
 
 export const dynamic = "force-dynamic";
 
@@ -12,12 +14,12 @@ interface Props {
 /**
  * One-click unsubscribe landing page.
  *
- * Per the admin's request, clicking the link in an email immediately
- * marks the recipient as unsubscribed — no confirmation required.
- * Shows a simple Korean confirmation screen.
+ * 본 콘솔은 외부 사용자의 수신 거부를 NCP 동기화 큐로만 흘려보내고,
+ * 실제 NCP 주소록 반영은 관리자가 수기로 처리한다. recipients 테이블은
+ * 절대 변경하지 않는다.
  *
- * Also handles Gmail's RFC 8058 List-Unsubscribe POST (which triggers
- * without visiting this page) via the separate POST route handler.
+ * RFC 8058 List-Unsubscribe POST(메일함 UI 클릭으로 자동 호출되는 경로)는
+ * `/api/unsubscribe/[token]/route.ts` 에서 처리한다.
  */
 export default async function UnsubscribePage({ params }: Props) {
   const { token } = await params;
@@ -32,7 +34,7 @@ export default async function UnsubscribePage({ params }: Props) {
 
   const supabase = createAdminClient();
 
-  // Look up the send row (for audit trail + recipient resolution)
+  // 감사 로그용으로 send 행 lookup (이메일 결정용으로도 사용)
   const { data: sendRow } = await supabase
     .from("sends")
     .select("id, recipient_email, recipient_id, newsletter_id")
@@ -41,46 +43,31 @@ export default async function UnsubscribePage({ params }: Props) {
 
   const email = sendRow?.recipient_email ?? claims.email;
 
-  // Mark the recipient (if exists in our list) as unsubscribed.
-  // We match by email so even test-send recipients who later became
-  // real subscribers get the expected behavior.
-  const { data: recipient } = await supabase
-    .from("recipients")
-    .select("id, email, status")
-    .ilike("email", email)
-    .maybeSingle();
+  // NCP 동기화 큐에 제거 요청만 등록. recipients 는 건드리지 않음.
+  const enq = await enqueueRemoveRequest(supabase, {
+    email,
+    sourceKind: "one_click_link",
+    notes: `sendId=${claims.sendId}`,
+  });
+  const alreadyUnsubscribed = !enq.inserted && !enq.error;
 
-  let alreadyUnsubscribed = false;
+  await logAudit({
+    adminId: null,
+    action: enq.inserted
+      ? "ncp_sync.remove_request_queued"
+      : "ncp_sync.remove_request_duplicate",
+    entity: "ncp_sync_request",
+    metadata: {
+      email,
+      source: "one_click_link",
+      sendId: claims.sendId,
+      newsletterId: sendRow?.newsletter_id ?? null,
+    },
+  });
 
-  if (recipient) {
-    if (recipient.status === "unsubscribed") {
-      alreadyUnsubscribed = true;
-    } else {
-      await supabase
-        .from("recipients")
-        .update({
-          status: "unsubscribed",
-          unsubscribed_at: new Date().toISOString(),
-          unsubscribe_reason: "one_click_link",
-        })
-        .eq("id", recipient.id);
+  revalidatePath("/ncp-sync");
 
-      await logAudit({
-        adminId: null,
-        action: "recipient.self_unsubscribe",
-        entity: "recipient",
-        entityId: recipient.id,
-        metadata: {
-          email,
-          sendId: claims.sendId,
-          newsletterId: sendRow?.newsletter_id ?? null,
-        },
-      });
-    }
-  }
-
-  // Pull the live brand name from template settings so messaging uses
-  // the current wordmark instead of a hardcoded legacy one.
+  // 라이브 brand name 은 템플릿 설정에서.
   const template = await loadTemplateSettings();
   const brand = (template.header.wordmark ?? "").trim() || "뉴스레터";
 
@@ -135,7 +122,9 @@ function renderSuccessShell(email: string, already: boolean, brand: string) {
           letterSpacing: "-0.3px",
         }}
       >
-        {already ? "이미 수신 거부된 이메일입니다" : "수신 거부 완료"}
+        {already
+          ? "이미 수신 거부 신청이 접수된 이메일입니다"
+          : "수신 거부 신청이 접수되었습니다"}
       </h1>
       <p
         style={{
@@ -146,8 +135,8 @@ function renderSuccessShell(email: string, already: boolean, brand: string) {
         }}
       >
         {already
-          ? `${email} 은(는) 이미 수신 거부 처리된 상태입니다.`
-          : `${email} 은(는) 이제 ${brand} 뉴스레터를 받지 않습니다.`}
+          ? `${email} 의 수신 거부 신청은 이미 접수되어 처리 대기 중입니다. 곧 ${brand} 뉴스레터 발송 대상에서 제외됩니다.`
+          : `${email} 의 수신 거부 신청이 접수되었습니다. 관리자 확인 후 ${brand} 뉴스레터 발송 대상에서 제외됩니다.`}
       </p>
     </>
   );

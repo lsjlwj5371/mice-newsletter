@@ -66,14 +66,14 @@ function Success({
   brand: string;
 }) {
   const title =
-    result.status === "already"
-      ? "이미 수신 거부된 이메일입니다"
-      : "수신 거부 완료";
+    result.status === "already_pending"
+      ? "이미 수신 거부 신청이 접수된 이메일입니다"
+      : "수신 거부 신청 완료";
 
   const body =
-    result.status === "already"
-      ? `${result.email} 은(는) 이미 수신 거부 처리된 상태입니다.`
-      : `${result.email} 은(는) 이제 ${brand} 뉴스레터를 받지 않습니다.`;
+    result.status === "already_pending"
+      ? `${result.email} 의 수신 거부 신청은 이미 접수되어 처리 대기 중입니다. 곧 ${brand} 뉴스레터 발송 대상에서 제외됩니다.`
+      : `${result.email} 의 수신 거부 신청이 접수되었습니다. 관리자 확인 후 ${brand} 뉴스레터 발송 대상에서 제외됩니다.`;
 
   return (
     <>

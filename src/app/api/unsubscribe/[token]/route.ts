@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyToken } from "@/lib/tokens";
 import { logAudit } from "@/lib/audit";
+import { enqueueRemoveRequest } from "@/lib/ncp-sync/queue";
 
 /**
  * POST handler for RFC 8058 List-Unsubscribe=One-Click.
@@ -10,9 +11,8 @@ import { logAudit } from "@/lib/audit";
  * the "Unsubscribe" button rendered in the inbox UI, without the user
  * ever visiting the page. Must respond 200 quickly.
  *
- * This lives under /api/ because Next.js 15 doesn't allow coexisting
- * page.tsx and route.ts in the same segment, and we want /u/[token]
- * to keep rendering the confirmation page for human clicks.
+ * 본 콘솔은 외부 사용자의 수신 거부를 NCP 동기화 큐로만 흘려보내고
+ * recipients 테이블은 일절 변경하지 않는다.
  */
 export async function POST(
   req: NextRequest,
@@ -35,35 +35,26 @@ export async function POST(
 
   const email = sendRow?.recipient_email ?? claims.email;
 
-  const { data: recipient } = await supabase
-    .from("recipients")
-    .select("id, status")
-    .ilike("email", email)
-    .maybeSingle();
+  const enq = await enqueueRemoveRequest(supabase, {
+    email,
+    sourceKind: "one_click_header",
+    notes: `sendId=${claims.sendId}`,
+  });
 
-  if (recipient && recipient.status !== "unsubscribed") {
-    await supabase
-      .from("recipients")
-      .update({
-        status: "unsubscribed",
-        unsubscribed_at: new Date().toISOString(),
-        unsubscribe_reason: "one_click_header",
-      })
-      .eq("id", recipient.id);
-
-    await logAudit({
-      adminId: null,
-      action: "recipient.self_unsubscribe",
-      entity: "recipient",
-      entityId: recipient.id,
-      metadata: {
-        email,
-        method: "list-unsubscribe-post",
-        sendId: claims.sendId,
-        newsletterId: sendRow?.newsletter_id ?? null,
-      },
-    });
-  }
+  await logAudit({
+    adminId: null,
+    action: enq.inserted
+      ? "ncp_sync.remove_request_queued"
+      : "ncp_sync.remove_request_duplicate",
+    entity: "ncp_sync_request",
+    metadata: {
+      email,
+      source: "one_click_header",
+      method: "list-unsubscribe-post",
+      sendId: claims.sendId,
+      newsletterId: sendRow?.newsletter_id ?? null,
+    },
+  });
 
   return new NextResponse("OK", {
     status: 200,

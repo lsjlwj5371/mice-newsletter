@@ -400,12 +400,15 @@ function QueueTable({
 }
 
 function SourceBadge({ source }: { source: string }) {
+  // ncp_sync_requests.source_kind 의 가능한 값들을 한국어 라벨로 매핑.
   const map: Record<string, { label: string; cls: string }> = {
-    referral: { label: "추천", cls: "bg-sky-100 text-sky-800" },
-    manual: { label: "직접 등록", cls: "bg-slate-100 text-slate-800" },
-    initial: { label: "초기", cls: "bg-slate-100 text-slate-800" },
-    unsubscribed: { label: "수신 거부", cls: "bg-amber-100 text-amber-800" },
-    bounced: { label: "바운스", cls: "bg-rose-100 text-rose-800" },
+    // add 요청
+    referral_self: { label: "공개 폼", cls: "bg-sky-100 text-sky-800" },
+    referral_token: { label: "추천 링크", cls: "bg-indigo-100 text-indigo-800" },
+    // remove 요청
+    self_form: { label: "공개 폼", cls: "bg-amber-100 text-amber-800" },
+    one_click_link: { label: "1-클릭 링크", cls: "bg-amber-100 text-amber-800" },
+    one_click_header: { label: "메일 헤더", cls: "bg-rose-100 text-rose-800" },
   };
   const entry = map[source] ?? {
     label: source,
@@ -435,7 +438,8 @@ function toCsv(
   kind: Tab,
   view: NcpView
 ): string {
-  const completedHeader = kind === "adds" ? "ncp_added_at" : "ncp_removed_at";
+  // 큐 스키마(ncp_sync_requests)에서 add/remove 모두 동일하게 completed_at 사용
+  const completedHeader = "completed_at";
   const baseAdds = ["email", "name", "organization", "position", "source", "created_at", "referrer"];
   const baseRemoves = ["email", "name", "organization", "status", "requested_at"];
   const headers =

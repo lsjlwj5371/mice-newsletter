@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
+import { enqueueAddRequest } from "@/lib/ncp-sync/queue";
 
 export type ReferralSignupResult =
   | {
       ok: true;
-      status: "created" | "already_active" | "reactivated";
+      status: "queued" | "already_pending";
       email: string;
     }
   | { ok: false; error: string };
@@ -15,16 +16,10 @@ export type ReferralSignupResult =
 /**
  * Token-less referral signup used by the generic /refer page.
  *
- * When the newsletter HTML is exported for a third-party sender (e.g.
- * Naver Cloud), the per-recipient {{REFERRAL_HREF}} token is not
- * substituted, so we can't tell which subscriber invited the new
- * person. This path records the signup without referrer attribution.
- *
- * Self-signups land in `recipients` with `status='pending'` and
- * `source='referral'` — they're intentionally hidden from the default
- * `/recipients` listing and only appear in the NCP 추가 대기 큐on
- * `/ncp-sync`, where the admin reviews + promotes them to 'active'
- * via the '처리 완료' action.
+ * 본 콘솔은 추천 가입 신청을 NCP 동기화 큐(`ncp_sync_requests`)로만 흘려보내고,
+ * 실제 NCP 주소록 반영은 관리자가 수기로 처리한다. `recipients` 테이블은
+ * 절대 건드리지 않으며, 가입자가 우리 콘솔의 메인 수신자 리스트에 자동으로
+ * 들어가는 일은 없다.
  */
 export async function selfReferralSignupAction(
   emailRaw: string,
@@ -39,70 +34,30 @@ export async function selfReferralSignupAction(
 
   const supabase = createAdminClient();
 
-  // Existing recipient?
-  const { data: existing } = await supabase
-    .from("recipients")
-    .select("id, email, status")
-    .ilike("email", email)
-    .maybeSingle();
+  const enq = await enqueueAddRequest(supabase, {
+    email,
+    name,
+    sourceKind: "referral_self",
+  });
 
-  if (existing) {
-    if (existing.status === "active" || existing.status === "pending") {
-      // 이미 활성 구독자거나, 이미 NCP 처리 대기 중인 경우 동일 메시지로 안내
-      return { ok: true, status: "already_active", email };
-    }
-    // 과거 unsubscribed/bounced 였던 주소가 다시 신청 — pending 으로 재진입시켜
-    // 관리자가 NCP 동기화에서 다시 검토 후 승격하도록 함.
-    const { error } = await supabase
-      .from("recipients")
-      .update({
-        status: "pending",
-        unsubscribed_at: null,
-        unsubscribe_reason: null,
-        // 새로운 NCP 추가 대기로 다시 큐에 올리기 위해 두 타임스탬프 모두 초기화
-        ncp_added_at: null,
-        ncp_removed_at: null,
-      })
-      .eq("id", existing.id);
-    if (error) return { ok: false, error: error.message };
-
-    await logAudit({
-      adminId: null,
-      action: "recipient.self_reactivate",
-      entity: "recipient",
-      entityId: existing.id,
-      metadata: { email, via: "token_less_refer_form" },
-    });
-
-    revalidatePath("/ncp-sync");
-    revalidatePath("/recipients");
-    return { ok: true, status: "reactivated", email };
+  if (enq.error) {
+    return { ok: false, error: enq.error };
   }
-
-  // 신규 가입 — 'pending' 상태로 들어가서 /recipients 메인 리스트엔 노출되지 않고
-  // /ncp-sync 의 NCP 추가 큐에서 관리자가 수동으로 승격(처리 완료)할 때까지 대기.
-  const { data: inserted, error } = await supabase
-    .from("recipients")
-    .insert({
-      email,
-      name,
-      status: "pending",
-      source: "referral",
-    })
-    .select("id")
-    .single();
-
-  if (error) return { ok: false, error: error.message };
 
   await logAudit({
     adminId: null,
-    action: "recipient.self_signup",
-    entity: "recipient",
-    entityId: inserted?.id,
-    metadata: { email, via: "token_less_refer_form" },
+    action: enq.inserted
+      ? "ncp_sync.add_request_queued"
+      : "ncp_sync.add_request_duplicate",
+    entity: "ncp_sync_request",
+    metadata: { email, source: "referral_self" },
   });
 
   revalidatePath("/ncp-sync");
-  revalidatePath("/recipients");
-  return { ok: true, status: "created", email };
+
+  return {
+    ok: true,
+    status: enq.inserted ? "queued" : "already_pending",
+    email,
+  };
 }
