@@ -12,7 +12,9 @@ export type ActionResult =
 /**
  * Mark a batch of recipients as "added to NCP address book". Sets
  * ncp_added_at=NOW() on the given IDs so they drop out of the "NCP
- * 추가 대기" queue.
+ * 추가 대기" 큐. 동시에 status='pending' 행은 'active' 로 승격하여
+ * /recipients 메인 리스트에 정식 노출되도록 한다 (자기-구독 가입자가
+ * 관리자 검토를 거쳐 정식 구독자가 되는 시점).
  */
 export async function markNcpAddedAction(
   recipientIds: string[]
@@ -26,7 +28,11 @@ export async function markNcpAddedAction(
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("recipients")
-    .update({ ncp_added_at: new Date().toISOString() })
+    .update({
+      ncp_added_at: new Date().toISOString(),
+      // pending 이었던 자기-구독 가입자를 active 로 승격. 이미 active 인 행은 멱등.
+      status: "active",
+    })
     .in("id", recipientIds)
     .is("ncp_added_at", null)
     .select("id");

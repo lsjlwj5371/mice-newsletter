@@ -31,11 +31,19 @@ export default async function RecipientsPage({
     .select("*", { count: "exact" })
     .order("created_at", { ascending: false });
 
-  if (
+  const explicitStatus =
     params.status &&
     (RECIPIENT_STATUSES as readonly string[]).includes(params.status)
-  ) {
-    query = query.eq("status", params.status);
+      ? params.status
+      : null;
+
+  if (explicitStatus) {
+    query = query.eq("status", explicitStatus);
+  } else {
+    // 자기-구독 가입자 (status='pending') 는 NCP 동기화 페이지에서만 노출되고
+    // 메인 수신자 리스트에는 자동으로 들어오지 않도록 기본 필터에서 제외.
+    // ?status=pending 으로 명시 필터링하면 여전히 조회 가능.
+    query = query.neq("status", "pending");
   }
 
   if (params.q) {
@@ -47,10 +55,11 @@ export default async function RecipientsPage({
 
   const { data: filtered, error } = await query.limit(500);
 
-  // Total (for the "x / y명" indicator)
+  // 메인 totalCount 도 pending 을 제외해야 "총 N명" 이 리스트와 일치.
   const { count: totalCount } = await supabase
     .from("recipients")
-    .select("*", { count: "exact", head: true });
+    .select("*", { count: "exact", head: true })
+    .neq("status", "pending");
 
   if (error) {
     return (

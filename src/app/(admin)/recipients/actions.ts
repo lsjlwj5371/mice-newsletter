@@ -255,9 +255,17 @@ export async function updateRecipientAction(
   };
 
   if (willBeUnsubscribed && !wasUnsubscribed) {
-    updatePayload.unsubscribed_at = new Date().toISOString();
+    // 관리자가 직접 상태를 unsubscribed 로 바꾼 경우는 자기-해지(self_form,
+    // one_click_link 등)와 달리 NCP 주소록에 동기화할 필요가 없는 내부 정리.
+    // unsubscribe_reason='admin_manual' + ncp_removed_at=NOW() 를 함께 세팅하여
+    // /ncp-sync 의 NCP 제거 대기 큐 (ncp_removed_at IS NULL) 에서 자동 제외.
+    const nowIso = new Date().toISOString();
+    updatePayload.unsubscribed_at = nowIso;
+    updatePayload.unsubscribe_reason = "admin_manual";
+    updatePayload.ncp_removed_at = nowIso;
   } else if (!willBeUnsubscribed && wasUnsubscribed) {
     updatePayload.unsubscribed_at = null;
+    updatePayload.unsubscribe_reason = null;
   }
 
   const { error } = await supabase

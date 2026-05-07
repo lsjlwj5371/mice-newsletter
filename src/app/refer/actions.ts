@@ -19,9 +19,12 @@ export type ReferralSignupResult =
  * Naver Cloud), the per-recipient {{REFERRAL_HREF}} token is not
  * substituted, so we can't tell which subscriber invited the new
  * person. This path records the signup without referrer attribution.
- * The record lands in `recipients` with `source='referral'` and a
- * default status so the admin can review + add to the NCP address
- * book from the NCP 동기화 page.
+ *
+ * Self-signups land in `recipients` with `status='pending'` and
+ * `source='referral'` — they're intentionally hidden from the default
+ * `/recipients` listing and only appear in the NCP 추가 대기 큐on
+ * `/ncp-sync`, where the admin reviews + promotes them to 'active'
+ * via the '처리 완료' action.
  */
 export async function selfReferralSignupAction(
   emailRaw: string,
@@ -44,16 +47,21 @@ export async function selfReferralSignupAction(
     .maybeSingle();
 
   if (existing) {
-    if (existing.status === "active") {
+    if (existing.status === "active" || existing.status === "pending") {
+      // 이미 활성 구독자거나, 이미 NCP 처리 대기 중인 경우 동일 메시지로 안내
       return { ok: true, status: "already_active", email };
     }
-    // Reactivate a previously unsubscribed/bounced/pending address
+    // 과거 unsubscribed/bounced 였던 주소가 다시 신청 — pending 으로 재진입시켜
+    // 관리자가 NCP 동기화에서 다시 검토 후 승격하도록 함.
     const { error } = await supabase
       .from("recipients")
       .update({
-        status: "active",
+        status: "pending",
         unsubscribed_at: null,
         unsubscribe_reason: null,
+        // 새로운 NCP 추가 대기로 다시 큐에 올리기 위해 두 타임스탬프 모두 초기화
+        ncp_added_at: null,
+        ncp_removed_at: null,
       })
       .eq("id", existing.id);
     if (error) return { ok: false, error: error.message };
@@ -71,13 +79,14 @@ export async function selfReferralSignupAction(
     return { ok: true, status: "reactivated", email };
   }
 
-  // Fresh signup
+  // 신규 가입 — 'pending' 상태로 들어가서 /recipients 메인 리스트엔 노출되지 않고
+  // /ncp-sync 의 NCP 추가 큐에서 관리자가 수동으로 승격(처리 완료)할 때까지 대기.
   const { data: inserted, error } = await supabase
     .from("recipients")
     .insert({
       email,
       name,
-      status: "active",
+      status: "pending",
       source: "referral",
     })
     .select("id")

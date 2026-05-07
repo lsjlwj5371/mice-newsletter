@@ -22,12 +22,15 @@ export default async function NcpSyncPage({
   const removeView: NcpView = params.removes === "done" ? "done" : "pending";
 
   // ─── NCP 추가 큐 (pending or done) ───
+  // status='pending' = /refer 또는 /r/[token] 으로 막 가입한 검토 대기 수신자
+  // status='active'  = 관리자가 직접 /recipients 에서 추가했거나 이미 승격된 수신자
+  // 두 상태 모두 NCP 추가 큐 후보. ncp_added_at 으로 대기/완료 구분.
   const addsBase = supabase
     .from("recipients")
     .select(
-      "id,email,name,organization,position,source,created_at,referred_by,ncp_added_at"
+      "id,email,name,organization,position,source,status,created_at,referred_by,ncp_added_at"
     )
-    .eq("status", "active");
+    .in("status", ["active", "pending"]);
   const addsQuery =
     addView === "pending"
       ? addsBase
