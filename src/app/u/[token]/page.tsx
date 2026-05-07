@@ -1,4 +1,3 @@
-import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyToken } from "@/lib/tokens";
 import { logAudit } from "@/lib/audit";
@@ -65,7 +64,8 @@ export default async function UnsubscribePage({ params }: Props) {
     },
   });
 
-  revalidatePath("/ncp-sync");
+  // /ncp-sync 페이지는 force-dynamic 이라 별도 revalidate 불필요.
+  // (서버 컴포넌트에서 revalidatePath 호출은 Next.js 15 에서 금지됨)
 
   // 라이브 brand name 은 템플릿 설정에서.
   const template = await loadTemplateSettings();
