@@ -100,87 +100,123 @@ async function runCollection(): Promise<RunSummary> {
 
       // Cap items per feed per run to fit inside the function timeout.
       const items = allItems.slice(0, MAX_ITEMS_PER_FEED_PER_RUN);
+      const feedCategories = (feed.categories ?? []) as ArticleCategory[];
 
-      for (const item of items) {
-        if (Date.now() - startedAt > SOFT_DEADLINE_MS) {
-          console.warn("[collect] soft deadline reached during item loop");
-          break;
-        }
-
-        // Check if guid already exists
-        const { data: existing } = await supabase
+      // ─── Bulk dedup — one round trip instead of N ───
+      // Previously we did `select.eq('guid').maybeSingle()` per item,
+      // which on 15 items burns ~1-2s of pure DB latency before any
+      // analysis runs. Pull all existing GUIDs in a single query.
+      const guids = items.map((i) => i.guid);
+      let existingGuids = new Set<string>();
+      if (guids.length > 0) {
+        const { data: existingRows } = await supabase
           .from("articles")
-          .select("id")
-          .eq("guid", item.guid)
-          .maybeSingle();
+          .select("guid")
+          .in("guid", guids);
+        existingGuids = new Set((existingRows ?? []).map((r) => r.guid));
+      }
+      const newItems = items.filter((i) => !existingGuids.has(i.guid));
 
-        if (existing) continue;
-
-        // Insert raw article first (without analysis). Categories are
-        // inherited from the feed — a multi-category feed yields articles
-        // eligible for every one of its sections.
-        const feedCategories = (feed.categories ?? []) as ArticleCategory[];
-        const { data: inserted, error: insertErr } = await supabase
-          .from("articles")
-          .insert({
-            feed_id: feed.id,
-            guid: item.guid,
-            url: item.url,
-            title: item.title,
-            source: feed.name,
-            categories: feedCategories,
-            published_at: item.publishedAt?.toISOString() ?? null,
-            raw_excerpt: item.rawExcerpt,
+      if (newItems.length === 0) {
+        // Nothing new — still mark as fetched and move on.
+        await supabase
+          .from("rss_feeds")
+          .update({
+            last_fetched_at: new Date().toISOString(),
+            last_error: null,
           })
-          .select("id")
-          .single();
+          .eq("id", feed.id);
+        summary.details.push(detail);
+        continue;
+      }
 
-        if (insertErr) {
-          // 23505 = unique violation; race condition with another concurrent run.
-          if (insertErr.code !== "23505") {
-            summary.errors++;
-            console.error("[collect] insert error", insertErr);
-          }
-          continue;
-        }
-
-        summary.new_articles++;
-        detail.new_count++;
-
-        // Analyze with Claude (best-effort; failures don't block insertion).
-        // Pass the first category as the "primary" context for the analyzer.
-        try {
-          const analysis = await analyzeArticle({
-            title: item.title,
-            url: item.url,
-            category: (feedCategories[0] ?? "news_briefing") as ArticleCategory,
-            rawExcerpt: item.rawExcerpt,
-            source: feed.name,
-          });
-
-          await supabase
+      // ─── Parallel insert + analyze ───
+      // Each new item's full lifecycle (INSERT → Claude analyze → UPDATE)
+      // is independent, so we run them concurrently within a single feed.
+      // With Haiku 4.5 at ~1.5-2s per call, 15 items in parallel finish
+      // in ~2-3s wall-clock instead of ~30s sequential.
+      const itemResults = await Promise.all(
+        newItems.map(async (item) => {
+          const { data: inserted, error: insertErr } = await supabase
             .from("articles")
-            .update({
-              summary: analysis.summary,
-              tags: analysis.tags,
-              importance: analysis.importance,
-              analyzed_at: new Date().toISOString(),
-              analysis_error: null,
+            .insert({
+              feed_id: feed.id,
+              guid: item.guid,
+              url: item.url,
+              title: item.title,
+              source: feed.name,
+              categories: feedCategories,
+              published_at: item.publishedAt?.toISOString() ?? null,
+              raw_excerpt: item.rawExcerpt,
             })
-            .eq("id", inserted.id);
+            .select("id")
+            .single();
 
-          summary.analyzed++;
-        } catch (analyzeErr) {
-          summary.analysis_errors++;
-          const msg =
-            analyzeErr instanceof Error
-              ? analyzeErr.message
-              : String(analyzeErr);
-          console.error("[collect] analyze error", msg);
-          await supabase
-            .from("articles")
-            .update({ analysis_error: msg.slice(0, 500) })
-            .eq("id", inserted.id);
+          if (insertErr) {
+            // 23505 = unique violation; race with a concurrent run.
+            if (insertErr.code !== "23505") {
+              console.error("[collect] insert error", insertErr);
+              return { kind: "insert_error" as const };
+            }
+            return { kind: "duplicate" as const };
+          }
+
+          // Analyze with Claude (best-effort; failures don't block the row).
+          try {
+            const analysis = await analyzeArticle({
+              title: item.title,
+              url: item.url,
+              category: (feedCategories[0] ?? "news_briefing") as ArticleCategory,
+              rawExcerpt: item.rawExcerpt,
+              source: feed.name,
+            });
+
+            await supabase
+              .from("articles")
+              .update({
+                summary: analysis.summary,
+                tags: analysis.tags,
+                importance: analysis.importance,
+                analyzed_at: new Date().toISOString(),
+                analysis_error: null,
+              })
+              .eq("id", inserted.id);
+
+            return { kind: "analyzed" as const };
+          } catch (analyzeErr) {
+            const msg =
+              analyzeErr instanceof Error
+                ? analyzeErr.message
+                : String(analyzeErr);
+            console.error("[collect] analyze error", msg);
+            await supabase
+              .from("articles")
+              .update({ analysis_error: msg.slice(0, 500) })
+              .eq("id", inserted.id);
+            return { kind: "inserted_unanalyzed" as const };
+          }
+        })
+      );
+
+      // Aggregate per-item results into the run summary.
+      for (const r of itemResults) {
+        switch (r.kind) {
+          case "analyzed":
+            summary.new_articles++;
+            summary.analyzed++;
+            detail.new_count++;
+            break;
+          case "inserted_unanalyzed":
+            summary.new_articles++;
+            summary.analysis_errors++;
+            detail.new_count++;
+            break;
+          case "insert_error":
+            summary.errors++;
+            break;
+          case "duplicate":
+            // Race-loss; another worker beat us. Not a real error.
+            break;
         }
       }
 
