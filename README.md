@@ -92,13 +92,14 @@ pnpm dev                      # http://localhost:3000
 ## 2. 일일·정기 운영
 
 ### 2.1 Cron (UTC 기준, Vercel Hobby는 일 1회 해상도)
-| 시각 (UTC → KST) | Path | 역할 |
-|---|---|---|
-| 19:30 → 04:30 | `/api/cron/backup` | 전체 테이블 JSON 스냅샷을 `db-backups` 버킷에 업로드, 30일 지난 스냅샷 삭제 |
-| 20:00 → 05:00 | `/api/cron/collect-articles` | RSS 전체 피드 수집 + Claude 분석 |
-| 21:00 → 06:00 | `/api/cron/send-queue` | 예약 발송 큐 드레이닝 (60초 데드라인, 한 번에 약 50건) |
-| 22:00 → 07:00 | `/api/cron/bounce-scan` | Gmail 받은편지함에서 바운스 메일 파싱 → 자동 해지 |
-| 23:00 → 08:00 | `/api/cron/image-cleanup` | 7일 이상 지나고 이미 인라인된 Storage 이미지 원본 삭제 |
+| 시각 (UTC → KST) | 빈도 | Path | 역할 |
+|---|---|---|---|
+| 19:30 → 04:30 | 매일 | `/api/cron/backup` | 전체 테이블 JSON 스냅샷을 `db-backups` 버킷에 업로드, 30일 지난 스냅샷 삭제 |
+| 20:00 → 05:00 | 월·목 | `/api/cron/collect-articles` | RSS 전체 피드 수집 + Claude 분석 (importance ≤ 2는 자동 제외) |
+| 21:00 → 06:00 | 매일 | `/api/cron/send-queue` | 예약 발송 큐 드레이닝 (60초 데드라인, 한 번에 약 50건) |
+| 22:00 → 07:00 | 매일 | `/api/cron/bounce-scan` | Gmail 받은편지함에서 바운스 메일 파싱 → 자동 해지 |
+| 23:00 → 08:00 | 매일 | `/api/cron/image-cleanup` | 7일 이상 지나고 이미 인라인된 Storage 이미지 원본 삭제 |
+| 23:30 → 08:30 | 매일 | `/api/cron/article-cleanup` | 30일 이상 수집됐고 발송에 사용된 적 없으며 pinned 도 아닌 기사 자동 삭제 |
 
 ### 2.2 수동 호출
 ```bash
