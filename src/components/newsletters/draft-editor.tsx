@@ -77,6 +77,15 @@ export function DraftEditor({
   const [jsonText, setJsonText] = React.useState(
     () => JSON.stringify(newsletter.content_json, null, 2)
   );
+  // 블록 재생성/구조 변경 후 router.refresh() 가 새 newsletter.content_json 을
+  // 내려주면 JSON 탭도 거기에 맞춰 갱신. 이 effect 가 없으면 jsonText 가
+  // 초기 마운트 시점의 useState initializer 값에 그대로 갇혀서 미리보기는
+  // 갱신되는데 JSON 만 옛 버전으로 보이는 현상이 생긴다. 사용자가 JSON 탭에서
+  // 직접 편집 중인 텍스트가 있어도 덮어쓰는 게 의도된 동작 — refresh 의 트리거는
+  // 사용자가 방금 일으킨 서버 mutation 이므로 최신 서버 상태가 권위 있는 값.
+  React.useEffect(() => {
+    setJsonText(JSON.stringify(newsletter.content_json, null, 2));
+  }, [newsletter.content_json]);
   const [savePending, startSave] = React.useTransition();
   const [regeneratePending, startRegenerate] = React.useTransition();
   const [htmlSourceOpen, setHtmlSourceOpen] = React.useState(false);
