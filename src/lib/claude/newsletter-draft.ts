@@ -592,7 +592,71 @@ function extractJson(raw: string): unknown {
       jsonString = jsonString.slice(first, last + 1);
     }
   }
-  return JSON.parse(jsonString);
+  return JSON.parse(escapeControlCharsInStrings(jsonString));
+}
+
+/**
+ * Escape raw control characters (U+0000–U+001F) that appear inside JSON
+ * string literals. LLMs routinely emit a literal newline or tab inside a
+ * long-form Korean paragraph instead of `\n` / `\t`, which is technically
+ * invalid JSON and makes JSON.parse fail with "Bad control character in
+ * string literal". We walk the string with a tiny state machine that
+ * tracks whether we're inside a string literal (between unescaped quotes)
+ * and rewrite only the in-string control chars — whitespace between
+ * tokens is left alone since that's already valid JSON.
+ */
+function escapeControlCharsInStrings(input: string): string {
+  let out = "";
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    if (inString) {
+      if (escaped) {
+        out += ch;
+        escaped = false;
+        continue;
+      }
+      if (ch === "\\") {
+        out += ch;
+        escaped = true;
+        continue;
+      }
+      if (ch === '"') {
+        out += ch;
+        inString = false;
+        continue;
+      }
+      const code = ch.charCodeAt(0);
+      if (code < 0x20) {
+        switch (code) {
+          case 0x08:
+            out += "\\b";
+            break;
+          case 0x09:
+            out += "\\t";
+            break;
+          case 0x0a:
+            out += "\\n";
+            break;
+          case 0x0c:
+            out += "\\f";
+            break;
+          case 0x0d:
+            out += "\\r";
+            break;
+          default:
+            out += "\\u" + code.toString(16).padStart(4, "0");
+        }
+        continue;
+      }
+      out += ch;
+    } else {
+      if (ch === '"') inString = true;
+      out += ch;
+    }
+  }
+  return out;
 }
 
 /**
