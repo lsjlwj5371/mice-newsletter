@@ -18,6 +18,12 @@ export const maxDuration = 60; // Vercel Hobby allows up to 60s
 const MAX_ITEMS_PER_FEED_PER_RUN = 15;
 const SOFT_DEADLINE_MS = 50_000; // bail out before Vercel kills us
 
+// Articles whose Claude-assigned importance is at or below this value
+// get filtered out at ingestion time — they don't reach the articles
+// table. Analyzer failures (no importance returned) are still saved so
+// the admin can review them manually. Raise/lower this to tune signal.
+const LOW_IMPORTANCE_THRESHOLD = 2;
+
 interface RunSummary {
   ok: true;
   feeds_processed: number;
@@ -25,11 +31,14 @@ interface RunSummary {
   new_articles: number;
   analyzed: number;
   analysis_errors: number;
+  /** Articles dropped because Claude rated importance <= LOW_IMPORTANCE_THRESHOLD. */
+  skipped_low_importance: number;
   errors: number;
   details: Array<{
     feed_id: string;
     feed_name: string;
     new_count: number;
+    skipped_low_importance?: number;
     error?: string;
   }>;
 }
@@ -70,6 +79,7 @@ async function runCollection(): Promise<RunSummary> {
     new_articles: 0,
     analyzed: 0,
     analysis_errors: 0,
+    skipped_low_importance: 0,
     errors: 0,
     details: [],
   };
@@ -130,38 +140,16 @@ async function runCollection(): Promise<RunSummary> {
         continue;
       }
 
-      // ─── Parallel insert + analyze ───
-      // Each new item's full lifecycle (INSERT → Claude analyze → UPDATE)
-      // is independent, so we run them concurrently within a single feed.
-      // With Haiku 4.5 at ~1.5-2s per call, 15 items in parallel finish
-      // in ~2-3s wall-clock instead of ~30s sequential.
-      const itemResults = await Promise.all(
+      // ─── Analyze first, then conditionally insert ───
+      // We now run Claude analysis on every new item up front and only
+      // insert into `articles` if the assigned importance is above
+      // LOW_IMPORTANCE_THRESHOLD. Low-signal items are dropped before
+      // they ever reach the candidate list. Analyzer failures (no
+      // importance returned) are kept so the admin can review them.
+      // Analysis still runs in parallel per feed — with Haiku 4.5 at
+      // ~1.5-2s per call, 15 items finish in ~2-3s wall-clock.
+      const analyses = await Promise.all(
         newItems.map(async (item) => {
-          const { data: inserted, error: insertErr } = await supabase
-            .from("articles")
-            .insert({
-              feed_id: feed.id,
-              guid: item.guid,
-              url: item.url,
-              title: item.title,
-              source: feed.name,
-              categories: feedCategories,
-              published_at: item.publishedAt?.toISOString() ?? null,
-              raw_excerpt: item.rawExcerpt,
-            })
-            .select("id")
-            .single();
-
-          if (insertErr) {
-            // 23505 = unique violation; race with a concurrent run.
-            if (insertErr.code !== "23505") {
-              console.error("[collect] insert error", insertErr);
-              return { kind: "insert_error" as const };
-            }
-            return { kind: "duplicate" as const };
-          }
-
-          // Analyze with Claude (best-effort; failures don't block the row).
           try {
             const analysis = await analyzeArticle({
               title: item.title,
@@ -170,55 +158,82 @@ async function runCollection(): Promise<RunSummary> {
               rawExcerpt: item.rawExcerpt,
               source: feed.name,
             });
-
-            await supabase
-              .from("articles")
-              .update({
-                summary: analysis.summary,
-                tags: analysis.tags,
-                importance: analysis.importance,
-                analyzed_at: new Date().toISOString(),
-                analysis_error: null,
-              })
-              .eq("id", inserted.id);
-
-            return { kind: "analyzed" as const };
+            return { item, analysis, error: null as string | null };
           } catch (analyzeErr) {
             const msg =
               analyzeErr instanceof Error
                 ? analyzeErr.message
                 : String(analyzeErr);
             console.error("[collect] analyze error", msg);
-            await supabase
-              .from("articles")
-              .update({ analysis_error: msg.slice(0, 500) })
-              .eq("id", inserted.id);
-            return { kind: "inserted_unanalyzed" as const };
+            return {
+              item,
+              analysis: null,
+              error: msg.slice(0, 500) as string | null,
+            };
           }
         })
       );
 
-      // Aggregate per-item results into the run summary.
-      for (const r of itemResults) {
-        switch (r.kind) {
-          case "analyzed":
-            summary.new_articles++;
-            summary.analyzed++;
-            detail.new_count++;
-            break;
-          case "inserted_unanalyzed":
-            summary.new_articles++;
-            summary.analysis_errors++;
-            detail.new_count++;
-            break;
-          case "insert_error":
-            summary.errors++;
-            break;
-          case "duplicate":
-            // Race-loss; another worker beat us. Not a real error.
-            break;
+      // Partition: keep = analyzer failed OR importance > threshold.
+      const toInsert = analyses.filter(
+        (a) =>
+          a.error !== null ||
+          (a.analysis !== null && a.analysis.importance > LOW_IMPORTANCE_THRESHOLD)
+      );
+      const skippedLow = analyses.length - toInsert.length;
+      summary.skipped_low_importance += skippedLow;
+      if (skippedLow > 0) detail.skipped_low_importance = skippedLow;
+
+      // Bulk upsert. `ignoreDuplicates` swallows the rare race-loss when
+      // a parallel collection run inserts the same GUID first. The `data`
+      // we get back is the set of rows that actually landed, which lets
+      // us count accurately.
+      let insertedCount = 0;
+      if (toInsert.length > 0) {
+        const nowIso = new Date().toISOString();
+        const rows = toInsert.map(({ item, analysis, error }) => ({
+          feed_id: feed.id,
+          guid: item.guid,
+          url: item.url,
+          title: item.title,
+          source: feed.name,
+          categories: feedCategories,
+          published_at: item.publishedAt?.toISOString() ?? null,
+          raw_excerpt: item.rawExcerpt,
+          summary: analysis?.summary ?? null,
+          tags: analysis?.tags ?? null,
+          importance: analysis?.importance ?? null,
+          analyzed_at: analysis ? nowIso : null,
+          analysis_error: error,
+        }));
+
+        const { data: insertedRows, error: insertErr } = await supabase
+          .from("articles")
+          .upsert(rows, { onConflict: "guid", ignoreDuplicates: true })
+          .select("id");
+
+        if (insertErr) {
+          console.error("[collect] bulk insert error", insertErr);
+          summary.errors++;
+        } else {
+          insertedCount = insertedRows?.length ?? 0;
         }
       }
+
+      // Tally inserted/analyzed/errored against actual DB outcome. Race
+      // losses (insertedCount < toInsert.length) are silently absorbed.
+      const analyzedInserted = toInsert.filter(
+        (a) => a.error === null && a.analysis !== null
+      ).length;
+      summary.new_articles += insertedCount;
+      detail.new_count += insertedCount;
+      // Approximate split — bulk upsert doesn't tell us which specific
+      // rows raced. In practice race-losses are rare, so this is accurate.
+      summary.analyzed += Math.min(analyzedInserted, insertedCount);
+      summary.analysis_errors += Math.max(
+        0,
+        insertedCount - analyzedInserted
+      );
 
       // Mark feed as successfully fetched
       await supabase

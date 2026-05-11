@@ -228,12 +228,18 @@ export async function triggerCollectionAction(): Promise<ActionResult> {
       feeds_processed?: number;
       new_articles?: number;
       analyzed?: number;
+      skipped_low_importance?: number;
       errors?: number;
     };
 
+    const skipPart =
+      (summary.skipped_low_importance ?? 0) > 0
+        ? ` / 저중요도 제외 ${summary.skipped_low_importance}건`
+        : "";
+
     return {
       ok: true,
-      message: `수집 완료 — 피드 ${summary.feeds_processed ?? 0}개 / 신규 기사 ${summary.new_articles ?? 0}건 / 분석 ${summary.analyzed ?? 0}건 / 오류 ${summary.errors ?? 0}건`,
+      message: `수집 완료 — 피드 ${summary.feeds_processed ?? 0}개 / 신규 기사 ${summary.new_articles ?? 0}건 / 분석 ${summary.analyzed ?? 0}건${skipPart} / 오류 ${summary.errors ?? 0}건`,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
