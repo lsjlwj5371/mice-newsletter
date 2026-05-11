@@ -690,10 +690,14 @@ async function generateBlockData(
   const client = getClaudeClient();
   const schema = BLOCK_DATA_SCHEMAS[type];
 
-  // consolidated_insight is now a long-form single-topic analysis with
-  // 3~5 chapters each containing multi-paragraph body. It needs a higher
-  // token cap than the 2000-token default that suits briefing-style blocks.
-  const maxTokens = type === "consolidated_insight" ? 5000 : 2000;
+  // consolidated_insight is a long-form single-topic analysis with
+  // 3~5 chapters each containing multi-paragraph Korean body. Korean
+  // tokenizes ~1 char per token, so a single chapter can easily eat
+  // 1500-2500 tokens. 5000 was the previous cap and we were observing
+  // mid-array truncation (response cut off inside a chapter body,
+  // breaking JSON.parse downstream). Haiku 4.5's hard ceiling for
+  // output is 8192 tokens, so use 8000 with a bit of headroom.
+  const maxTokens = type === "consolidated_insight" ? 8000 : 2000;
 
   try {
     const response = await client.messages.create({
@@ -708,11 +712,32 @@ async function generateBlockData(
       .map((b) => b.text);
     const raw = textBlocks.join("").trim();
 
+    // Surface truncation as its own error class — when stop_reason is
+    // 'max_tokens' the JSON is almost always incomplete, and the generic
+    // "JSON 파싱 실패" message buries the actual cause. Bumping max_tokens
+    // is the real fix; this just makes the next occurrence diagnose itself.
+    if (response.stop_reason === "max_tokens") {
+      console.warn(
+        `[draft] block type=${type} hit max_tokens=${maxTokens}; response ${raw.length} chars`
+      );
+      return {
+        ok: false,
+        error: `응답이 토큰 한도(${maxTokens})에 도달해 중간에 잘렸습니다. 블록 타입 '${type}' 의 max_tokens 를 상향하거나 지시문을 짧게 다시 시도해 보세요.`,
+      };
+    }
+
     let parsed: unknown;
     try {
       parsed = extractJson(raw);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      // Log the full raw response server-side so we can post-mortem
+      // even when stop_reason='end_turn' but JSON is still malformed
+      // (e.g. unescaped char inside a string). Client-facing message
+      // stays trimmed for sanity.
+      console.error(
+        `[draft] block type=${type} JSON parse failed (${raw.length} chars, stop_reason=${response.stop_reason}):\n${raw}`
+      );
       return {
         ok: false,
         error: `JSON 파싱 실패: ${msg}. 응답: ${raw.slice(0, 200)}`,
