@@ -30,9 +30,8 @@ export function NewDraftForm({ defaultIssueNumber }: Props) {
   const [issueNumber, setIssueNumber] = React.useState<number>(
     defaultIssueNumber
   );
-  const [issueDate, setIssueDate] = React.useState<string>(
-    formatDateForInput(today)
-  );
+  // issueDate 는 더 이상 헤더에 노출하지 않는다 — 헤더는 'VOL 003' 한 줄로만 표시.
+  // 발행 주기와 무관한 정보였고, 발송 시점이 자주 바뀌면서 오히려 신뢰성을 해쳤음.
   const todayStr = formatDateForInput(today);
   const thirtyAgoStr = formatDateForInput(thirtyDaysAgo);
 
@@ -64,7 +63,6 @@ export function NewDraftForm({ defaultIssueNumber }: Props) {
         const result = await createDraftWithBlocksAction({
           issueLabel,
           issueNumber,
-          issueDate,
           periodStart: usePeriod ? periodStart : null,
           periodEnd: usePeriod ? periodEnd : null,
           perCategoryLimit,
@@ -126,41 +124,26 @@ export function NewDraftForm({ defaultIssueNumber }: Props) {
           </p>
         </div>
 
-        {/* ── 헤더에 표시되는 ISSUE · 날짜 · VOL 번호 ─────── */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <Label htmlFor="issueNumber">VOL 번호</Label>
-            <Input
-              id="issueNumber"
-              type="number"
-              min={0}
-              max={9999}
-              value={issueNumber}
-              onChange={(e) => {
-                const v = e.target.value;
-                setIssueNumber(v === "" ? 0 : Math.max(0, Math.min(9999, Number(v))));
-              }}
-              disabled={pending}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              뉴스레터 헤더에 &quot;VOL {String(issueNumber).padStart(3, "0")}&quot;으로
-              표시됩니다. 3자리 미만이면 자동으로 0을 채웁니다. 기존 뉴스레터 수를
-              바탕으로 다음 번호를 제안합니다.
-            </p>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="issueDate">발송 날짜</Label>
-            <Input
-              id="issueDate"
-              type="date"
-              value={issueDate}
-              onChange={(e) => setIssueDate(e.target.value)}
-              disabled={pending}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              뉴스레터 헤더의 ISSUE 옆에 표시되는 날짜입니다.
-            </p>
-          </div>
+        {/* ── 헤더에 표시되는 VOL 번호 ─────────────────────── */}
+        <div className="space-y-1">
+          <Label htmlFor="issueNumber">VOL 번호</Label>
+          <Input
+            id="issueNumber"
+            type="number"
+            min={0}
+            max={9999}
+            value={issueNumber}
+            onChange={(e) => {
+              const v = e.target.value;
+              setIssueNumber(v === "" ? 0 : Math.max(0, Math.min(9999, Number(v))));
+            }}
+            disabled={pending}
+          />
+          <p className="text-[11px] text-muted-foreground">
+            뉴스레터 헤더에 &quot;VOL {String(issueNumber).padStart(3, "0")}&quot;으로
+            표시됩니다. 3자리 미만이면 자동으로 0을 채웁니다. 기존 뉴스레터 수를
+            바탕으로 다음 번호를 제안합니다.
+          </p>
         </div>
 
         <div className="space-y-2">
