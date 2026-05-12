@@ -67,7 +67,7 @@ const BLOCK_SCHEMA_PROMPT: Record<BlockType, string> = {
   news_briefing: `{ "englishLabel": "News Briefing", "items": [정확히 3개. 각 item = { "categoryTag": "경제 · 산업 등", "title": "14~28자의 헤드라인", "body": "2~3문장", "insight": { "label": "MICE 연결", "text": "1~2문장의 MICE 산업 함의" }, "sourceUrl": "제공된 기사의 실제 URL" }] }`,
   in_out_comparison: `{ "englishLabel": "MICE IN & OUT", "inItem": { "categoryTag": "IN · 국내", "title": "한국 관련 소식 제목", "body": "2~3문장", "source": "제공된 기사의 실제 출처명 (예: 한국관광공사 보도자료, 2026.04)" }, "outItem": { "categoryTag": "OUT · 글로벌", "title": "해외 관련 소식 제목", "body": "2~3문장", "source": "제공된 기사의 실제 출처명" } }`,
   tech_signal: `{ "englishLabel": "Tech Signal", "topicLabel": "Agentic AI 등 키워드", "topicMeta": "YYYY.MM · 이번 달 가장 뜨거운 기술 이슈", "title": "헤드라인", "paragraphs": ["1~2개의 단락"], "miceInsight": "1~2문장" }`,
-  theory_to_field: `{ "englishLabel": "From Theory to Field", "sourceYear": "제공된 기사에 명시된 연도 (예: 1990). 없으면 빈 문자열", "sourceAuthor": "제공된 기사에 명시된 저자 / 소속. 없으면 빈 문자열", "sourceMeta": "영문 부제가 있다면. 없으면 빈 문자열", "title": "호기심을 자극하는 헤드라인", "introParagraphs": ["1~2단락"], "bridge": { "label": "→ 현장에서는", "text": "1~2문장" }, "outroParagraphs": ["1단락"], "closingNote": "1문장의 마무리" }`,
+  theory_to_field: `{ "englishLabel": "From Theory to Field", "sourceYear": "학술 모드: 선정한 고전 연구의 대표 저작 발표 연도(예: '2000'). 기사 모드: 제공된 기사의 발행 연도. 확신 없으면 빈 문자열", "sourceAuthor": "학술 모드: 선정한 학자명(예: 'Robert D. Putnam') 또는 학파(예: '사회자본 이론 학파'). 기사 모드: 제공된 기사의 저자/매체. 위조 절대 금지, 확신 없으면 빈 문자열", "sourceMeta": "학술 모드: 저작명(예: 'Bowling Alone') 또는 학파 분야. 기사 모드: 부제·메타. 확신 없으면 빈 문자열", "title": "호기심을 자극하는 헤드라인", "introParagraphs": ["1~2단락 — 학술 모드에서는 선정한 고전 이론의 핵심 개념 소개"], "bridge": { "label": "→ 현장에서는", "text": "1~2문장 — 이 이론이 MICE 산업에 적용되는 핵심 지점" }, "outroParagraphs": ["1단락 — 구체적 MICE 현장 적용 시나리오/함의"], "closingNote": "1문장의 마무리" }`,
   editor_take: `{ "englishLabel": "지금 MICE는", "eyebrow": "이달의 이슈", "title": "\\n으로 줄바꿈 가능한 제목", "leadParagraph": "진입 1문장", "pullQuote": "짧고 강렬한 인용구", "paragraphs": ["2~3단락"], "closingNote": "1문장의 마무리" }`,
   groundk_story: `{ "englishLabel": "GroundK Story", "fieldBriefing": { "eyebrow": "이달의 현장 브리핑", "categoryTag": "공항 운영 등", "body": "1~2단락. 줄바꿈은 \\n\\n 로 구분" }, "projectSketch": { "projectMeta": "Project · 이름", "dateMeta": "YYYY.MM.DD", "eyebrow": "그라운드케이 프로젝트 스케치", "title": "프로젝트 타이틀", "paragraphs": ["정확히 3개의 단락"], "tags": ["태그 3개 정도"] } }`,
   consolidated_insight: `{ "englishLabel": "MICE Insight", "topicLabel": "주제 태그 (예: Agentic AI · MICE 운영)", "topicMeta": "YYYY.MM · 심층 분석", "title": "이 호에서 다루는 하나의 심층 주제 제목 (24~40자)", "leadParagraph": "이 주제를 왜 지금 다루는지 설명하는 도입 단락 2~4문장", "chapters": [정확히 3~5개. 각 chapter = { "chapterLabel": "01 · 배경", "heading": "이 챕터에서 밝힐 질문/포인트 (14~28자)", "paragraphs": ["2~4개의 두터운 단락. 문장은 문어체 ~습니다 끝맺음."], "pullQuote": "(선택) 이 챕터에서 가장 강조하고 싶은 1문장. 생략 가능" }] }
@@ -385,6 +385,15 @@ interface BlockGenContext {
   instructions?: string;
   autoSearch: boolean;
   /**
+   * True iff `articles` came from the admin's explicit forcedArticleIds
+   * pick (not auto-discovery from the RSS pool). Currently only
+   * theory_to_field branches on this:
+   *   manuallySelected = true  → article-based mode (article is the source)
+   *   manuallySelected = false → academic mode (Claude pulls a classic
+   *                              theory from its own knowledge)
+   */
+  manuallySelected: boolean;
+  /**
    * Server-fetched text of any URLs found in `instructions` or
    * `referenceNotes`. When present, Claude is instructed to treat this
    * as the authoritative source for facts/quotes/numbers from the
@@ -443,11 +452,21 @@ function formatArticleForPrompt(a: Article, idx: number): string {
 
 function buildBlockSystemPrompt(
   type: BlockType,
-  isEdit: boolean
+  isEdit: boolean,
+  /**
+   * theory_to_field 전용 분기. 관리자가 forcedArticleIds 로 자료를
+   * 명시적으로 골랐을 때만 true. false 일 때는 학술 모드로 동작.
+   * 다른 블록은 이 값을 무시.
+   */
+  manuallySelected: boolean = true
 ): string {
   const roleLine = isEdit
     ? `이미 작성되어 있는 블록(${type})을 관리자 지시에 따라 **최소 수정**합니다. 본문에서 지시가 명시하지 않은 부분은 절대로 다시 쓰지 마십시오.`
     : `단 하나의 블록(${type}) 콘텐츠를 JSON으로 생성합니다.`;
+
+  // theory_to_field + 자료 미선택 = 학술 모드. 후보 기사 출처 강제 규칙을
+  // 끄고 Claude 의 학습 지식 안에서 고전 연구를 끌어와 MICE 적용 글을 쓰게 한다.
+  const isAcademicMode = type === "theory_to_field" && !manuallySelected;
 
   const editModeBlock = isEdit
     ? `
@@ -465,6 +484,61 @@ function buildBlockSystemPrompt(
 6. 출력은 **여전히 전체 스키마를 채운 완전한 JSON**입니다. 변경이 없는 필드도 기존 값을 그대로 다시 적어 돌려주십시오.
 `
     : "";
+
+  const sourceRulesArticleMode = `## 출처 규칙 (매우 중요)
+- 출처(URL, 연구자, 연도 등)는 제공된 후보 기사 또는 "관리자가 붙여 넣은 링크의 실제 본문"에 있는 내용만 사용합니다.
+- 제공되지 않은 출처·수치·고유명사를 **절대 지어내지 마십시오.** 예시 금지: 제공된 본문에 없는 행사명·개최일·금액·통계·연구자 이름·URL을 추측으로 채우는 행위.
+- 본문에 포함한 주장·수치·인용이 있다면, 그 근거는 반드시 제공된 자료 중 하나여야 합니다.
+- 관리자가 제공한 링크 본문이 있는 경우: 그 링크를 다룰 때는 **링크 본문에 명시된 내용만** 사용합니다. 본문에 "2026년 6월 서울 개최" 같은 문장이 있으면 그대로 쓰되, 본문에 없는 세부(예: 참가비, 연사 명단)는 추정·생성하지 말고 생략합니다.
+- 근거가 부족할 때는 내용을 지어내는 대신 해당 필드를 짧게 두거나, 더 모호한 일반 맥락(예: "관련 보도가 이어지고 있습니다") 수준으로 서술합니다.`;
+
+  // 학술 모드 — theory_to_field 한정. 후보 기사가 없을 때 발동.
+  // 출처 규칙을 외부 자료가 아닌 "Claude 학습 지식 내 검증 가능한 학술 자료"
+  // 기반으로 재정의하며, 추론 순서·할루시네이션 방지·분야 다양성을 명시한다.
+  const sourceRulesAcademicMode = `## 출처 규칙 — 학술 모드 (theory_to_field 전용 · 매우 중요)
+
+이 블록은 "**시간이 검증한 고전·중량 학술 연구**를 발굴해 오늘날 MICE 산업(이벤트·국제회의·전시·인센티브 행사)에 적용"하는 깊이 있는 글입니다. 최근 뉴스·보도자료 기반 글이 아닙니다.
+
+### 추론 순서 (반드시 이 순서로 사고하십시오)
+1. **MICE 키워드부터 검색하지 마십시오.** MICE 분야는 직접적 학술 연구가 적기 때문에 "MICE 행사 연구" 부터 찾으면 출처 위조 위험이 매우 높습니다.
+2. 대신 **일반 학문 영역의 고전·중량 연구 1편**을 먼저 고릅니다. 사회학·심리학·경영학·도시계획학·관광학·행동경제학·문화인류학·조직이론 등 분야는 자율로 선택합니다.
+3. 그 연구가 MICE 의 어떤 측면(참가자 행동, 도시 입지, 네트워크 형성, 운영 효율, 정서적 임팩트, 사회적 자본, 의례·의식, 공간 디자인 등)에 적용 가능한지 추론합니다.
+4. 분야는 매 호 다양하게 — 같은 학파/저자가 반복되지 않도록 의식하십시오.
+
+### 출처 표기 — 적극적이되 정확하게
+신뢰할 수 있는 학자·연구를 **적극적으로 명기**합니다:
+- sourceAuthor: 학자명 (예: "Robert D. Putnam", "Erving Goffman", "Edgar H. Schein", "Daniel Kahneman")
+- sourceYear: 대표 저작 발표 연도 (예: "2000")
+- sourceMeta: 저작명 또는 학파 (예: "Bowling Alone", "Frame Analysis", "Organizational Culture and Leadership")
+- sourceUrl: **반드시 빈 문자열로 두십시오.** URL 위조 금지.
+
+### 절대 금지
+- **MICE 분야 직접 연구라며 가짜 논문/학자/저작 만들어내기.** 매우 흔한 함정.
+- 학자 이름·저작·연도 중 하나라도 확신 없으면 그 필드는 빈 문자열로 둡니다. 추측 금지.
+- 학자명을 떠올릴 수 없으면 차라리 학파 단위로 표기 (예: sourceAuthor="사회자본 이론 학파", sourceYear="1990년대"). 그래도 모르면 모든 source* 필드 빈 문자열.
+
+### 본문 톤
+- 학술 인용은 명료하게 표기합니다. 예: "Putnam은 2000년 저서 'Bowling Alone'에서 사회자본 개념을 제시했습니다."
+- 단, **이 연구가 MICE 를 직접 다룬 것은 아닙니다.** 적용 부분은 "~로 보입니다 / ~로 판단됩니다 / ~에 응용할 수 있습니다" 같은 완곡 표현으로 처리하십시오.
+- introParagraphs: 선정한 고전 이론·연구의 핵심 개념 소개
+- bridge: "→ 현장에서는" — MICE 산업에 적용되는 핵심 지점 1~2문장
+- outroParagraphs: 구체적 MICE 현장 적용 시나리오 / 함의
+- closingNote: 함축적 한 줄
+
+### _citedIndices
+학술 모드에서는 외부 후보 기사가 없으므로 \`"_citedIndices": []\` 로 둡니다 (필드는 그대로 포함).`;
+
+  const sourceRules = isAcademicMode ? sourceRulesAcademicMode : sourceRulesArticleMode;
+
+  const citationTrackingBlock = isAcademicMode
+    ? `## 인용 추적 (학술 모드)
+- 출력 JSON 최상위에 \`"_citedIndices": []\` 빈 배열을 포함합니다. 외부 기사를 인용하지 않으므로 항상 빈 배열입니다.`
+    : `## 인용 추적 (필수)
+- 출력 JSON의 **최상위에 \`_citedIndices\` 배열**을 반드시 포함합니다.
+- 이 배열에는 본문 작성 과정에서 실제로 근거로 사용한 후보 기사 번호(제공된 \`[1]\`, \`[2]\`, ... 중)만 담습니다.
+- 단순히 "참고는 했지만 본문에 반영되지 않은" 기사는 포함하지 마십시오.
+- 예: 후보 기사 [1]~[10]을 주었는데 실제로 [3]과 [7]만 근거로 썼다면 \`"_citedIndices": [3, 7]\`.
+- 어떤 기사도 근거로 쓰지 않았다면 \`"_citedIndices": []\`.`;
 
   return `당신은 "MICE人sight" 뉴스레터의 전문 에디터입니다. 한국 MICE 산업 종사자를 대상으로 하는 격식 있는 인사이트 레터입니다.
 
@@ -489,19 +563,9 @@ ${editModeBlock}
 - 단일 JSON 객체만 출력. 마크다운 코드블록·설명·인사말 금지.
 - 모든 문자열 값은 위 톤을 따릅니다.
 
-## 출처 규칙 (매우 중요)
-- 출처(URL, 연구자, 연도 등)는 제공된 후보 기사 또는 "관리자가 붙여 넣은 링크의 실제 본문"에 있는 내용만 사용합니다.
-- 제공되지 않은 출처·수치·고유명사를 **절대 지어내지 마십시오.** 예시 금지: 제공된 본문에 없는 행사명·개최일·금액·통계·연구자 이름·URL을 추측으로 채우는 행위.
-- 본문에 포함한 주장·수치·인용이 있다면, 그 근거는 반드시 제공된 자료 중 하나여야 합니다.
-- 관리자가 제공한 링크 본문이 있는 경우: 그 링크를 다룰 때는 **링크 본문에 명시된 내용만** 사용합니다. 본문에 "2026년 6월 서울 개최" 같은 문장이 있으면 그대로 쓰되, 본문에 없는 세부(예: 참가비, 연사 명단)는 추정·생성하지 말고 생략합니다.
-- 근거가 부족할 때는 내용을 지어내는 대신 해당 필드를 짧게 두거나, 더 모호한 일반 맥락(예: "관련 보도가 이어지고 있습니다") 수준으로 서술합니다.
+${sourceRules}
 
-## 인용 추적 (필수)
-- 출력 JSON의 **최상위에 \`_citedIndices\` 배열**을 반드시 포함합니다.
-- 이 배열에는 본문 작성 과정에서 실제로 근거로 사용한 후보 기사 번호(제공된 \`[1]\`, \`[2]\`, ... 중)만 담습니다.
-- 단순히 "참고는 했지만 본문에 반영되지 않은" 기사는 포함하지 마십시오.
-- 예: 후보 기사 [1]~[10]을 주었는데 실제로 [3]과 [7]만 근거로 썼다면 \`"_citedIndices": [3, 7]\`.
-- 어떤 기사도 근거로 쓰지 않았다면 \`"_citedIndices": []\`.
+${citationTrackingBlock}
 
 ## 출력 스키마
 ${BLOCK_SCHEMA_PROMPT[type]}
@@ -532,7 +596,19 @@ function buildBlockUserMessage(
     parts.push("");
   }
 
-  if (ctx.autoSearch && ctx.articles.length > 0) {
+  // theory_to_field 학술 모드: 외부 기사 강제 인용을 끄고 Claude 의 학습
+  // 지식 안에서 학술 자료를 끌어와 작성하도록 안내.
+  const isAcademicMode = type === "theory_to_field" && !ctx.manuallySelected;
+
+  if (isAcademicMode) {
+    parts.push(
+      `# 학술 모드 — 후보 기사 없음`
+    );
+    parts.push(
+      `이 블록은 학술 모드로 동작합니다. 외부 후보 기사를 인용하는 대신, 당신의 학습 지식 안에서 검증 가능한 고전·중량 학술 연구 1편을 고르고 그것을 MICE 산업에 적용하는 글을 작성합니다. 시스템 프롬프트의 "학술 모드" 출처 규칙을 엄격히 따르십시오 — 추론 순서, 출처 정확성, 분야 다양성, 가짜 인용 금지 등.`
+    );
+    parts.push("");
+  } else if (ctx.autoSearch && ctx.articles.length > 0) {
     parts.push(
       `# 후보 기사 (반드시 이 중 하나 이상을 근거로 작성. 출처/URL은 이 기사들에서만 가져올 것)`
     );
@@ -669,7 +745,10 @@ const REFERENCE_REQUIRED_BLOCKS: Set<BlockType> = new Set([
   "news_briefing",
   "in_out_comparison",
   "tech_signal",
-  "theory_to_field",
+  // theory_to_field 는 의도적으로 제외 — 후보 기사 없을 때 학술 모드로
+  // 전환되어 Claude 의 학습 지식 안에서 고전·중량 연구를 끌어와 MICE 산업에
+  // 적용하는 글을 쓴다. 자세한 분기는 buildBlockSystemPrompt 의 학술 모드
+  // 섹션 참고.
   "stat_feature",
   "consolidated_insight",
   "event_radar",
@@ -767,7 +846,11 @@ async function generateBlockData(
     const response = await client.messages.create({
       model: DRAFT_MODEL,
       max_tokens: maxTokens,
-      system: buildBlockSystemPrompt(type, Boolean(ctx.previousData)),
+      system: buildBlockSystemPrompt(
+        type,
+        Boolean(ctx.previousData),
+        ctx.manuallySelected
+      ),
       messages: [{ role: "user", content: buildBlockUserMessage(type, ctx) }],
     });
 
@@ -861,6 +944,13 @@ export interface RegenerateBlockInput {
    * by `addBlockAction` for brand-new blocks).
    */
   previousData?: unknown;
+  /**
+   * True when `articles` came from the admin's explicit forcedArticleIds
+   * pick. Only theory_to_field reads this — when false it triggers the
+   * academic mode that pulls a classic theory from Claude's knowledge
+   * instead of citing external articles.
+   */
+  manuallySelected?: boolean;
 }
 
 export interface RegenerateBlockResult {
@@ -886,6 +976,7 @@ export async function regenerateSingleBlock(
     autoSearch: input.autoSearch,
     fetchedReferencesBlock,
     previousData: input.previousData,
+    manuallySelected: input.manuallySelected ?? false,
   };
 
   const result = await generateBlockData(input.type, ctx);
@@ -1170,10 +1261,12 @@ export async function generateNewsletterDraft(
     const autoSearch = cfg?.autoSearch ?? true;
 
     let articles: Article[] = [];
+    let manuallySelected = false;
     if (autoSearch) {
       const forced = cfg?.forcedArticles ?? [];
       if (forced.length > 0) {
         articles = forced;
+        manuallySelected = true;
       } else {
         articles = partitioned[type] ?? [];
       }
@@ -1198,6 +1291,7 @@ export async function generateNewsletterDraft(
       instructions: cfg?.instructions,
       autoSearch,
       fetchedReferencesBlock,
+      manuallySelected,
     };
     return { type, ctx, cfg };
   });

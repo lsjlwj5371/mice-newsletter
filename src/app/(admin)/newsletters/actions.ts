@@ -1418,6 +1418,13 @@ export async function regenerateBlockAction(
   // told to copy it verbatim except where the admin instruction explicitly
   // asks to change something. Full rewrites are opt-in via phrases the
   // admin types ("아예 새롭게 생성해줘" etc.).
+  // `manuallySelected` flags whether `articles` came from the admin's
+  // explicit forcedArticleIds pick (vs. auto-pool). Only theory_to_field
+  // currently uses it — when false it switches Claude into academic mode.
+  const manuallySelected =
+    Array.isArray(input.forcedArticleIds) &&
+    input.forcedArticleIds.filter(Boolean).length > 0;
+
   let result;
   try {
     result = await regenerateSingleBlock({
@@ -1428,6 +1435,7 @@ export async function regenerateBlockAction(
       autoSearch: input.autoSearch,
       referenceNotes: row.reference_notes ?? undefined,
       previousData: targetBlock.data,
+      manuallySelected,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -1610,6 +1618,13 @@ export async function addBlockAction(
     }
   }
 
+  // Same flag as regenerateBlockAction — when forcedArticleIds is set the
+  // admin explicitly picked the source, otherwise theory_to_field switches
+  // to academic mode in Claude.
+  const manuallySelected =
+    Array.isArray(input.forcedArticleIds) &&
+    input.forcedArticleIds.filter(Boolean).length > 0;
+
   let result;
   try {
     result = await regenerateSingleBlock({
@@ -1619,6 +1634,7 @@ export async function addBlockAction(
       instructions: input.instructions ?? undefined,
       autoSearch: effectiveAutoSearch,
       referenceNotes: row.reference_notes ?? undefined,
+      manuallySelected,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
