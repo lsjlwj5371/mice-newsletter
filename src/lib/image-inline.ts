@@ -1,3 +1,5 @@
+import sharp from "sharp";
+
 /**
  * Convert <img src="..."> references in an email HTML body into inline
  * base64 data URIs.
@@ -20,6 +22,12 @@
  *    a safety margin while still allowing a small cover image per
  *    block. Once the cap is reached we stop inlining and leave the
  *    remaining <img> tags as URLs.
+ *  - Transcode webp → PNG (alpha) / JPEG (no alpha) at inline time.
+ *    Reason: classic Outlook for Windows still doesn't render webp,
+ *    so even when we successfully base64-inline a webp it shows as a
+ *    broken image. Storage stays webp for size; we only pay the
+ *    transcode cost during send. GIFs are passed through to keep
+ *    animation intact.
  *
  * Returns the rewritten HTML plus the list of Storage paths that were
  * successfully inlined (caller marks image_assets.inlined_at for each).
@@ -78,19 +86,51 @@ export async function inlineStorageImages(params: {
         skippedReason[url] = `fetch failed (HTTP ${res.status})`;
         continue;
       }
-      const mimeType =
+      const originalMime =
         res.headers.get("content-type")?.split(";")[0]?.trim() ||
         "image/webp";
-      const buf = Buffer.from(await res.arrayBuffer());
-      if (totalBytes + buf.length > MAX_INLINE_TOTAL_BYTES) {
+      const originalBuf = Buffer.from(await res.arrayBuffer());
+
+      // Transcode webp → PNG (alpha) or JPEG (no alpha) for classic
+      // Outlook for Windows compatibility. PNG/JPEG/GIF are passed
+      // through as-is. Failures fall back to the original bytes so we
+      // never block a send on a transcode glitch — but they'll then
+      // render broken in Outlook (worst case = same as before this
+      // change).
+      // Buffer typed as `Buffer<ArrayBufferLike>` to accept both the
+      // `Buffer.from(arrayBuffer)` result and sharp's output type.
+      let finalBuf: Buffer<ArrayBufferLike> = originalBuf;
+      let finalMime = originalMime;
+      if (originalMime === "image/webp") {
+        try {
+          const meta = await sharp(originalBuf).metadata();
+          if (meta.hasAlpha) {
+            finalBuf = await sharp(originalBuf).png().toBuffer();
+            finalMime = "image/png";
+          } else {
+            finalBuf = await sharp(originalBuf)
+              .jpeg({ quality: 85 })
+              .toBuffer();
+            finalMime = "image/jpeg";
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.warn(
+            `[image-inline] webp transcode failed for ${url}, falling back to original: ${msg}`
+          );
+          // keep finalBuf / finalMime as originals
+        }
+      }
+
+      if (totalBytes + finalBuf.length > MAX_INLINE_TOTAL_BYTES) {
         skippedReason[url] = "exceeds per-email inline budget";
         continue;
       }
-      totalBytes += buf.length;
+      totalBytes += finalBuf.length;
 
       dataUriByUrl.set(
         url,
-        `data:${mimeType};base64,${buf.toString("base64")}`
+        `data:${finalMime};base64,${finalBuf.toString("base64")}`
       );
       // Extract storage path (everything after the bucket prefix)
       pathByUrl.set(url, url.slice(storageUrlPrefix.length));
