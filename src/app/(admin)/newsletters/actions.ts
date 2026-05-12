@@ -457,10 +457,21 @@ export async function regenerateDraftAction(
     articlesByCategory[cat] = (data ?? []) as Article[];
   }
 
+  // Preserve the existing header's structured fields (issueNumber /
+  // issueDate). Previously this action passed only issueLabel, so a full
+  // regenerate silently downgraded the header from "VOL 002 · 2026.05.11"
+  // to the legacy "2호" branch — admins lost their VOL number every time
+  // they hit 재생성. Pull the structured fields out of the row's content
+  // and pass them through so the masthead survives a regenerate.
+  const existingContent = existing.content_json as NewsletterContent | null;
+  const existingHeader = existingContent?.header;
+
   let draftResult;
   try {
     draftResult = await generateNewsletterDraft({
       issueLabel: existing.issue_label,
+      issueNumber: existingHeader?.issueNumber,
+      issueDate: existingHeader?.issueDate,
       articlesByCategory,
       referenceNotes: existing.reference_notes ?? undefined,
     });
