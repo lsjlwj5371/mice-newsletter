@@ -1300,6 +1300,12 @@ export interface RegenerateBlockInput {
    * explicit pick always wins. Ignored when autoSearch is false.
    */
   forcedArticleIds?: string[];
+  /**
+   * groundk_story 부분 편집. 지정되면 해당 sub-object 만 Claude 로 수정하고,
+   * 반대편 sub-object 는 응답 후 서버에서 원본을 그대로 다시 덮어씌워서
+   * byte-identical 을 보장한다 (Claude 의 의도와 무관).
+   */
+  targetPart?: "fieldBriefing" | "projectSketch";
 }
 
 export async function regenerateBlockAction(
@@ -1425,6 +1431,14 @@ export async function regenerateBlockAction(
     Array.isArray(input.forcedArticleIds) &&
     input.forcedArticleIds.filter(Boolean).length > 0;
 
+  // groundk_story 부분 편집인 경우, targetPart 유효성 체크.
+  const targetPart =
+    type === "groundk_story" &&
+    (input.targetPart === "fieldBriefing" ||
+      input.targetPart === "projectSketch")
+      ? input.targetPart
+      : undefined;
+
   let result;
   try {
     result = await regenerateSingleBlock({
@@ -1436,6 +1450,7 @@ export async function regenerateBlockAction(
       referenceNotes: row.reference_notes ?? undefined,
       previousData: targetBlock.data,
       manuallySelected,
+      targetPart,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -1445,11 +1460,26 @@ export async function regenerateBlockAction(
   // Build updated blocks array. Merge admin-managed fields from the
   // previous block's data into Claude's fresh output so uploaded images,
   // layout choices, and visibility toggles survive a regenerate.
-  const mergedData = mergePreservedBlockFields(
+  let mergedData = mergePreservedBlockFields(
     targetBlock.type,
     targetBlock.data as Record<string, unknown>,
     result.data as Record<string, unknown>
   );
+
+  // groundk_story 부분 편집의 강제 보호: targetPart 가 지정되었으면
+  // 반대편 sub-object 는 원본 그대로 덮어씌워서 한 글자도 안 바뀜을 보장.
+  // Claude 가 (편집 모드 프롬프트에도 불구하고) "조금만 다듬으려는" 시도를
+  // 무력화한다. 이게 사용자의 핵심 요구 — "다른 섹션 수정하다가 확정된
+  // 섹션 내용도 바뀔까봐 두려워" 에 대한 mechanical guarantee.
+  if (targetPart) {
+    const original = targetBlock.data as Record<string, unknown>;
+    const otherPart =
+      targetPart === "fieldBriefing" ? "projectSketch" : "fieldBriefing";
+    mergedData = {
+      ...mergedData,
+      [otherPart]: original[otherPart],
+    };
+  }
 
   const updatedBlocks = [...content.blocks];
   updatedBlocks[input.blockIndex] = {

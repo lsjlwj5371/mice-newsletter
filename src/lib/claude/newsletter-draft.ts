@@ -378,6 +378,16 @@ function getPlaceholderData(type: BlockType): unknown {
 // Per-block Claude generation
 // ─────────────────────────────────────────────
 
+/**
+ * Identifies which sub-object of a composite block the admin wants to
+ * edit. Currently only groundk_story has named sub-objects (fieldBriefing
+ * and projectSketch). When set, the server mechanically copies the
+ * un-targeted sub-object back from the original after Claude responds,
+ * so admins can't accidentally lose a confirmed section by typing an
+ * instruction that's only meant for the other section.
+ */
+export type GroundkStoryTargetPart = "fieldBriefing" | "projectSketch";
+
 interface BlockGenContext {
   issueLabel: string;
   referenceNotes?: string;
@@ -393,6 +403,13 @@ interface BlockGenContext {
    *                              theory from its own knowledge)
    */
   manuallySelected: boolean;
+  /**
+   * For groundk_story partial edits — which sub-object the admin is
+   * editing. Drives an extra prompt section that tells Claude to leave
+   * the other sub-object byte-identical; the server also overlays the
+   * untargeted part as a hard guarantee.
+   */
+  targetPart?: GroundkStoryTargetPart;
   /**
    * Server-fetched text of any URLs found in `instructions` or
    * `referenceNotes`. When present, Claude is instructed to treat this
@@ -458,11 +475,31 @@ function buildBlockSystemPrompt(
    * 명시적으로 골랐을 때만 true. false 일 때는 학술 모드로 동작.
    * 다른 블록은 이 값을 무시.
    */
-  manuallySelected: boolean = true
+  manuallySelected: boolean = true,
+  /**
+   * groundk_story 전용 — 부분 편집 대상 sub-object 이름. 지정되면
+   * Claude 에게 "다른 sub-object 는 글자 그대로 복사" 가이드가 추가된다.
+   * 서버측에서도 mechanical overlay 로 한 번 더 보호한다.
+   */
+  targetPart?: GroundkStoryTargetPart
 ): string {
   const roleLine = isEdit
     ? `이미 작성되어 있는 블록(${type})을 관리자 지시에 따라 **최소 수정**합니다. 본문에서 지시가 명시하지 않은 부분은 절대로 다시 쓰지 마십시오.`
     : `단 하나의 블록(${type}) 콘텐츠를 JSON으로 생성합니다.`;
+
+  // groundk_story 부분 편집 — Claude 에게 어떤 sub-object 만 만지고 다른
+  // sub-object 는 입력 그대로 돌려놓아야 하는지 명시. 서버 overlay 와 이중 방어.
+  const partialEditBlock =
+    type === "groundk_story" && targetPart
+      ? `
+## 부분 편집 (groundk_story 전용 · 매우 중요)
+이번 수정은 \`${targetPart}\` 객체만 대상입니다. 다른 sub-object (\`${
+          targetPart === "fieldBriefing" ? "projectSketch" : "fieldBriefing"
+        }\`) 는 **현재 블록 내용에 있는 값을 글자 그대로 그대로 복사**하여 출력 JSON 에 포함하십시오. 한 글자도 바꾸지 마십시오 — 톤 다듬기·문장 정리·이모지 보정 등 어떤 자의적 변경도 금지입니다. 변경 대상이 아닌 sub-object 의 모든 필드는 입력 본문과 byte-identical 이어야 합니다.
+
+관리자 지시가 다른 sub-object 를 가리키더라도, 그 부분은 무시하고 \`${targetPart}\` 만 수정하십시오. 지시문이 모호하면 \`${targetPart}\` 안에서만 가장 작은 수정을 적용하십시오.
+`
+      : "";
 
   // theory_to_field + 자료 미선택 = 학술 모드. 후보 기사 출처 강제 규칙을
   // 끄고 Claude 의 학습 지식 안에서 고전 연구를 끌어와 MICE 적용 글을 쓰게 한다.
@@ -545,6 +582,7 @@ function buildBlockSystemPrompt(
 ## 역할
 ${roleLine}
 ${editModeBlock}
+${partialEditBlock}
 
 ## 톤앤매너 (매우 중요)
 - 전문 에디터가 독자에게 말하듯, **격식 있는 문어체**로 작성합니다.
@@ -849,7 +887,8 @@ async function generateBlockData(
       system: buildBlockSystemPrompt(
         type,
         Boolean(ctx.previousData),
-        ctx.manuallySelected
+        ctx.manuallySelected,
+        ctx.targetPart
       ),
       messages: [{ role: "user", content: buildBlockUserMessage(type, ctx) }],
     });
@@ -951,6 +990,12 @@ export interface RegenerateBlockInput {
    * instead of citing external articles.
    */
   manuallySelected?: boolean;
+  /**
+   * groundk_story 부분 편집 — 어느 sub-object 만 수정 대상인지. 지정되면
+   * Claude 가 다른 sub-object 를 만지지 않도록 가이드되며, 서버는 응답을
+   * 받은 뒤 mechanical overlay 로 한 번 더 보호한다.
+   */
+  targetPart?: GroundkStoryTargetPart;
 }
 
 export interface RegenerateBlockResult {
@@ -977,6 +1022,7 @@ export async function regenerateSingleBlock(
     fetchedReferencesBlock,
     previousData: input.previousData,
     manuallySelected: input.manuallySelected ?? false,
+    targetPart: input.targetPart,
   };
 
   const result = await generateBlockData(input.type, ctx);

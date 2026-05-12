@@ -642,6 +642,12 @@ function BlockCard({
     block.autoSearch ?? BLOCK_NEEDS_RESEARCH[block.type]
   );
   const [forcedArticleIds, setForcedArticleIds] = React.useState<string[]>([]);
+  // groundk_story 부분 편집 범위 — 'both' 면 기존 동작 (한 번의 지시로 둘 다
+  // 수정 가능), 'fieldBriefing'/'projectSketch' 면 서버측에서 반대편을
+  // mechanical overlay 로 보호한다. groundk_story 가 아닌 블록에서는 무시됨.
+  const [groundkTarget, setGroundkTarget] = React.useState<
+    "fieldBriefing" | "projectSketch" | "both"
+  >("both");
   const [pending, startTransition] = React.useTransition();
   const [msg, setMsg] = React.useState<{
     type: "success" | "error";
@@ -684,6 +690,12 @@ function BlockCard({
     // of UI state so it never pulls from RSS.
     const effectiveAutoSearch =
       block.type === "groundk_story" ? false : autoSearch;
+    // groundk_story 부분 편집 모드일 때만 targetPart 전달. 다른 블록이거나
+    // 'both' 선택이면 undefined (기존 동작 = 전체 수정).
+    const targetPart =
+      block.type === "groundk_story" && groundkTarget !== "both"
+        ? groundkTarget
+        : undefined;
     startTransition(async () => {
       const res = await regenerateBlockAction({
         newsletterId,
@@ -692,6 +704,7 @@ function BlockCard({
         autoSearch: effectiveAutoSearch,
         forcedArticleIds:
           forcedArticleIds.length > 0 ? forcedArticleIds : undefined,
+        targetPart,
       });
       if (res.ok) {
         setMsg({ type: "success", text: "재생성 완료" });
@@ -967,10 +980,53 @@ function BlockCard({
               또는 <code className="px-1 py-0.5 rounded bg-muted font-mono">&quot;전체 다시 써줘&quot;</code> 같이 명시하세요.
             </p>
             {block.type === "groundk_story" ? (
-              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                이 블록은 관리자 레퍼런스 전용입니다. 아래 칸에 현장 자료를 붙여
-                넣으면 Claude가 편집자 톤으로 다듬어 반영합니다.
-              </div>
+              <>
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  이 블록은 관리자 레퍼런스 전용입니다. 아래 칸에 현장 자료를 붙여
+                  넣으면 Claude가 편집자 톤으로 다듬어 반영합니다.
+                </div>
+                <fieldset className="space-y-1.5 rounded-md border border-border bg-muted/30 px-3 py-2">
+                  <legend className="px-1 text-[11px] font-semibold text-foreground">
+                    수정 범위
+                  </legend>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    아래 지시는 선택한 영역에만 적용됩니다. <strong className="text-foreground">반대편 영역은 한 글자도 바뀌지 않도록 서버에서 강제 보호</strong>합니다 (Claude가 어떤 변경을 시도하더라도 원본으로 되돌립니다).
+                  </p>
+                  <div className="flex flex-wrap gap-3 pt-1">
+                    {(
+                      [
+                        { value: "fieldBriefing", label: "현장 브리핑만" },
+                        { value: "projectSketch", label: "프로젝트 스케치만" },
+                        { value: "both", label: "둘 다" },
+                      ] as const
+                    ).map((opt) => (
+                      <label
+                        key={opt.value}
+                        className="inline-flex items-center gap-1.5 text-xs cursor-pointer"
+                      >
+                        <input
+                          type="radio"
+                          name={`groundk-target-${blockIndex}`}
+                          value={opt.value}
+                          checked={groundkTarget === opt.value}
+                          onChange={() => setGroundkTarget(opt.value)}
+                          disabled={pending || disabled}
+                          className="h-3.5 w-3.5"
+                        />
+                        <span
+                          className={
+                            groundkTarget === opt.value
+                              ? "text-foreground font-medium"
+                              : "text-muted-foreground"
+                          }
+                        >
+                          {opt.label}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              </>
             ) : (
               <div className="flex items-center gap-2">
                 <input
@@ -1035,7 +1091,13 @@ function BlockCard({
                 onClick={handleRegenerate}
                 disabled={pending || disabled}
               >
-                {pending ? "수정 중..." : "이 블록 수정"}
+                {pending
+                  ? "수정 중..."
+                  : block.type === "groundk_story" && groundkTarget !== "both"
+                  ? groundkTarget === "fieldBriefing"
+                    ? "현장 브리핑만 수정"
+                    : "프로젝트 스케치만 수정"
+                  : "이 블록 수정"}
               </Button>
             </div>
           </section>
