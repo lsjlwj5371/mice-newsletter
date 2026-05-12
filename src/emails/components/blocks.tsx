@@ -1012,7 +1012,19 @@ function TheoryToField({
         <Section style={{ marginBottom: "18px" }}>
           <Row>
             {block.data.sourceYear && (
-              <Column style={{ width: "70px", verticalAlign: "middle" }}>
+              <Column
+                style={{
+                  // 32px bold "2026" actually measures ~70-75px depending on
+                  // the client's font. 70px was right at the edge and Gmail
+                  // mobile / narrow webview broke it onto two lines (the
+                  // "202" / "6" wrap the user reported). Bumped to 84px so
+                  // we have a comfortable char of headroom; nowrap below
+                  // is the real guarantee — width is just for layout.
+                  width: "84px",
+                  verticalAlign: "middle",
+                  whiteSpace: "nowrap",
+                }}
+              >
                 <Text
                   style={{
                     fontSize: "32px",
@@ -1021,6 +1033,11 @@ function TheoryToField({
                     lineHeight: 1,
                     margin: 0,
                     fontWeight: 700,
+                    // Force single-line render regardless of column width.
+                    // Even if a future client computes the Column narrower
+                    // than 84px, the year stays on one line (would overflow
+                    // before wrapping, which is acceptable for a 4-digit number).
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {block.data.sourceYear}
