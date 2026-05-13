@@ -23,10 +23,21 @@ export function escapeHtml(s: string): string {
  *   string otherwise disappears in the rendered email. By converting
  *   `\r?\n` to `<br/>` after escaping, admins get intuitive line-break
  *   control without having to know any markup.
+ *
+ *   We also pre-normalize literal `<br>` / `<br/>` / `<br />` (any
+ *   casing) into `\n` BEFORE escapeHtml runs. Claude occasionally emits
+ *   HTML break tags instead of using `\n\n` despite the schema saying
+ *   otherwise, and admins editing JSON manually sometimes paste in
+ *   `<br>` out of habit. Without this step those literal tags would be
+ *   escaped to `&lt;br&gt;` and render as visible text. Folding them
+ *   into `\n` first means they go through the same path as a real
+ *   newline and end up as proper `<br/>` line breaks. Other HTML
+ *   stays escaped so injection through admin-typed text remains safe.
  */
 export function renderInlineHtml(s: string): string {
   if (!s) return "";
-  const escaped = escapeHtml(s);
+  const normalized = s.replace(/<br\s*\/?\s*>/gi, "\n");
+  const escaped = escapeHtml(normalized);
   return escaped
     .replace(/\*\*/g, "")
     .replace(/\r?\n/g, "<br/>");
@@ -51,7 +62,11 @@ export function cleanText(s: string): string {
 import * as React from "react";
 export function renderMultiline(s: string): React.ReactNode {
   if (!s) return "";
-  const parts = s.split(/\r?\n/);
+  // Same `<br>` → `\n` normalization as renderInlineHtml so titles
+  // pasted with literal break tags still split into real lines instead
+  // of showing the tag as visible text.
+  const normalized = s.replace(/<br\s*\/?\s*>/gi, "\n");
+  const parts = normalized.split(/\r?\n/);
   return parts.map((line, i) =>
     React.createElement(
       React.Fragment,
