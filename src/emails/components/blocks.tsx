@@ -1401,7 +1401,14 @@ function GroundkStory({
                 lineHeight: 1.85,
                 fontWeight: 400,
                 margin: 0,
-                whiteSpace: "pre-line",
+                // whiteSpace: pre-line 을 의도적으로 제거했습니다.
+                // 단락 구분은 위 `body.replace(/\n/g, "<br>")` + renderInlineHtml
+                // 파이프라인이 명시적인 <br/> 태그로 이미 처리하므로 CSS 레벨
+                // 줄바꿈 보존이 중복입니다. 오히려 NCP 처럼 HTML 을 외부 에디터에
+                // 붙여넣어 발송하는 경로에서 코드 포매터가 가독성용으로 끼워넣는
+                // raw newline 까지 시각적 줄바꿈으로 렌더되어 본문이 잘게 끊기는
+                // 버그의 원인이 됐습니다 — 우리 시스템 발송에선 직렬화 방식이
+                // 달라 표면화하지 않았습니다.
               }}
               dangerouslySetInnerHTML={{
                 __html: renderInlineHtml(
