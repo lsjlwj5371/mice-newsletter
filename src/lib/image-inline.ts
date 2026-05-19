@@ -33,7 +33,7 @@ import sharp from "sharp";
  * successfully inlined (caller marks image_assets.inlined_at for each).
  */
 
-const MAX_INLINE_TOTAL_BYTES = 400 * 1024; // 400 KB per email
+const MAX_INLINE_TOTAL_BYTES = 400 * 1024; // 400 KB — email send default
 
 export interface InlineResult {
   html: string;
@@ -47,8 +47,17 @@ export async function inlineStorageImages(params: {
   supabaseUrl: string;
   /** Storage bucket name (e.g. "newsletter-images"). */
   bucket: string;
+  /**
+   * Total inlined-bytes budget. Defaults to 400 KB which suits the email
+   * send path (Gmail clips large bodies). The archive-download path
+   * passes a much larger cap so every image embeds and the saved HTML
+   * file is fully self-contained — there's no inbox size limit for a
+   * downloaded file.
+   */
+  maxBytes?: number;
 }): Promise<InlineResult> {
   const { html, supabaseUrl, bucket } = params;
+  const maxBytes = params.maxBytes ?? MAX_INLINE_TOTAL_BYTES;
 
   // Match <img ... src="..."> attrs, capturing both quoted and double-quoted
   const imgSrcPattern = /(<img\b[^>]*?\s)src=(["'])([^"']+)\2/gi;
@@ -75,7 +84,7 @@ export async function inlineStorageImages(params: {
       skippedReason[url] = "not a storage URL";
       continue;
     }
-    if (totalBytes >= MAX_INLINE_TOTAL_BYTES) {
+    if (totalBytes >= maxBytes) {
       skippedReason[url] = "hit per-email inline budget";
       continue;
     }
@@ -122,7 +131,7 @@ export async function inlineStorageImages(params: {
         }
       }
 
-      if (totalBytes + finalBuf.length > MAX_INLINE_TOTAL_BYTES) {
+      if (totalBytes + finalBuf.length > maxBytes) {
         skippedReason[url] = "exceeds per-email inline budget";
         continue;
       }

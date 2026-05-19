@@ -4,17 +4,28 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth-helpers";
 import Newsletter from "@/emails/Newsletter";
 import { newsletterContentSchema } from "@/lib/validation/newsletter-content";
+import { inlineStorageImages } from "@/lib/image-inline";
 import type { NewsletterRow } from "@/types/newsletter";
 
 export const dynamic = "force-dynamic";
+
+// Archive-download inline budget. Generous on purpose — a downloaded
+// HTML file has no inbox size limit, so we embed every image to make
+// the file fully self-contained for external archiving. 20 MB is
+// plenty for a newsletter (5-7 images, even as PNG ~ a few MB total)
+// while still guarding against a runaway accidentally-huge upload.
+const ARCHIVE_INLINE_BUDGET = 20 * 1024 * 1024;
 
 /**
  * Download the rendered HTML for a newsletter draft.
  *
  * GET /api/newsletters/[id]/html?download=1
- *   → Content-Disposition: attachment  (force browser download)
+ *   → Content-Disposition: attachment (force browser download).
+ *     Storage-hosted images are inlined as base64 so the saved file
+ *     is self-contained and survives the 7-day image-cleanup cron —
+ *     suitable for archiving on an external site.
  * GET /api/newsletters/[id]/html
- *   → inline (can be used as iframe src)
+ *   → inline (iframe src / NCP copy). Images stay as Storage URLs.
  */
 export async function GET(
   req: NextRequest,
@@ -63,9 +74,37 @@ export async function GET(
   // Swap them with token-less form pages hosted on this app so the
   // buttons always work: readers land on a form that asks for their
   // email and we update `recipients` from there.
-  const html = rawHtml
+  let html = rawHtml
     .replaceAll("{{UNSUBSCRIBE_HREF}}", `${appUrl}/unsubscribe`)
     .replaceAll("{{REFERRAL_HREF}}", `${appUrl}/refer`);
+
+  // For the archive-download path only: embed Storage images as base64
+  // so the saved .html is fully self-contained. The inline-preview /
+  // NCP-copy path (no download param) keeps Storage URLs unchanged.
+  // We intentionally do NOT mark image_assets.inlined_at here — a
+  // download is not a send and must not make Storage originals eligible
+  // for the 7-day cleanup cron.
+  if (forceDownload) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+    if (supabaseUrl) {
+      try {
+        const { html: embedded } = await inlineStorageImages({
+          html,
+          supabaseUrl,
+          bucket: "newsletter-images",
+          maxBytes: ARCHIVE_INLINE_BUDGET,
+        });
+        html = embedded;
+      } catch (err) {
+        // Embedding is best-effort: if it throws, fall back to the
+        // URL-referenced HTML rather than failing the download.
+        console.error(
+          "[html-download] image embed failed, serving URL-referenced HTML:",
+          err instanceof Error ? err.message : String(err)
+        );
+      }
+    }
+  }
 
   const safeLabel = (newsletter.issue_label || "newsletter")
     .replace(/[^a-zA-Z0-9가-힣_\- .]/g, "_")
