@@ -19,9 +19,14 @@ export async function markArticlesUsedForSentNewsletter(
   supabase: SupabaseClient,
   newsletterId: string
 ): Promise<{ updated: number }> {
+  // content_json 으로부터 현재 인용된 ID 와, draft 생애 동안 admin 이
+  // ArticlePicker 로 명시 지정한 ID 의 누적 union(`forced_article_ids`,
+  // 마이그레이션 0018) 두 가지를 모두 가져온다. 후자는 재생성 도중
+  // 인용에서 빠진 기사라도 admin 의 의도를 존중해 사용 완료로 마킹하기
+  // 위한 보조 소스.
   const { data: nl, error } = await supabase
     .from("newsletters")
-    .select("content_json")
+    .select("content_json, forced_article_ids")
     .eq("id", newsletterId)
     .single();
 
@@ -35,6 +40,11 @@ export async function markArticlesUsedForSentNewsletter(
     for (const id of block.referencedArticleIds ?? []) {
       if (id) ids.add(id);
     }
+  }
+  // Admin 누적 forced union 도 합쳐서 사용 완료 후보로.
+  const forced = (nl.forced_article_ids as string[] | null) ?? [];
+  for (const id of forced) {
+    if (id) ids.add(id);
   }
   if (ids.size === 0) {
     return { updated: 0 };

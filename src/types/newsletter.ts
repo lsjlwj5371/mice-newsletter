@@ -531,6 +531,13 @@ export interface NewsletterRow {
   collection_period_end: string | null;
   reference_notes: string | null;
   used_article_ids: string[];
+  /**
+   * Admin 이 ArticlePicker 로 명시 지정한 기사 ID 의 누적 union. 한 번
+   * 지정되면 이후 재생성·편집으로 referencedArticleIds 에서 빠져도
+   * 여기엔 남아있고, 발송 시 사용 완료 마킹의 보조 소스로 사용된다.
+   * 마이그레이션 0018 에서 추가됨. 이전 호는 기본값 '{}' .
+   */
+  forced_article_ids: string[];
   scheduled_at: string | null;
   sent_at: string | null;
   rendered_html_snapshot: string | null;

@@ -759,6 +759,17 @@ export async function createDraftWithBlocksAction(
     return blk;
   });
 
+  // Admin 이 폼에서 ArticlePicker 로 명시 지정한 forced article ID 들을
+  // 누적 union 으로 저장. 이후 재생성·편집으로 referencedArticleIds 에서
+  // 빠져도 발송 마킹 단계에서 사용 완료로 카운트되도록 영구 보존한다.
+  const initialForcedIds = Array.from(
+    new Set(
+      input.blocks
+        .flatMap((b) => b.forcedArticleIds ?? [])
+        .filter((id): id is string => typeof id === "string" && id.length > 0)
+    )
+  );
+
   // Save
   const { data: inserted, error: insertErr } = await supabase
     .from("newsletters")
@@ -772,6 +783,7 @@ export async function createDraftWithBlocksAction(
       collection_period_end: input.periodEnd,
       reference_notes: input.referenceNotes,
       used_article_ids: draftResult.usedArticleIds,
+      forced_article_ids: initialForcedIds,
       created_by: admin.id,
     })
     .select("id")
@@ -1530,11 +1542,30 @@ export async function regenerateBlockAction(
     blocks: updatedBlocks,
   };
 
+  // Admin 이 이 재생성 호출에서 ArticlePicker 로 명시 지정한 ID 가 있으면
+  // 누적 union 에 합쳐 영구 보존. 이후 다른 재생성에서 빠져도 발송 마킹
+  // 단계에서 사용 완료로 카운트되도록.
+  const incomingForced = (input.forcedArticleIds ?? []).filter(
+    (id): id is string => typeof id === "string" && id.length > 0
+  );
+  const updatedForcedIds =
+    incomingForced.length > 0
+      ? Array.from(
+          new Set([
+            ...((row.forced_article_ids as string[] | null) ?? []),
+            ...incomingForced,
+          ])
+        )
+      : ((row.forced_article_ids as string[] | null) ?? undefined);
+
   const { error: updErr } = await supabase
     .from("newsletters")
     .update({
       content_json: updatedContent,
       status: "review",
+      ...(incomingForced.length > 0
+        ? { forced_article_ids: updatedForcedIds }
+        : {}),
     })
     .eq("id", input.newsletterId);
   if (updErr) {
@@ -1721,11 +1752,28 @@ export async function addBlockAction(
     ...existingBlocks.slice(insertAt),
   ];
 
+  // 새 블록 추가 시에도 admin 이 명시 지정한 forced ID 가 있으면 누적 union 에 합침.
+  const incomingForced = (input.forcedArticleIds ?? []).filter(
+    (id): id is string => typeof id === "string" && id.length > 0
+  );
+  const updatedForcedIds =
+    incomingForced.length > 0
+      ? Array.from(
+          new Set([
+            ...((row.forced_article_ids as string[] | null) ?? []),
+            ...incomingForced,
+          ])
+        )
+      : ((row.forced_article_ids as string[] | null) ?? undefined);
+
   const { error: updErr } = await supabase
     .from("newsletters")
     .update({
       content_json: { ...content, blocks: updatedBlocks },
       status: "review",
+      ...(incomingForced.length > 0
+        ? { forced_article_ids: updatedForcedIds }
+        : {}),
     })
     .eq("id", input.newsletterId);
   if (updErr) {
