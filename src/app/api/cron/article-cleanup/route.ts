@@ -20,6 +20,9 @@ export const maxDuration = 60;
  * for the admin to clean up manually.
  */
 const RETENTION_DAYS = 30;
+// 묘비(deleted_article_guids) TTL — RSS 피드 윈도우(보통 1~2주)보다 훨씬 길어
+// 사실상 영구. 60일 지난 묘비는 아무 영향 없는 죽은 데이터이므로 함께 청소.
+const TOMBSTONE_RETENTION_DAYS = 60;
 
 interface RunSummary {
   ok: true;
@@ -27,6 +30,7 @@ interface RunSummary {
   cutoff_iso: string;
   deleted: number;
   by_review_status: { new: number; archived: number };
+  tombstones_expired: number;
 }
 
 function unauthorized() {
@@ -49,10 +53,10 @@ async function run(): Promise<RunSummary> {
   ).toISOString();
 
   // Look up matching rows first so we can return a breakdown by
-  // review_status. Cheap thanks to idx_articles_collected_at.
+  // review_status and capture guids for tombstoning.
   const { data: targets, error: selectErr } = await supabase
     .from("articles")
-    .select("id, review_status")
+    .select("id, guid, review_status")
     .lt("collected_at", cutoffIso)
     .is("used_in_newsletter_id", null)
     .eq("pinned", false);
@@ -67,6 +71,16 @@ async function run(): Promise<RunSummary> {
     else byReviewStatus.new++;
   }
 
+  // 60일 지난 묘비는 자동 정리. RSS 피드 윈도우 한참 지난 시점이라 더는
+  // 필요 없음. 본 작업과 무관한 부수 cleanup 이라 결과에 카운트만 노출.
+  const tombstoneCutoffIso = new Date(
+    Date.now() - TOMBSTONE_RETENTION_DAYS * 24 * 60 * 60 * 1000
+  ).toISOString();
+  const { count: tombstonesExpired } = await supabase
+    .from("deleted_article_guids")
+    .delete({ count: "exact" })
+    .lt("deleted_at", tombstoneCutoffIso);
+
   if ((targets ?? []).length === 0) {
     return {
       ok: true,
@@ -74,11 +88,11 @@ async function run(): Promise<RunSummary> {
       cutoff_iso: cutoffIso,
       deleted: 0,
       by_review_status: byReviewStatus,
+      tombstones_expired: tombstonesExpired ?? 0,
     };
   }
 
-  // Delete in one statement. We don't need DELETE RETURNING because we
-  // already have the count from the SELECT above.
+  // Delete in one statement.
   const { error: deleteErr, count } = await supabase
     .from("articles")
     .delete({ count: "exact" })
@@ -90,12 +104,31 @@ async function run(): Promise<RunSummary> {
     throw new Error(`Failed to delete: ${deleteErr.message}`);
   }
 
+  // 묘비 기록 — purge 버튼과 같은 이유. cron 이 지우는 행은 보통 30일+ 이라
+  // RSS 피드에 거의 안 남지만, 일관성·방어용으로 함께 기록.
+  const tombstones = (targets ?? [])
+    .map((r) => r.guid)
+    .filter((g): g is string => typeof g === "string" && g.length > 0)
+    .map((guid) => ({ guid }));
+  if (tombstones.length > 0) {
+    const { error: tombErr } = await supabase
+      .from("deleted_article_guids")
+      .upsert(tombstones, { onConflict: "guid", ignoreDuplicates: true });
+    if (tombErr) {
+      console.error(
+        "[article-cleanup] tombstone insert failed",
+        tombErr.message
+      );
+    }
+  }
+
   return {
     ok: true,
     retention_days: RETENTION_DAYS,
     cutoff_iso: cutoffIso,
     deleted: count ?? targets?.length ?? 0,
     by_review_status: byReviewStatus,
+    tombstones_expired: tombstonesExpired ?? 0,
   };
 }
 

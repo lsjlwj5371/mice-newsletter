@@ -112,18 +112,25 @@ async function runCollection(): Promise<RunSummary> {
       const items = allItems.slice(0, MAX_ITEMS_PER_FEED_PER_RUN);
       const feedCategories = (feed.categories ?? []) as ArticleCategory[];
 
-      // ─── Bulk dedup — one round trip instead of N ───
-      // Previously we did `select.eq('guid').maybeSingle()` per item,
-      // which on 15 items burns ~1-2s of pure DB latency before any
-      // analysis runs. Pull all existing GUIDs in a single query.
+      // ─── Bulk dedup — one round trip per source instead of N per item ───
+      // 1) `articles` 에 이미 있는 guid 는 당연히 스킵.
+      // 2) `deleted_article_guids` 묘비에 있는 guid 도 스킵 — admin 이 영구
+      //    삭제했거나 cleanup cron 이 청소한 기사가 RSS 피드 윈도우 안에
+      //    아직 남아있어도 재수집되지 않도록.
       const guids = items.map((i) => i.guid);
       let existingGuids = new Set<string>();
       if (guids.length > 0) {
-        const { data: existingRows } = await supabase
-          .from("articles")
-          .select("guid")
-          .in("guid", guids);
-        existingGuids = new Set((existingRows ?? []).map((r) => r.guid));
+        const [existingRes, tombstoneRes] = await Promise.all([
+          supabase.from("articles").select("guid").in("guid", guids),
+          supabase
+            .from("deleted_article_guids")
+            .select("guid")
+            .in("guid", guids),
+        ]);
+        existingGuids = new Set([
+          ...((existingRes.data ?? []).map((r) => r.guid as string)),
+          ...((tombstoneRes.data ?? []).map((r) => r.guid as string)),
+        ]);
       }
       const newItems = items.filter((i) => !existingGuids.has(i.guid));
 

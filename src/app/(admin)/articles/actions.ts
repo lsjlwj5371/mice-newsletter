@@ -209,10 +209,11 @@ export async function purgeArchivedArticlesAction(): Promise<
   const admin = await requireAdmin();
   const supabase = createAdminClient();
 
-  // 삭제 후보를 먼저 카운트해 응답 메시지에 사용.
+  // 삭제 후보를 먼저 카운트해 응답 메시지에 사용. guid 도 함께 가져와
+  // 삭제 직후 묘비(deleted_article_guids) 에 박아 RSS 재수집 방지에 사용.
   const { data: targets, error: selectErr } = await supabase
     .from("articles")
-    .select("id, used_in_newsletter_id, pinned")
+    .select("id, guid, used_in_newsletter_id, pinned")
     .eq("review_status", "archived");
 
   if (selectErr) {
@@ -254,13 +255,37 @@ export async function purgeArchivedArticlesAction(): Promise<
     return { ok: false, error: `삭제 실패: ${deleteErr.message}` };
   }
 
+  // 삭제 직후 묘비 기록 — RSS 피드에 같은 item 이 남아있어도 다음 cron 에서
+  // 재수집되지 않도록 방지. 이미 묘비에 있는 guid 는 onConflict 로 ignore.
+  const tombstones = deletable
+    .map((r) => r.guid)
+    .filter((g): g is string => typeof g === "string" && g.length > 0)
+    .map((guid) => ({ guid }));
+
+  if (tombstones.length > 0) {
+    const { error: tombErr } = await supabase
+      .from("deleted_article_guids")
+      .upsert(tombstones, { onConflict: "guid", ignoreDuplicates: true });
+    if (tombErr) {
+      // 묘비 기록 실패는 본 작업(삭제) 결과를 무효화하지 않는다 — 로그만.
+      console.error(
+        "[purgeArchived] tombstone insert failed",
+        tombErr.message
+      );
+    }
+  }
+
   const deleted = count ?? deletable.length;
 
   await logAudit({
     adminId: admin.id,
     action: "article.purge_archived",
     entity: "article",
-    metadata: { deleted, protected: protectedCount },
+    metadata: {
+      deleted,
+      protected: protectedCount,
+      tombstoned: tombstones.length,
+    },
   });
 
   revalidatePath("/articles");
