@@ -190,6 +190,91 @@ export async function applyBulkArticleAction(
   };
 }
 
+// ─────────────────────────────────────────────
+// PURGE — 불필요(archived) 분류된 후보 기사를 DB 에서 즉시 영구 삭제.
+//
+// 관리자가 "불필요" 탭에서 정리 마무리할 때 한 번에 비우는 용도. 매일 도는
+// article-cleanup cron 은 "30일 + 미사용 + 미고정" 인 행만 정리하므로,
+// 막 archived 로 분류한 행은 30일을 기다려야 사라진다. 이 액션은 그 기다림
+// 없이 admin 의 명시적 의도로 즉시 비우는 경로.
+//
+// 안전 조건 (cron 과 동일):
+//   · review_status = 'archived'
+//   · used_in_newsletter_id IS NULL    — 발송 호가 참조하면 삭제 금지
+//   · pinned = false                   — 다음 호 예약 표시는 안전 차원
+// ─────────────────────────────────────────────
+export async function purgeArchivedArticlesAction(): Promise<
+  ActionResult & { deleted?: number; protected?: number }
+> {
+  const admin = await requireAdmin();
+  const supabase = createAdminClient();
+
+  // 삭제 후보를 먼저 카운트해 응답 메시지에 사용.
+  const { data: targets, error: selectErr } = await supabase
+    .from("articles")
+    .select("id, used_in_newsletter_id, pinned")
+    .eq("review_status", "archived");
+
+  if (selectErr) {
+    return { ok: false, error: `조회 실패: ${selectErr.message}` };
+  }
+
+  const all = targets ?? [];
+  const deletable = all.filter(
+    (r) => r.used_in_newsletter_id === null && r.pinned === false
+  );
+  const protectedCount = all.length - deletable.length;
+
+  if (deletable.length === 0) {
+    await logAudit({
+      adminId: admin.id,
+      action: "article.purge_archived",
+      entity: "article",
+      metadata: { deleted: 0, protected: protectedCount },
+    });
+    return {
+      ok: true,
+      deleted: 0,
+      protected: protectedCount,
+      message:
+        protectedCount > 0
+          ? `삭제 가능한 행이 없습니다 (보호된 행 ${protectedCount}건).`
+          : "삭제할 행이 없습니다.",
+    };
+  }
+
+  const { error: deleteErr, count } = await supabase
+    .from("articles")
+    .delete({ count: "exact" })
+    .eq("review_status", "archived")
+    .is("used_in_newsletter_id", null)
+    .eq("pinned", false);
+
+  if (deleteErr) {
+    return { ok: false, error: `삭제 실패: ${deleteErr.message}` };
+  }
+
+  const deleted = count ?? deletable.length;
+
+  await logAudit({
+    adminId: admin.id,
+    action: "article.purge_archived",
+    entity: "article",
+    metadata: { deleted, protected: protectedCount },
+  });
+
+  revalidatePath("/articles");
+  return {
+    ok: true,
+    deleted,
+    protected: protectedCount,
+    message:
+      protectedCount > 0
+        ? `${deleted}건 영구 삭제 (사용 완료/고정된 ${protectedCount}건은 보존).`
+        : `${deleted}건 영구 삭제했습니다.`,
+  };
+}
+
 export async function toggleArticlePinAction(
   articleId: string,
   pinned: boolean

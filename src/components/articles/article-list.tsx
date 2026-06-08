@@ -17,6 +17,7 @@ import {
   setArticleStatusAction,
   toggleArticlePinAction,
   applyBulkArticleAction,
+  purgeArchivedArticlesAction,
   type BulkArticleAction,
 } from "@/app/(admin)/articles/actions";
 
@@ -118,6 +119,34 @@ export function ArticleList({ articles, counts, currentView }: Props) {
       const res = await applyBulkArticleAction(ids, action);
       if (res.ok) {
         setBulkMsg({ type: "success", text: res.message ?? "적용됨" });
+        setCheckedIds(new Set());
+        router.refresh();
+      } else {
+        setBulkMsg({ type: "error", text: res.error });
+      }
+    });
+  }
+
+  // 불필요 분류된 후보 기사를 DB 에서 즉시 영구 삭제.
+  // 발송된 호에 사용된 기사 / 핀 표시된 기사는 서버가 자동 보호한다.
+  function handlePurgeArchived() {
+    const total = counts.archived ?? 0;
+    if (
+      !confirm(
+        `불필요로 분류된 후보 기사 ${total}건을 DB 에서 영구 삭제합니다.\n` +
+          `(이미 발송된 호가 참조하는 기사·고정된 기사는 자동으로 보호됩니다)\n\n` +
+          `되돌릴 수 없습니다. 계속할까요?`
+      )
+    )
+      return;
+    setBulkMsg(null);
+    startBulk(async () => {
+      const res = await purgeArchivedArticlesAction();
+      if (res.ok) {
+        setBulkMsg({
+          type: "success",
+          text: res.message ?? "삭제되었습니다.",
+        });
         setCheckedIds(new Set());
         router.refresh();
       } else {
@@ -271,6 +300,19 @@ export function ArticleList({ articles, counts, currentView }: Props) {
         <span className="text-xs text-muted-foreground ml-auto">
           {articles.length}건 표시
         </span>
+        {/* 불필요(archived) 탭에서만 노출. 후보 기사 정리 마무리용 영구 삭제. */}
+        {currentView === "archived" && (counts.archived ?? 0) > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handlePurgeArchived}
+            disabled={bulkPending}
+            className="text-rose-600 border-rose-200 hover:bg-rose-50"
+            title="불필요로 분류된 행을 DB 에서 영구 삭제 (사용 완료·고정된 기사는 자동 보호)"
+          >
+            🗑 불필요 목록 영구 삭제
+          </Button>
+        )}
       </div>
 
       {/* Bulk toolbar — appears only when some rows are selected */}
