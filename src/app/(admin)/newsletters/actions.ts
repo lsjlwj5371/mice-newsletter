@@ -563,10 +563,15 @@ export interface BlockConfigInput {
 export interface CreateDraftWithBlocksInput {
   issueLabel: string;
   /** Numeric volume number shown as "VOL 001" in the header. When
-   *  undefined the header falls back to the legacy issueMeta string. */
+   *  undefined (특별호) the header falls back to the legacy issueMeta
+   *  string ("특별호" 등). */
   issueNumber?: number;
   /** Intended send date shown next to the "ISSUE" label. ISO date. */
   issueDate?: string;
+  /** 특별호 플래그. true 면 정규 VOL 시퀀스에서 제외 — 다음 호 카운트에서
+   *  빠지고, content_json.header.issueNumber 도 비워서 헤더에 "특별호"
+   *  legacy 라벨이 표시되도록 한다. */
+  isSpecial?: boolean;
   periodStart: string | null;
   periodEnd: string | null;
   perCategoryLimit: number;
@@ -784,6 +789,8 @@ export async function createDraftWithBlocksAction(
       reference_notes: input.referenceNotes,
       used_article_ids: draftResult.usedArticleIds,
       forced_article_ids: initialForcedIds,
+      // 특별호 플래그 — 다음 호 추천 카운트에서 제외되도록.
+      is_special: input.isSpecial === true,
       created_by: admin.id,
     })
     .select("id")

@@ -36,7 +36,21 @@ export function NewDraftForm({ defaultIssueNumber }: Props) {
   const thirtyAgoStr = formatDateForInput(thirtyDaysAgo);
 
   const [issueLabel, setIssueLabel] = React.useState(defaultIssueLabel);
+  // 특별호 플래그 — 체크 시 VOL 번호 미부여 + 헤더에 "특별호" 표시 +
+  // 다음 정규 호 번호 추천에서 제외. 라벨은 admin 이 자유롭게 변경 가능.
+  const [isSpecial, setIsSpecial] = React.useState(false);
   const [usePeriod, setUsePeriod] = React.useState(true);
+
+  // 특별호 토글 시: 라벨이 디폴트 "N호" 상태였다면 "특별호" 로 바꿔주고,
+  // 해제 시 다시 "N호" 로 되돌린다 (admin 이 이미 손댄 라벨은 존중).
+  function handleSpecialToggle(checked: boolean) {
+    setIsSpecial(checked);
+    if (checked && issueLabel === defaultIssueLabel) {
+      setIssueLabel("특별호");
+    } else if (!checked && issueLabel === "특별호") {
+      setIssueLabel(defaultIssueLabel);
+    }
+  }
   const [periodStart, setPeriodStart] = React.useState(thirtyAgoStr);
   const [periodEnd, setPeriodEnd] = React.useState(todayStr);
   const [referenceNotes, setReferenceNotes] = React.useState("");
@@ -62,7 +76,9 @@ export function NewDraftForm({ defaultIssueNumber }: Props) {
       try {
         const result = await createDraftWithBlocksAction({
           issueLabel,
-          issueNumber,
+          // 특별호는 VOL 번호 미부여 — 액션에서 issueNumber 자체를 무시.
+          issueNumber: isSpecial ? undefined : issueNumber,
+          isSpecial,
           periodStart: usePeriod ? periodStart : null,
           periodEnd: usePeriod ? periodEnd : null,
           perCategoryLimit,
@@ -132,26 +148,45 @@ export function NewDraftForm({ defaultIssueNumber }: Props) {
           </p>
         </div>
 
-        {/* ── 헤더에 표시되는 VOL 번호 ─────────────────────── */}
-        <div className="space-y-1">
-          <Label htmlFor="issueNumber">VOL 번호</Label>
-          <Input
-            id="issueNumber"
-            type="number"
-            min={0}
-            max={9999}
-            value={issueNumber}
-            onChange={(e) => {
-              const v = e.target.value;
-              setIssueNumber(v === "" ? 0 : Math.max(0, Math.min(9999, Number(v))));
-            }}
-            disabled={pending}
-          />
-          <p className="text-[11px] text-muted-foreground">
-            뉴스레터 헤더에 &quot;VOL {String(issueNumber).padStart(3, "0")}&quot;으로
-            표시됩니다. 3자리 미만이면 자동으로 0을 채웁니다. 기존 뉴스레터 수를
-            바탕으로 다음 번호를 제안합니다.
-          </p>
+        {/* ── 헤더에 표시되는 VOL 번호 + 특별호 토글 ─────────────────── */}
+        <div className="space-y-2">
+          {/* 특별호 체크 시 VOL 입력칸을 비활성화 + 안내 문구 교체. */}
+          <label className="inline-flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isSpecial}
+              onChange={(e) => handleSpecialToggle(e.target.checked)}
+              disabled={pending}
+              className="h-4 w-4 rounded border-border"
+            />
+            <span className="text-sm font-medium">특별호</span>
+            <span className="text-[11px] text-muted-foreground">
+              체크하면 VOL 번호가 부여되지 않고 다음 정규 호 번호에도 영향 없음.
+            </span>
+          </label>
+
+          <div className="space-y-1">
+            <Label htmlFor="issueNumber" className={isSpecial ? "text-muted-foreground" : undefined}>
+              VOL 번호 {isSpecial && <span className="text-[11px]">(특별호이므로 미적용)</span>}
+            </Label>
+            <Input
+              id="issueNumber"
+              type="number"
+              min={0}
+              max={9999}
+              value={issueNumber}
+              onChange={(e) => {
+                const v = e.target.value;
+                setIssueNumber(v === "" ? 0 : Math.max(0, Math.min(9999, Number(v))));
+              }}
+              disabled={pending || isSpecial}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              {isSpecial
+                ? `특별호로 표시됩니다. 헤더에 위 "특별호 라벨" 텍스트가 들어가고 다음 정규 호는 VOL ${String(defaultIssueNumber).padStart(3, "0")} 자리를 그대로 유지합니다.`
+                : `뉴스레터 헤더에 "VOL ${String(issueNumber).padStart(3, "0")}"으로 표시됩니다. 3자리 미만이면 자동으로 0을 채웁니다. 기존 뉴스레터 수를 바탕으로 다음 번호를 제안합니다.`}
+            </p>
+          </div>
         </div>
 
         <div className="space-y-2">

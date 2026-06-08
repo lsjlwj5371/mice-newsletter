@@ -538,6 +538,11 @@ export interface NewsletterRow {
    * 마이그레이션 0018 에서 추가됨. 이전 호는 기본값 '{}' .
    */
   forced_article_ids: string[];
+  /**
+   * 특별호 플래그. true 면 정규 VOL 시퀀스에서 제외 — 헤더에 VOL 번호
+   * 미표시, 다음 호 번호 추천 카운트에서도 빠진다. 마이그레이션 0020.
+   */
+  is_special: boolean;
   scheduled_at: string | null;
   sent_at: string | null;
   rendered_html_snapshot: string | null;

@@ -7,14 +7,14 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * Compute the next issue number suggestion: count of all non-archived
- * newsletters (draft / review / scheduled / sent) + 1. Archived issues
- * are skipped because admins typically reset them after a mistake and
- * wouldn't expect them to occupy a slot in the public sequence.
+ * Compute the next issue number suggestion: count of all non-archived,
+ * non-special newsletters + 1. Archived issues are skipped because admins
+ * typically reset them after a mistake. Special issues (is_special=true)
+ * are also skipped so they don't occupy a slot in the VOL sequence —
+ * 다음 정규 호는 직전 정규 호 다음 번호로 자연 이어진다.
  *
- * Admin can still override the issue label freely — this is a default,
- * not a hard constraint, so special editions (예: "창간호", "특별호")
- * work by just typing the desired label.
+ * Admin can still override the issue label/number freely — this is a
+ * default, not a hard constraint.
  */
 async function computeNextIssueNumber(): Promise<number> {
   try {
@@ -22,7 +22,8 @@ async function computeNextIssueNumber(): Promise<number> {
     const { count, error } = await supabase
       .from("newsletters")
       .select("*", { count: "exact", head: true })
-      .neq("status", "archived");
+      .neq("status", "archived")
+      .eq("is_special", false);
     if (error) return 1;
     return (count ?? 0) + 1;
   } catch {
