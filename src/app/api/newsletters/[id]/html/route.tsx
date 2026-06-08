@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/auth-helpers";
 import Newsletter from "@/emails/Newsletter";
 import { newsletterContentSchema } from "@/lib/validation/newsletter-content";
 import { inlineStorageImages } from "@/lib/image-inline";
-import type { NewsletterRow } from "@/types/newsletter";
+import type { NewsletterRow, NewsletterContent } from "@/types/newsletter";
 
 export const dynamic = "force-dynamic";
 
@@ -109,8 +109,28 @@ export async function GET(
     }
   }
 
-  const safeLabel = (newsletter.issue_label || "newsletter")
-    .replace(/[^a-zA-Z0-9가-힣_\- .]/g, "_")
+  // 파일명 = "{brand}_{label}.html" 형태로 표준화.
+  //   · brand: content_json.header.wordmark — 호 생성 당시 wordmark 스냅샷
+  //     (보통 "MICE人sight"). 비어있으면 안전 폴백 "newsletter".
+  //   · label:
+  //       - 정규 호 (is_special=false 이고 header.issueNumber 가 숫자):
+  //         "VOL{NNN}" (3자리 zero-pad). 예: "VOL003".
+  //       - 특별호 / issueNumber 없음: issue_label 그대로 사용 (예: "특별호",
+  //         "창간호 기념"). admin 이 입력한 라벨을 존중.
+  const parsedContent = newsletter.content_json as NewsletterContent | null;
+  const wordmark =
+    parsedContent?.header?.wordmark?.trim() || "newsletter";
+  const issueNumber = parsedContent?.header?.issueNumber;
+  const isSpecial = (newsletter as { is_special?: boolean }).is_special === true;
+
+  const labelPart =
+    !isSpecial && typeof issueNumber === "number"
+      ? `VOL${String(issueNumber).padStart(3, "0")}`
+      : newsletter.issue_label || "issue";
+
+  // 파일명에 허용되는 문자만 남기고 나머지는 _ — 한글·CJK·영문·숫자·_- .은 유지.
+  const safeLabel = `${wordmark}_${labelPart}`
+    .replace(/[^a-zA-Z0-9가-힣一-鿿_\- .]/g, "_")
     .slice(0, 80);
 
   const headers: Record<string, string> = {
