@@ -59,16 +59,45 @@ export async function inlineStorageImages(params: {
   const { html, supabaseUrl, bucket } = params;
   const maxBytes = params.maxBytes ?? MAX_INLINE_TOTAL_BYTES;
 
-  // Match <img ... src="..."> attrs, capturing both quoted and double-quoted
-  const imgSrcPattern = /(<img\b[^>]*?\s)src=(["'])([^"']+)\2/gi;
+  // 이미지가 박힐 수 있는 세 패턴을 모두 잡는다. 과거에는 <img src> 만 처리
+  // 해서 MICE Insight 의 풀블리드 히어로(<td background> + CSS background-
+  // image:url() 패턴)는 임베드에서 누락 → Storage 삭제 시 깨졌다. 이제는
+  // 세 패턴 모두 같은 fetch/transcode 캐시를 공유하면서 일괄 치환.
+  const patterns: Array<{
+    /** URL 추출용 regex — 캡처 그룹 마지막에 URL 이 와야 함. */
+    regex: RegExp;
+    /** 매칭된 텍스트를 새 src 로 재조립. */
+    rebuild: (m: RegExpMatchArray, newSrc: string) => string;
+  }> = [
+    {
+      // <img ... src="...">
+      regex: /(<img\b[^>]*?\s)src=(["'])([^"']+)\2/gi,
+      rebuild: (m, src) => `${m[1]}src=${m[2]}${src}${m[2]}`,
+    },
+    {
+      // <td background="..."> — 이메일 풀블리드 표준 패턴
+      regex: /(\sbackground=)(["'])(https?:\/\/[^"']+)\2/gi,
+      rebuild: (m, src) => `${m[1]}${m[2]}${src}${m[2]}`,
+    },
+    {
+      // style="...background-image: url(https://...)..." — 모던 클라이언트
+      // 백업 패턴. url() 안 URL 은 따옴표 있을 수도 없을 수도.
+      regex:
+        /(background-image\s*:\s*url\s*\(\s*)(["']?)(https?:\/\/[^"')\s]+)\2(\s*\))/gi,
+      rebuild: (m, src) => `${m[1]}${m[2]}${src}${m[2]}${m[4]}`,
+    },
+  ];
 
   // Build a map of URL → data URI (or error reason) so repeated images
-  // are only fetched once.
+  // are only fetched once across all three patterns.
   const urlsInDoc = new Set<string>();
-  let m: RegExpExecArray | null;
-  const re = new RegExp(imgSrcPattern.source, imgSrcPattern.flags);
-  while ((m = re.exec(html)) !== null) {
-    urlsInDoc.add(m[3]);
+  for (const p of patterns) {
+    const re = new RegExp(p.regex.source, p.regex.flags);
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) !== null) {
+      // URL 은 항상 마지막 텍스트 캡처(p.regex 별로 m[3])
+      urlsInDoc.add(m[3]);
+    }
   }
 
   const storageUrlPrefix = `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/${bucket}/`;
@@ -149,15 +178,19 @@ export async function inlineStorageImages(params: {
     }
   }
 
-  // Rewrite the HTML using the lookup table.
-  const outHtml = html.replace(
-    imgSrcPattern,
-    (match, preamble, quote, originalUrl) => {
-      const dataUri = dataUriByUrl.get(originalUrl);
-      if (!dataUri) return match;
-      return `${preamble}src=${quote}${dataUri}${quote}`;
-    }
-  );
+  // Rewrite the HTML — apply each pattern's rebuild fn to its own matches,
+  // using the shared dataUriByUrl cache. Patterns are independent so order
+  // doesn't matter; we just sequentially run all three replaces.
+  let outHtml = html;
+  for (const p of patterns) {
+    outHtml = outHtml.replace(p.regex, (...args) => {
+      const match = args as unknown as RegExpMatchArray;
+      const url = match[3];
+      const dataUri = dataUriByUrl.get(url);
+      if (!dataUri) return match[0];
+      return p.rebuild(match, dataUri);
+    });
+  }
 
   return {
     html: outHtml,
