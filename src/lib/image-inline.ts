@@ -55,9 +55,19 @@ export async function inlineStorageImages(params: {
    * downloaded file.
    */
   maxBytes?: number;
+  /**
+   * When true, embed images from ANY HTTP(S) URL — not just our own
+   * Storage bucket. Used by the archive-download path so the saved
+   * HTML is fully self-contained (footer logos hosted on Vercel etc.
+   * get embedded too). The default (false) preserves the email-send
+   * behavior where only Storage-hosted images are inlined and stable
+   * external CDNs stay as URL references.
+   */
+  embedAll?: boolean;
 }): Promise<InlineResult> {
   const { html, supabaseUrl, bucket } = params;
   const maxBytes = params.maxBytes ?? MAX_INLINE_TOTAL_BYTES;
+  const embedAll = params.embedAll ?? false;
 
   // 이미지가 박힐 수 있는 세 패턴을 모두 잡는다. 과거에는 <img src> 만 처리
   // 해서 MICE Insight 의 풀블리드 히어로(<td background> + CSS background-
@@ -108,8 +118,11 @@ export async function inlineStorageImages(params: {
   let totalBytes = 0;
 
   for (const url of urlsInDoc) {
-    // Only inline our own Storage bucket URLs
-    if (!url.startsWith(storageUrlPrefix)) {
+    // embedAll=false (email send 기본값): 우리 Storage URL 만 임베드, 외부
+    // CDN/Vercel 호스팅은 URL 그대로 두어 이메일 본문 비대화 방지.
+    // embedAll=true (archive download): 모든 HTTP(S) 이미지 임베드 → HTML
+    // 파일이 완전 자체완결, 외부 의존성 0.
+    if (!embedAll && !url.startsWith(storageUrlPrefix)) {
       skippedReason[url] = "not a storage URL";
       continue;
     }
@@ -170,8 +183,12 @@ export async function inlineStorageImages(params: {
         url,
         `data:${finalMime};base64,${finalBuf.toString("base64")}`
       );
-      // Extract storage path (everything after the bucket prefix)
-      pathByUrl.set(url, url.slice(storageUrlPrefix.length));
+      // pathByUrl 는 우리 Storage 자산을 inlined 마킹하기 위한 식별자라
+      // 외부 URL(embedAll 일 때 같이 들어온 footer 로고 등) 은 기록하지
+      // 않는다. inlined_at 마킹이 외부 자산에 의도치 않게 번지지 않도록.
+      if (url.startsWith(storageUrlPrefix)) {
+        pathByUrl.set(url, url.slice(storageUrlPrefix.length));
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       skippedReason[url] = `fetch error: ${msg}`;

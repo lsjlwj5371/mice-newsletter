@@ -93,6 +93,9 @@ export async function GET(
           supabaseUrl,
           bucket: "newsletter-images",
           maxBytes: ARCHIVE_INLINE_BUDGET,
+          // 아카이브 다운로드는 외부 URL(Vercel 호스팅 푸터 로고 등)까지
+          // 전부 임베드 → 파일이 완전 자체완결, 외부 도메인 의존성 0.
+          embedAll: true,
         });
         html = embedded;
       } catch (err) {
