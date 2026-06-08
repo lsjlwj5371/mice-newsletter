@@ -84,6 +84,23 @@ function mergePreservedBlockFields(
     }
   }
 
+  if (type === "promo_banner") {
+    // 배너 블록은 본문이 없는 admin-only 자산이라 어떤 재생성·구조 변경에서도
+    // 관리자가 박은 imageUrl/linkUrl/alt 가 한 글자도 안 바뀌어야 한다.
+    // 새로 들어온 값이 비었거나 placeholder 면 기존 값 유지.
+    const oldImg = (oldData.imageUrl as string | undefined) ?? "";
+    const newImg = (merged.imageUrl as string | undefined) ?? "";
+    merged.imageUrl = newImg.trim() ? newImg : oldImg;
+
+    const oldLink = (oldData.linkUrl as string | undefined) ?? "";
+    const newLink = (merged.linkUrl as string | undefined) ?? "";
+    merged.linkUrl = newLink.trim() ? newLink : oldLink;
+
+    if (merged.alt === undefined && oldData.alt !== undefined) {
+      merged.alt = oldData.alt;
+    }
+  }
+
   return merged;
 }
 
@@ -536,6 +553,11 @@ export interface BlockConfigInput {
   /** groundk_story only — per-part visibility. Default true. */
   showFieldBriefing?: boolean;
   showProjectSketch?: boolean;
+  /** promo_banner only — admin-supplied image and click target.
+   *  Either / both may be empty strings; the post-creation edit panel
+   *  can fill them in later. */
+  promoBannerImageUrl?: string;
+  promoBannerLinkUrl?: string;
 }
 
 export interface CreateDraftWithBlocksInput {
@@ -707,21 +729,34 @@ export async function createDraftWithBlocksAction(
     return { ok: false, error: `Claude 초안 생성 실패: ${msg}` };
   }
 
-  // Stamp any per-block visibility flags that don't round-trip through
-  // Claude (e.g. groundk_story show toggles) onto the generated blocks.
-  // This runs AFTER generation so Claude's freshly produced data gets
-  // the admin's structural choices layered on top.
+  // Stamp any per-block fields that don't round-trip through Claude
+  // (groundk_story visibility toggles, promo_banner image/link) onto the
+  // generated blocks. This runs AFTER generation so admin-supplied
+  // structural choices layer on top of Claude's payload.
   draftResult.content.blocks = draftResult.content.blocks.map((blk, idx) => {
     const cfg = input.blocks[idx];
-    if (!cfg || cfg.type !== "groundk_story") return blk;
-    return {
-      ...blk,
-      data: {
-        ...(blk.data as Record<string, unknown>),
-        showFieldBriefing: cfg.showFieldBriefing ?? true,
-        showProjectSketch: cfg.showProjectSketch ?? true,
-      },
-    } as typeof blk;
+    if (!cfg) return blk;
+    if (cfg.type === "groundk_story") {
+      return {
+        ...blk,
+        data: {
+          ...(blk.data as Record<string, unknown>),
+          showFieldBriefing: cfg.showFieldBriefing ?? true,
+          showProjectSketch: cfg.showProjectSketch ?? true,
+        },
+      } as typeof blk;
+    }
+    if (cfg.type === "promo_banner") {
+      return {
+        ...blk,
+        data: {
+          ...(blk.data as Record<string, unknown>),
+          imageUrl: (cfg.promoBannerImageUrl ?? "").trim(),
+          linkUrl: (cfg.promoBannerLinkUrl ?? "").trim(),
+        },
+      } as typeof blk;
+    }
+    return blk;
   });
 
   // Save
@@ -1833,4 +1868,86 @@ export async function moveBlockAction(
 
   revalidatePath(`/newsletters/${newsletterId}`);
   return { ok: true, id: newsletterId, message: "순서가 변경되었습니다." };
+}
+
+
+// ─────────────────────────────────────────────
+// PROMO BANNER — set link URL
+// promo_banner 블록의 클릭 타겟 URL을 갱신.
+// 이미지 자체는 setBlockImageAction(기존)으로 처리되므로 별도 액션 불필요.
+// ─────────────────────────────────────────────
+export async function setPromoBannerLinkAction(input: {
+  newsletterId: string;
+  blockIndex: number;
+  /** 새 링크 URL. 빈 문자열 또는 null = 링크 제거 (클릭 비활성). */
+  url: string | null;
+}): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const supabase = createAdminClient();
+
+  const normalized =
+    input.url && input.url.trim() !== "" ? input.url.trim() : "";
+
+  const { data: row, error: fetchErr } = await supabase
+    .from("newsletters")
+    .select("id, status, content_json")
+    .eq("id", input.newsletterId)
+    .single();
+  if (fetchErr || !row) {
+    return { ok: false, error: "원본 호를 찾을 수 없습니다." };
+  }
+  if (row.status === "sent") {
+    return { ok: false, error: "이미 발송된 호는 수정할 수 없습니다." };
+  }
+
+  const content = row.content_json as NewsletterContent;
+  if (
+    !content.blocks ||
+    input.blockIndex < 0 ||
+    input.blockIndex >= content.blocks.length
+  ) {
+    return { ok: false, error: "해당 블록을 찾을 수 없습니다." };
+  }
+  const block = content.blocks[input.blockIndex];
+  if (block.type !== "promo_banner") {
+    return {
+      ok: false,
+      error: "promo_banner 블록이 아닙니다.",
+    };
+  }
+
+  const blocks = [...content.blocks];
+  blocks[input.blockIndex] = {
+    ...block,
+    data: {
+      ...(block.data as Record<string, unknown>),
+      linkUrl: normalized,
+    },
+  } as NewsletterContent["blocks"][number];
+
+  const { error: updErr } = await supabase
+    .from("newsletters")
+    .update({
+      content_json: { ...content, blocks },
+      status: "review",
+    })
+    .eq("id", input.newsletterId);
+  if (updErr) {
+    return { ok: false, error: `DB 저장 실패: ${updErr.message}` };
+  }
+
+  await logAudit({
+    adminId: admin.id,
+    action: "newsletter.promo_banner_link",
+    entity: "newsletter",
+    entityId: input.newsletterId,
+    metadata: { blockIndex: input.blockIndex, url: normalized },
+  });
+
+  revalidatePath(`/newsletters/${input.newsletterId}`);
+  return {
+    ok: true,
+    id: input.newsletterId,
+    message: normalized ? "링크가 저장되었습니다." : "링크가 제거되었습니다.",
+  };
 }

@@ -46,6 +46,7 @@ export const BLOCK_TYPES = [
   "consolidated_insight",
   "event_radar",
   "blog_card_grid",
+  "promo_banner",
 ] as const;
 
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -62,6 +63,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   consolidated_insight: "MICE 인사이트 (단일 주제 심층 분석)",
   event_radar: "이달의 주목할 행사 (Event Radar)",
   blog_card_grid: "블로그 카드 그리드",
+  promo_banner: "홍보 배너",
 };
 
 export const BLOCK_DESCRIPTIONS: Record<BlockType, string> = {
@@ -76,6 +78,7 @@ export const BLOCK_DESCRIPTIONS: Record<BlockType, string> = {
   consolidated_insight: "하나의 주제를 3~5개 챕터로 나눠 기승전결로 심층 분석. 분량 길게 허용",
   event_radar: "업계 관계자도 놓치기 쉬운 개최 예정 행사 2~4건 소개 (URL 붙여넣으면 실제 본문 반영)",
   blog_card_grid: "외부 블로그 글을 카드로 소개 (2~6개)",
+  promo_banner: "이미지 + 링크만 들어가는 가로 풀폭 홍보 배너 (권장 1280×426)",
 };
 
 /**
@@ -97,6 +100,8 @@ export const BLOCK_NEEDS_RESEARCH: Record<BlockType, boolean> = {
   // event-related from the news categories when available.
   event_radar: true,
   blog_card_grid: false,
+  // promo_banner = pure admin-supplied media. No Claude, no articles.
+  promo_banner: false,
 };
 
 // ─────────────────────────────────────────────
@@ -115,7 +120,8 @@ export type BlockInstance =
   | GroundkStoryBlock
   | ConsolidatedInsightBlock
   | EventRadarBlock
-  | BlogCardGridBlock;
+  | BlogCardGridBlock
+  | PromoBannerBlock;
 
 interface BlockBase {
   /** Stable id for drag-drop + edit tracking. Generated client-side. */
@@ -400,6 +406,29 @@ export interface BlogCardGridBlock extends BlockBase {
   data: {
     englishLabel: string; // "GroundK Blog"
     cards: BlogCard[]; // 2~6
+  };
+}
+
+/**
+ * 홍보 배너 — 이미지 + 링크만 있는 단순 배너 블록.
+ * 챕터 라벨·본문 없음, 카드 가로 풀폭으로 가운데에 박힘. linkUrl 이
+ * 있으면 클릭 시 새 탭으로 이동. 텍스트 본문이 없는 admin-only 블록이라
+ * Claude 로 작성하지 않는다 — 관리자가 이미지와 링크를 직접 제공.
+ *
+ * 권장 이미지 비율: 3:1 (예: 1280×426). 너무 두꺼우면 본문 흐름을
+ * 끊고, 너무 얇으면 시인성이 떨어진다.
+ */
+export interface PromoBannerBlock extends BlockBase {
+  type: "promo_banner";
+  data: {
+    /** 배너 이미지 URL. 빈 문자열 = placeholder 상태. */
+    imageUrl: string;
+    /** 클릭 시 이동할 외부 URL. 빈 문자열 = 클릭 비활성 (이미지만 표시). */
+    linkUrl: string;
+    /** 이미지 alt. 없으면 빈 문자열. */
+    alt?: string;
+    /** 호환용 — 항상 "full" 처럼 동작. 다른 블록과 동일하게 필드만 둔다. */
+    imageLayout?: ImageLayout;
   };
 }
 

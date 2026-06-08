@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea, Label } from "@/components/ui/input";
+import { Input, Textarea, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -41,6 +41,13 @@ export interface BlockConfig {
    */
   showFieldBriefing?: boolean;
   showProjectSketch?: boolean;
+  /**
+   * promo_banner only — admin-supplied image and click target. Both
+   * optional at this stage; admin can also leave them blank here and
+   * fill via the post-creation edit panel.
+   */
+  promoBannerImageUrl?: string;
+  promoBannerLinkUrl?: string;
 }
 
 interface Props {
@@ -71,11 +78,17 @@ export function BlockPicker({ blocks, onChange }: Props) {
     const newBlock: BlockConfig = {
       type,
       instructions: "",
-      // groundk_story is admin-only — force autoSearch off
-      autoSearch: type === "groundk_story" ? false : BLOCK_NEEDS_RESEARCH[type],
+      // admin-only blocks force autoSearch off
+      autoSearch:
+        type === "groundk_story" || type === "promo_banner"
+          ? false
+          : BLOCK_NEEDS_RESEARCH[type],
       forcedArticleIds: [],
       ...(type === "groundk_story"
         ? { showFieldBriefing: true, showProjectSketch: true }
+        : {}),
+      ...(type === "promo_banner"
+        ? { promoBannerImageUrl: "", promoBannerLinkUrl: "" }
         : {}),
     };
     onChange([...blocks, newBlock]);
@@ -267,7 +280,59 @@ export function BlockPicker({ blocks, onChange }: Props) {
                     {BLOCK_DESCRIPTIONS[block.type]}
                   </p>
 
-                  {block.type === "groundk_story" ? (
+                  {block.type === "promo_banner" ? (
+                    <>
+                      <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        <strong>홍보 배너</strong> — Claude 가 본문을 만들지 않는 이미지 전용 블록입니다.
+                        가로 풀폭으로 가운데 정렬됩니다. 권장 이미지 비율 <strong>3:1 (예: 1280 × 426 px)</strong>.
+                      </div>
+                      <div className="space-y-2 rounded-md border border-border bg-muted/30 px-3 py-2">
+                        <div>
+                          <Label
+                            htmlFor={`banner-img-${i}`}
+                            className="text-xs font-semibold"
+                          >
+                            배너 이미지 URL <span className="text-muted-foreground font-normal">(선택)</span>
+                          </Label>
+                          <Input
+                            id={`banner-img-${i}`}
+                            type="url"
+                            value={block.promoBannerImageUrl ?? ""}
+                            onChange={(e) =>
+                              updateBlock(i, {
+                                promoBannerImageUrl: e.target.value,
+                              })
+                            }
+                            placeholder="https://… (또는 비워두고 생성 후 편집 패널에서 업로드)"
+                            className="mt-1 text-xs"
+                          />
+                        </div>
+                        <div>
+                          <Label
+                            htmlFor={`banner-link-${i}`}
+                            className="text-xs font-semibold"
+                          >
+                            클릭 시 이동할 링크 URL <span className="text-muted-foreground font-normal">(선택)</span>
+                          </Label>
+                          <Input
+                            id={`banner-link-${i}`}
+                            type="url"
+                            value={block.promoBannerLinkUrl ?? ""}
+                            onChange={(e) =>
+                              updateBlock(i, {
+                                promoBannerLinkUrl: e.target.value,
+                              })
+                            }
+                            placeholder="https://… (비워두면 클릭 동작 없음)"
+                            className="mt-1 text-xs"
+                          />
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          둘 다 비워둬도 블록은 생성되며, 이후 편집 패널에서 이미지 업로드·링크 입력이 가능합니다.
+                        </p>
+                      </div>
+                    </>
+                  ) : block.type === "groundk_story" ? (
                     <>
                       <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                         이 블록은 <strong>관리자 레퍼런스 전용</strong>입니다. 자동
@@ -338,7 +403,9 @@ export function BlockPicker({ blocks, onChange }: Props) {
                     </div>
                   )}
 
-                  {block.type !== "groundk_story" && block.autoSearch && (
+                  {block.type !== "groundk_story" &&
+                    block.type !== "promo_banner" &&
+                    block.autoSearch && (
                     <div>
                       <Label className="text-xs text-muted-foreground">
                         이 블록에서 사용할 기사 (선택)
@@ -365,26 +432,29 @@ export function BlockPicker({ blocks, onChange }: Props) {
                     </div>
                   )}
 
-                  <div>
-                    <Label
-                      htmlFor={`inst-${i}`}
-                      className="text-xs text-muted-foreground"
-                    >
-                      {block.type === "groundk_story"
-                        ? "현장 자료 / 프로젝트 설명 (필수)"
-                        : "추가 지시 (선택, Claude에게 자연어로 전달)"}
-                    </Label>
-                    <Textarea
-                      id={`inst-${i}`}
-                      value={block.instructions}
-                      onChange={(e) =>
-                        updateBlock(i, { instructions: e.target.value })
-                      }
-                      rows={block.type === "groundk_story" ? 5 : 2}
-                      className="text-xs mt-1"
-                      placeholder={instructionPlaceholder(block.type)}
-                    />
-                  </div>
+                  {/* promo_banner 는 Claude 가 본문을 만들지 않으므로 지시문 입력칸 자체를 숨김. */}
+                  {block.type !== "promo_banner" && (
+                    <div>
+                      <Label
+                        htmlFor={`inst-${i}`}
+                        className="text-xs text-muted-foreground"
+                      >
+                        {block.type === "groundk_story"
+                          ? "현장 자료 / 프로젝트 설명 (필수)"
+                          : "추가 지시 (선택, Claude에게 자연어로 전달)"}
+                      </Label>
+                      <Textarea
+                        id={`inst-${i}`}
+                        value={block.instructions}
+                        onChange={(e) =>
+                          updateBlock(i, { instructions: e.target.value })
+                        }
+                        rows={block.type === "groundk_story" ? 5 : 2}
+                        className="text-xs mt-1"
+                        placeholder={instructionPlaceholder(block.type)}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -419,6 +489,10 @@ function instructionPlaceholder(type: BlockType): string {
       return "예: 이달 행사 URL 2~3개 붙여주세요. https://… / https://…  (내용은 링크의 실제 본문에서만 가져옵니다)";
     case "blog_card_grid":
       return "예: 4개 카드 — Field Note, Project Story, Industry Insight, Tech & MICE";
+    case "promo_banner":
+      // 이 함수는 호출되지 않음 (위 분기에서 promo_banner 의 textarea 자체를 숨김).
+      // exhaustive type check 를 만족시키기 위한 placeholder.
+      return "";
   }
 }
 

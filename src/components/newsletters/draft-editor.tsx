@@ -15,6 +15,7 @@ import {
   setGroundkStoryVisibilityAction,
   updateNewsletterSubjectAction,
   setBlockSourceUrlAction,
+  setPromoBannerLinkAction,
 } from "@/app/(admin)/newsletters/actions";
 import { Input } from "@/components/ui/input";
 import { BlockImageSlot } from "./block-image-slot";
@@ -933,6 +934,31 @@ function BlockCard({
                 />
               ))}
             </div>
+          ) : block.type === "promo_banner" ? (
+            <div className="space-y-3">
+              <BlockImageSlot
+                newsletterId={newsletterId}
+                blockIndex={blockIndex}
+                /* variant=hero 가 1280px 와이드 리사이즈를 적용 — 풀폭 배너에
+                   적합. 권장 비율 3:1. */
+                variant="hero"
+                label="배너 이미지 — 권장 1280×426 (3:1)"
+                currentUrl={
+                  ((block.data as { imageUrl?: string }).imageUrl ?? null) || null
+                }
+                currentLayout={null}
+                disabled={pending || disabled}
+              />
+              <PromoBannerLinkEditor
+                newsletterId={newsletterId}
+                blockIndex={blockIndex}
+                initialLinkUrl={
+                  ((block.data as { linkUrl?: string }).linkUrl ?? "") || ""
+                }
+                disabled={pending || disabled}
+                onDone={onDone}
+              />
+            </div>
           ) : (
             <BlockImageSlot
               newsletterId={newsletterId}
@@ -959,16 +985,22 @@ function BlockCard({
 
           {/* Source URL editor — shows "원문 보기 →" link on the rendered
               email when admin sets a URL. Per-item for multi-item blocks,
-              block-level for single-topic blocks. */}
-          <SourceUrlEditor
-            newsletterId={newsletterId}
-            blockIndex={blockIndex}
-            block={block}
-            disabled={pending || disabled}
-            onDone={onDone}
-          />
+              block-level for single-topic blocks. promo_banner 는
+              자체 linkUrl 만 쓰므로 별도 sourceUrl 편집기는 표시하지 않음. */}
+          {block.type !== "promo_banner" && (
+            <SourceUrlEditor
+              newsletterId={newsletterId}
+              blockIndex={blockIndex}
+              block={block}
+              disabled={pending || disabled}
+              onDone={onDone}
+            />
+          )}
 
-          {/* Regenerate controls */}
+          {/* Regenerate controls — promo_banner 는 Claude 가 본문을 만들지
+              않는 admin-only 블록이라 재생성 입력칸 자체를 숨김. 이미지/링크는
+              위에서 직접 편집. */}
+          {block.type !== "promo_banner" && (
           <section className="space-y-2">
             <Label className="text-xs font-semibold">
               이 블록 수정
@@ -1101,7 +1133,101 @@ function BlockCard({
               </Button>
             </div>
           </section>
+          )}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// PromoBannerLinkEditor — 홍보 배너 블록의 클릭 링크 URL 편집.
+// 입력 → "저장" 누르면 setPromoBannerLinkAction 으로 서버 저장.
+// 빈 문자열 저장하면 링크 제거(클릭 비활성, 이미지만 표시).
+// ─────────────────────────────────────────────
+function PromoBannerLinkEditor({
+  newsletterId,
+  blockIndex,
+  initialLinkUrl,
+  disabled,
+  onDone,
+}: {
+  newsletterId: string;
+  blockIndex: number;
+  initialLinkUrl: string;
+  disabled: boolean;
+  onDone: () => void;
+}) {
+  const [value, setValue] = React.useState(initialLinkUrl);
+  const [pending, startTransition] = React.useTransition();
+  const [msg, setMsg] = React.useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  // 외부 prop 이 바뀌면(다른 블록·재로드) 입력값 동기화
+  React.useEffect(() => {
+    setValue(initialLinkUrl);
+  }, [initialLinkUrl]);
+
+  function handleSave() {
+    setMsg(null);
+    startTransition(async () => {
+      const res = await setPromoBannerLinkAction({
+        newsletterId,
+        blockIndex,
+        url: value.trim() || null,
+      });
+      if (res.ok) {
+        setMsg({
+          type: "success",
+          text: res.message ?? "저장되었습니다.",
+        });
+        onDone();
+      } else {
+        setMsg({ type: "error", text: res.error });
+      }
+    });
+  }
+
+  const dirty = value.trim() !== initialLinkUrl.trim();
+
+  return (
+    <div className="space-y-1.5 rounded-md border border-border bg-muted/30 px-3 py-2">
+      <Label
+        htmlFor={`promo-link-${blockIndex}`}
+        className="text-xs font-semibold"
+      >
+        클릭 시 이동할 링크 URL{" "}
+        <span className="text-muted-foreground font-normal">(선택)</span>
+      </Label>
+      <div className="flex gap-2">
+        <Input
+          id={`promo-link-${blockIndex}`}
+          type="url"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="https://… (비워두면 클릭 동작 없음)"
+          disabled={pending || disabled}
+          className="text-xs"
+        />
+        <Button
+          size="sm"
+          onClick={handleSave}
+          disabled={pending || disabled || !dirty}
+        >
+          {pending ? "저장 중…" : "저장"}
+        </Button>
+      </div>
+      {msg && (
+        <p
+          className={
+            "text-[11px] " +
+            (msg.type === "success" ? "text-emerald-700" : "text-rose-700")
+          }
+        >
+          {msg.text}
+        </p>
       )}
     </div>
   );

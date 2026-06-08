@@ -42,6 +42,7 @@ import type {
   ConsolidatedInsightBlock,
   EventRadarBlock,
   BlogCardGridBlock,
+  PromoBannerBlock,
   ImageLayout,
 } from "@/types/newsletter";
 
@@ -2207,6 +2208,8 @@ export function BlockRenderer({
       return <EventRadar block={block} index={index} isLast={isLast} />;
     case "blog_card_grid":
       return <BlogCardGrid block={block} index={index} isLast={isLast} />;
+    case "promo_banner":
+      return <PromoBanner block={block} isLast={isLast} />;
     default: {
       const _exhaustive: never = block;
       void _exhaustive;
@@ -2215,9 +2218,96 @@ export function BlockRenderer({
   }
 }
 
+// ─────────────────────────────────────────────
+// BLOCK: promo_banner — 가로 풀폭 홍보 배너
+// ─────────────────────────────────────────────
+// 카드의 좌우 16px 패딩을 negative margin 으로 무시하고 가로 꽉 채움.
+// 챕터 라벨/제목 없음, 이미지만. linkUrl 이 있으면 <a> 로 감쌈.
+// 권장 이미지 비율 3:1 (1280×426). 업로드 라우트가 variant=hero 로
+// 1280px 와이드 리사이즈 → desktop 640px 표시.
+function PromoBanner({
+  block,
+  isLast,
+}: {
+  block: PromoBannerBlock;
+  isLast?: boolean;
+}) {
+  const { imageUrl, linkUrl, alt } = block.data;
+  if (!imageUrl) {
+    // 관리자가 아직 이미지 업로드 안 함 → placeholder
+    return (
+      <Section
+        style={{
+          marginLeft: "-16px",
+          marginRight: "-16px",
+          marginTop: "16px",
+          marginBottom: isLast ? "16px" : "32px",
+          padding: "40px 24px",
+          backgroundColor: "#f5f6fa",
+          border: "1px dashed #c8cdda",
+          textAlign: "center",
+        }}
+      >
+        <Text
+          style={{
+            margin: 0,
+            fontSize: "13px",
+            color: "#888888",
+            fontStyle: "italic",
+          }}
+        >
+          [홍보 배너 — 편집 패널에서 이미지 업로드 필요]
+        </Text>
+      </Section>
+    );
+  }
+
+  const img = (
+    <Img
+      alt={alt ?? ""}
+      src={imageUrl}
+      style={{
+        display: "block",
+        width: "100%",
+        height: "auto",
+        border: "none",
+        outline: "none",
+        textDecoration: "none",
+      }}
+    />
+  );
+
+  const inner = linkUrl ? (
+    <a
+      href={linkUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ display: "block", textDecoration: "none" }}
+    >
+      {img}
+    </a>
+  ) : (
+    img
+  );
+
+  return (
+    <div
+      style={{
+        marginLeft: "-16px",
+        marginRight: "-16px",
+        marginTop: "16px",
+        marginBottom: isLast ? "16px" : "32px",
+      }}
+    >
+      {inner}
+    </div>
+  );
+}
+
 /** Whether a block type is numbered in the section label */
 export function isNumberedBlock(type: BlockInstance["type"]): boolean {
-  return type !== "opening_lede";
+  // promo_banner 는 챕터 라벨이 아예 없으므로 넘버링 대상에서도 제외.
+  return type !== "opening_lede" && type !== "promo_banner";
 }
 
 // ─────────────────────────────────────────────

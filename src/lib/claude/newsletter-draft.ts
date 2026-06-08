@@ -46,6 +46,7 @@ const CANONICAL_ENGLISH_LABELS: Partial<Record<BlockType, string>> = {
   consolidated_insight: "MICE Insight",
   event_radar: "Event Radar",
   blog_card_grid: "GroundK Blog",
+  // promo_banner 는 섹션 헤더가 없으므로 영문 라벨도 없음 (생략).
 };
 
 function applyCanonicalLabel(type: BlockType, data: unknown): unknown {
@@ -89,6 +90,9 @@ const BLOCK_SCHEMA_PROMPT: Record<BlockType, string> = {
 - 근거가 부족해 단 하나의 행사도 신뢰성 있게 다룰 수 없다면 placeholder를 출력하십시오 (뒤의 서버 로직이 처리).
 - sourceUrl은 반드시 관리자가 붙여 넣은 URL 또는 후보 기사의 url만 씁니다. 임의 URL 생성 금지.`,
   blog_card_grid: `{ "englishLabel": "GroundK Blog", "cards": [2~6개. 각 card = { "label": "Field Note / Project Story / Industry Insight / Tech & MICE 중 하나", "title": "제목", "description": "2~3줄의 설명", "linkUrl": "https://blog.naver.com/groundk" }] }`,
+  // promo_banner 는 ADMIN_ONLY 라 Claude 가 본문을 만들지 않습니다. 관리자가
+  // 폼에서 입력한 imageUrl/linkUrl 을 서버측에서 그대로 박는 placeholder 흐름.
+  promo_banner: `{ "imageUrl": "", "linkUrl": "", "alt": "" }`,
 };
 
 /**
@@ -218,6 +222,13 @@ const BLOCK_ARTICLE_POLICY: Record<BlockType, BlockArticlePolicy> = {
   },
   blog_card_grid: {
     // Admin-curated external blog cards — no article pool.
+    primary: [],
+    fallback: [],
+    ignoreDateFilter: false,
+    limit: 0,
+  },
+  promo_banner: {
+    // Pure admin-supplied image + link, no Claude / no articles.
     primary: [],
     fallback: [],
     ignoreDateFilter: false,
@@ -370,6 +381,12 @@ function getPlaceholderData(type: BlockType): unknown {
           { label: "Field Note", title: "카드 제목 1", description: "카드 설명 1을 작성하세요.", linkUrl: "https://blog.naver.com/groundk" },
           { label: "Project Story", title: "카드 제목 2", description: "카드 설명 2을 작성하세요.", linkUrl: "https://blog.naver.com/groundk" },
         ],
+      };
+    case "promo_banner":
+      return {
+        imageUrl: "",
+        linkUrl: "",
+        alt: "",
       };
   }
 }
@@ -849,9 +866,14 @@ const REFERENCE_REQUIRED_BLOCKS: Set<BlockType> = new Set([
  * Blocks that should ONLY be generated from admin-provided input (never
  * auto-searched from the article pool). groundk_story is first-party
  * GroundK content, so Claude rewrites the admin's notes rather than
- * inventing the event.
+ * inventing the event. promo_banner is pure image+link — no Claude path
+ * at all; the placeholder returned here is later overwritten by the
+ * admin-supplied imageUrl/linkUrl in createDraftWithBlocksAction.
  */
-const ADMIN_ONLY_BLOCKS: Set<BlockType> = new Set(["groundk_story"]);
+const ADMIN_ONLY_BLOCKS: Set<BlockType> = new Set([
+  "groundk_story",
+  "promo_banner",
+]);
 
 interface BlockGenOk {
   ok: true;

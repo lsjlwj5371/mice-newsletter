@@ -83,6 +83,14 @@ export function NewDraftForm({ defaultIssueNumber }: Props) {
               b.type === "groundk_story"
                 ? b.showProjectSketch ?? true
                 : undefined,
+            promoBannerImageUrl:
+              b.type === "promo_banner"
+                ? (b.promoBannerImageUrl ?? "").trim()
+                : undefined,
+            promoBannerLinkUrl:
+              b.type === "promo_banner"
+                ? (b.promoBannerLinkUrl ?? "").trim()
+                : undefined,
           })),
         });
 

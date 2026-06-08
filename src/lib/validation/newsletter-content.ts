@@ -260,6 +260,19 @@ export const blogCardGridDataSchema = z.object({
   ).min(1),
 });
 
+/**
+ * promo_banner — 외부 광고/스폰서/이벤트 홍보 배너.
+ * 텍스트 본문 없이 이미지만 가로 풀폭으로 가운데 정렬해서 박는다.
+ * linkUrl 있으면 클릭 시 새 탭으로 이동. 둘 다 옵션 — 초안 생성 시
+ * 비워두고 나중에 편집 패널에서 채울 수도 있다.
+ */
+export const promoBannerDataSchema = z.object({
+  imageUrl: z.string().default(""),
+  linkUrl: z.string().default(""),
+  alt: z.string().optional(),
+  imageLayout: imageLayoutSchema,
+});
+
 /** Block data schema lookup — indexed by block type. */
 export const BLOCK_DATA_SCHEMAS = {
   opening_lede: openingLedeDataSchema,
@@ -273,6 +286,7 @@ export const BLOCK_DATA_SCHEMAS = {
   consolidated_insight: consolidatedInsightDataSchema,
   event_radar: eventRadarDataSchema,
   blog_card_grid: blogCardGridDataSchema,
+  promo_banner: promoBannerDataSchema,
 } as const;
 
 // Per-block wrappers (unchanged contract, but now built on the exported
@@ -344,6 +358,12 @@ const blogCardGridBlock = z.object({
   data: blogCardGridDataSchema,
 });
 
+const promoBannerBlock = z.object({
+  ...blockBase,
+  type: z.literal("promo_banner"),
+  data: promoBannerDataSchema,
+});
+
 export const blockInstanceSchema = z.discriminatedUnion("type", [
   openingLedeBlock,
   statFeatureBlock,
@@ -356,6 +376,7 @@ export const blockInstanceSchema = z.discriminatedUnion("type", [
   consolidatedInsightBlock,
   eventRadarBlock,
   blogCardGridBlock,
+  promoBannerBlock,
 ]);
 
 export const newsletterContentSchema = z.object({
