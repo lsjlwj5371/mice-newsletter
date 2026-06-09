@@ -758,6 +758,11 @@ function InOutComparison({
   index: string;
   isLast?: boolean;
 }) {
+  // 세로 스택 레이아웃 — IN(국내) 위, OUT(글로벌) 아래.
+  // 이전 버전은 2-col 좌우 분할이었지만, 본문이 길어지면 한 컬럼이
+  // 다른 컬럼보다 수직으로 늘어나면서 카드 높이가 길게 어긋나 가독성이
+  // 떨어졌다. 풀폭 스택으로 바꿔서 각 카드에 본문 폭(640px) 을 그대로
+  // 주고, 카드 사이 12px 간격으로 시각적으로 분리.
   return (
     <MajorSection isLast={isLast}>
       <SectionLabel
@@ -765,26 +770,10 @@ function InOutComparison({
         label={block.data.englishLabel}
         emoji="🌏"
       />
-      <Row>
-        <Column
-          style={{
-            verticalAlign: "top",
-            paddingRight: "8px",
-            width: "50%",
-          }}
-        >
-          <InOutCard card={block.data.inItem} accent={colors.brandNavy} />
-        </Column>
-        <Column
-          style={{
-            verticalAlign: "top",
-            paddingLeft: "8px",
-            width: "50%",
-          }}
-        >
-          <InOutCard card={block.data.outItem} accent={colors.accentGold} />
-        </Column>
-      </Row>
+      <div style={{ marginBottom: "12px" }}>
+        <InOutCard card={block.data.inItem} accent={colors.brandNavy} />
+      </div>
+      <InOutCard card={block.data.outItem} accent={colors.accentGold} />
     </MajorSection>
   );
 }
