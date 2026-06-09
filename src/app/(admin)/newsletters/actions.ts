@@ -15,7 +15,10 @@ import {
   BLOCK_RELEVANT_CATEGORIES,
   BLOCK_ARTICLE_POLICY,
 } from "@/lib/claude/newsletter-draft";
-import { newsletterContentSchema } from "@/lib/validation/newsletter-content";
+import {
+  newsletterContentSchema,
+  BLOCK_DATA_SCHEMAS,
+} from "@/lib/validation/newsletter-content";
 import {
   ARTICLE_CATEGORIES,
   type Article,
@@ -81,6 +84,25 @@ function mergePreservedBlockFields(
     }
     if (oldData.showProjectSketch !== undefined) {
       merged.showProjectSketch = oldData.showProjectSketch;
+    }
+  }
+
+  if (type === "special_article") {
+    // Claude 는 image / divider item 을 생성하지 않도록 프롬프트되어 있다 →
+    // 재생성하면 admin 이 넣어둔 이미지·구분선이 사라질 위험이 있다. 기존
+    // items 에서 image/divider 만 골라내 새 items 의 끝에 보존 (정확한
+    // 원위치 복원은 본문이 바뀌었으니 의미 없음 — admin 이 드래그로 재배치).
+    const oldItems = Array.isArray(oldData.items)
+      ? (oldData.items as Array<Record<string, unknown>>)
+      : [];
+    const newItems = Array.isArray(merged.items)
+      ? (merged.items as Array<Record<string, unknown>>)
+      : [];
+    const preserved = oldItems.filter(
+      (it) => it && (it.kind === "image" || it.kind === "divider")
+    );
+    if (preserved.length > 0) {
+      merged.items = [...newItems, ...preserved];
     }
   }
 
@@ -963,6 +985,104 @@ export async function setBlockImageAction(
       blockIndex: input.blockIndex,
       blockType: block.type,
       slot: input.slot ?? null,
+    },
+  });
+
+  revalidatePath(`/newsletters/${input.newsletterId}`);
+  return { ok: true, id: input.newsletterId };
+}
+
+// ─────────────────────────────────────────────
+// Save the full items[] array on a special_article block.
+//
+// special_article 는 본문이 자유 순서 ContentItem 배열이라 BlockImageSlot /
+// per-item save 같은 기존 패턴이 안 맞는다. SpecialArticleEditor 가 로컬
+// state 로 편집한 items 전체를 한 번에 받아 통째로 교체한다.
+//
+// items 의 image item 은 admin 이 인라인 업로드 한 url 을 그대로 들고
+// 있으므로 추가 처리 없이 그대로 저장. zod 검증으로 ContentItem 형식이
+// 깨졌으면 거절한다.
+// ─────────────────────────────────────────────
+export interface SaveSpecialArticleItemsInput {
+  newsletterId: string;
+  blockIndex: number;
+  items: unknown; // unknown 으로 받아서 zod 로 검증
+}
+
+export async function saveSpecialArticleItemsAction(
+  input: SaveSpecialArticleItemsInput
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const supabase = createAdminClient();
+
+  const { data: row, error: fetchErr } = await supabase
+    .from("newsletters")
+    .select("*")
+    .eq("id", input.newsletterId)
+    .single();
+  if (fetchErr || !row) {
+    return { ok: false, error: "원본 호를 찾을 수 없습니다." };
+  }
+  if (row.status === "sent") {
+    return { ok: false, error: "이미 발송된 호는 수정할 수 없습니다." };
+  }
+
+  const content = row.content_json as NewsletterContent;
+  if (
+    !content.blocks ||
+    input.blockIndex < 0 ||
+    input.blockIndex >= content.blocks.length
+  ) {
+    return { ok: false, error: "해당 블록을 찾을 수 없습니다." };
+  }
+  const block = content.blocks[input.blockIndex];
+  if (block.type !== "special_article") {
+    return {
+      ok: false,
+      error: "이 액션은 special_article 블록에서만 사용 가능합니다.",
+    };
+  }
+
+  // items 형식 검증 — special_article data 스키마를 재사용.
+  const dataSchema = BLOCK_DATA_SCHEMAS["special_article"];
+  const candidate = { ...block.data, items: input.items };
+  const parsed = dataSchema.safeParse(candidate);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: `본문 형식 오류: ${parsed.error.issues
+        .map((iss) => iss.message)
+        .join(", ")}`,
+    };
+  }
+
+  const updatedBlocks = [...content.blocks];
+  updatedBlocks[input.blockIndex] = {
+    ...block,
+    data: parsed.data,
+  } as NewsletterContent["blocks"][number];
+
+  const updatedContent: NewsletterContent = {
+    ...content,
+    blocks: updatedBlocks,
+  };
+
+  const { error: updErr } = await supabase
+    .from("newsletters")
+    .update({ content_json: updatedContent })
+    .eq("id", input.newsletterId);
+  if (updErr) {
+    return { ok: false, error: `DB 저장 실패: ${updErr.message}` };
+  }
+
+  await logAudit({
+    adminId: admin.id,
+    action: "newsletter.save_special_article_items",
+    entity: "newsletter",
+    entityId: input.newsletterId,
+    metadata: {
+      blockIndex: input.blockIndex,
+      itemCount: Array.isArray(parsed.data.items) ? parsed.data.items.length : 0,
     },
   });
 

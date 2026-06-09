@@ -43,6 +43,8 @@ import type {
   EventRadarBlock,
   BlogCardGridBlock,
   PromoBannerBlock,
+  SpecialArticleBlock,
+  SpecialArticleItem,
   ImageLayout,
 } from "@/types/newsletter";
 
@@ -2210,6 +2212,8 @@ export function BlockRenderer({
       return <BlogCardGrid block={block} index={index} isLast={isLast} />;
     case "promo_banner":
       return <PromoBanner block={block} isLast={isLast} />;
+    case "special_article":
+      return <SpecialArticle block={block} index={index} isLast={isLast} />;
     default: {
       const _exhaustive: never = block;
       void _exhaustive;
@@ -2308,6 +2312,442 @@ function PromoBanner({
 export function isNumberedBlock(type: BlockInstance["type"]): boolean {
   // promo_banner 는 챕터 라벨이 아예 없으므로 넘버링 대상에서도 제외.
   return type !== "opening_lede" && type !== "promo_banner";
+}
+
+// ─────────────────────────────────────────────
+// BLOCK: special_article — 자유 구조 특별 기사
+// ─────────────────────────────────────────────
+// items 배열을 순회하며 kind 별로 다른 컴포넌트를 렌더한다. image item 의
+// layout 이 "left"/"right" 면 바로 다음 paragraph 와 짝지어 2-col 테이블로
+// 렌더 (이메일 호환 wrap). 짝이 안 맞으면 image 단독 풀폭으로 폴백.
+function SpecialArticle({
+  block,
+  index,
+  isLast,
+}: {
+  block: SpecialArticleBlock;
+  index: string;
+  isLast?: boolean;
+}) {
+  const data = block.data;
+  const items = data.items ?? [];
+
+  // image+paragraph 짝짓기 — left/right wrap 케이스 식별
+  const rendered: React.ReactNode[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (
+      item.kind === "image" &&
+      (item.layout === "left" || item.layout === "right")
+    ) {
+      const next = items[i + 1];
+      if (next?.kind === "paragraph" && item.imageUrl) {
+        rendered.push(
+          <SpecialArticleWrapPair
+            key={i}
+            image={item}
+            paragraph={next}
+            layout={item.layout}
+          />
+        );
+        i++; // skip the paired paragraph
+        continue;
+      }
+      // wrap 의도였지만 다음 item 이 단락이 아니거나 이미지 미업로드 →
+      // small-center 폴백 (작게 가운데). 풀폭은 의도와 너무 멀어 피함.
+      rendered.push(
+        <SpecialArticleImage
+          key={i}
+          item={item}
+          forceLayout="small-center"
+        />
+      );
+      continue;
+    }
+    rendered.push(<SpecialArticleItemRow key={i} item={item} />);
+  }
+
+  return (
+    <MajorSection isLast={isLast}>
+      <SectionLabel index={index} label={data.englishLabel} emoji="✦" />
+
+      {data.eyebrow && data.eyebrow.trim() !== "" && (
+        <Text
+          style={{
+            fontSize: "11px",
+            fontWeight: 700,
+            letterSpacing: "2.5px",
+            color: colors.brandNavy,
+            textTransform: "uppercase",
+            margin: "0 0 8px 0",
+          }}
+        >
+          {data.eyebrow}
+        </Text>
+      )}
+
+      {data.title && (
+        <Heading
+          as="h2"
+          style={{
+            fontSize: "24px",
+            fontWeight: 800,
+            color: colors.textHeadline,
+            lineHeight: 1.35,
+            letterSpacing: "-0.3px",
+            margin: "0 0 8px 0",
+          }}
+        >
+          {renderMultiline(data.title)}
+        </Heading>
+      )}
+
+      {data.subtitle && data.subtitle.trim() !== "" && (
+        <Text
+          style={{
+            fontSize: "15px",
+            color: colors.textMuted,
+            lineHeight: 1.6,
+            fontWeight: 500,
+            margin: "0 0 24px 0",
+          }}
+        >
+          {data.subtitle}
+        </Text>
+      )}
+
+      {/* 본문 — items 자유 순서 */}
+      {rendered}
+
+      {data.closingNote && data.closingNote.trim() !== "" && (
+        <Text
+          style={{
+            fontSize: "13px",
+            color: colors.textMuted,
+            fontStyle: "italic",
+            lineHeight: 1.7,
+            margin: "20px 0 0 0",
+            paddingTop: "16px",
+            borderTop: `1px solid ${colors.borderSoft}`,
+          }}
+        >
+          {data.closingNote}
+        </Text>
+      )}
+
+      {data.sourceUrl && data.sourceUrl.trim() !== "" && (
+        <Text
+          style={{
+            fontSize: "12px",
+            color: colors.textSoft,
+            margin: "16px 0 0 0",
+          }}
+        >
+          <Link
+            href={data.sourceUrl}
+            style={{
+              color: colors.textSoft,
+              textDecoration: "underline",
+            }}
+          >
+            원문 보기 →
+          </Link>
+        </Text>
+      )}
+    </MajorSection>
+  );
+}
+
+/**
+ * 단일 ContentItem 렌더러 — kind 별 분기.
+ * image 의 left/right 케이스는 상위에서 wrap pair 로 처리하므로 여기서는
+ * full / small-center 만 다룬다 (혹시 layout 이 left/right 인데 단독으로
+ * 들어와도 small-center 로 안전 폴백).
+ */
+function SpecialArticleItemRow({ item }: { item: SpecialArticleItem }) {
+  switch (item.kind) {
+    case "paragraph":
+      if (!item.text || item.text.trim() === "") return null;
+      return (
+        <Text
+          style={{
+            fontSize: "15px",
+            color: colors.textBody,
+            lineHeight: 1.85,
+            fontWeight: 400,
+            margin: "0 0 16px 0",
+          }}
+          dangerouslySetInnerHTML={{ __html: renderInlineHtml(item.text) }}
+        />
+      );
+
+    case "heading": {
+      const level = item.level ?? 2;
+      const fontSize = level === 2 ? "18px" : "15px";
+      const marginTop = level === 2 ? "24px" : "18px";
+      return (
+        <Heading
+          as={level === 2 ? "h3" : "h4"}
+          style={{
+            fontSize,
+            fontWeight: 700,
+            color: colors.textHeadline,
+            lineHeight: 1.4,
+            letterSpacing: "-0.2px",
+            margin: `${marginTop} 0 10px 0`,
+          }}
+        >
+          {renderMultiline(item.text)}
+        </Heading>
+      );
+    }
+
+    case "quote":
+      return (
+        <Text
+          style={{
+            fontSize: "16px",
+            fontWeight: 500,
+            fontStyle: "italic",
+            color: colors.textHeadline,
+            lineHeight: 1.6,
+            borderLeft: `3px solid ${colors.brandNavy}`,
+            paddingLeft: "14px",
+            margin: "20px 0 20px 0",
+          }}
+        >
+          {item.text}
+          {item.attribution && (
+            <span
+              style={{
+                display: "block",
+                fontSize: "12px",
+                fontStyle: "normal",
+                color: colors.textMuted,
+                marginTop: "8px",
+                letterSpacing: "0.2px",
+              }}
+            >
+              — {item.attribution}
+            </span>
+          )}
+        </Text>
+      );
+
+    case "image":
+      return <SpecialArticleImage item={item} />;
+
+    case "divider":
+      return (
+        <div
+          style={{
+            textAlign: "center",
+            margin: "24px 0",
+            fontSize: "12px",
+            lineHeight: 1,
+            color: colors.accentGold,
+            letterSpacing: "8px",
+          }}
+        >
+          ◆ ◆ ◆
+        </div>
+      );
+  }
+}
+
+/**
+ * 자유 구조 본문에 끼우는 이미지. layout 별 폭/정렬 분기:
+ *   - full          : 100% 폭, 카드 패딩만큼 negative margin 으로 풀블리드
+ *   - small-center  : 중앙, max 320px
+ *   - left/right    : 상위 SpecialArticle 에서 wrap pair 로 처리. 짝 없으면
+ *                     small-center 로 폴백 (forceLayout 인자로 강제).
+ */
+function SpecialArticleImage({
+  item,
+  forceLayout,
+}: {
+  item: Extract<SpecialArticleItem, { kind: "image" }>;
+  forceLayout?: "full" | "small-center";
+}) {
+  if (!item.imageUrl) return null;
+  const layout =
+    forceLayout ??
+    (item.layout === "full" || item.layout === "small-center"
+      ? item.layout
+      : "small-center");
+
+  if (layout === "full") {
+    return (
+      <div
+        style={{
+          marginLeft: "-16px",
+          marginRight: "-16px",
+          marginTop: "20px",
+          marginBottom: "20px",
+        }}
+      >
+        <Img
+          alt={item.caption ?? ""}
+          src={item.imageUrl}
+          style={{
+            display: "block",
+            width: "100%",
+            height: "auto",
+            border: "none",
+            outline: "none",
+            textDecoration: "none",
+          }}
+        />
+        {item.caption && (
+          <Text
+            style={{
+              fontSize: "12px",
+              color: colors.textMuted,
+              fontStyle: "italic",
+              textAlign: "center",
+              margin: "8px 16px 0 16px",
+              lineHeight: 1.5,
+            }}
+          >
+            {item.caption}
+          </Text>
+        )}
+      </div>
+    );
+  }
+
+  // small-center
+  return (
+    <div
+      style={{
+        textAlign: "center",
+        margin: "20px 0",
+      }}
+    >
+      <Img
+        alt={item.caption ?? ""}
+        src={item.imageUrl}
+        style={{
+          display: "block",
+          maxWidth: "320px",
+          width: "100%",
+          height: "auto",
+          margin: "0 auto",
+          border: "none",
+          outline: "none",
+          textDecoration: "none",
+          borderRadius: "6px",
+        }}
+      />
+      {item.caption && (
+        <Text
+          style={{
+            fontSize: "12px",
+            color: colors.textMuted,
+            fontStyle: "italic",
+            textAlign: "center",
+            margin: "8px 0 0 0",
+            lineHeight: 1.5,
+          }}
+        >
+          {item.caption}
+        </Text>
+      )}
+    </div>
+  );
+}
+
+/**
+ * left/right wrap 페어 — 이미지 + 바로 다음 단락을 2-col 테이블로 렌더.
+ * 이메일 호환을 위해 float 가 아니라 table 사용. 모바일에서는 표 셀이
+ * 자동으로 위/아래 스택되도록 inline-block 폴백을 두지 않고 그냥 td 두 개로
+ * 끝낸다 (대부분 모바일 클라가 narrow viewport 에서 stack 으로 자동 변환).
+ */
+function SpecialArticleWrapPair({
+  image,
+  paragraph,
+  layout,
+}: {
+  image: Extract<SpecialArticleItem, { kind: "image" }>;
+  paragraph: Extract<SpecialArticleItem, { kind: "paragraph" }>;
+  layout: "left" | "right";
+}) {
+  const imgCell = (
+    <td
+      width="42%"
+      valign="top"
+      style={{
+        verticalAlign: "top",
+        paddingRight: layout === "left" ? "16px" : 0,
+        paddingLeft: layout === "right" ? "16px" : 0,
+      }}
+    >
+      <Img
+        alt={image.caption ?? ""}
+        src={image.imageUrl}
+        style={{
+          display: "block",
+          width: "100%",
+          height: "auto",
+          border: "none",
+          outline: "none",
+          textDecoration: "none",
+          borderRadius: "6px",
+        }}
+      />
+      {image.caption && (
+        <Text
+          style={{
+            fontSize: "11px",
+            color: colors.textMuted,
+            fontStyle: "italic",
+            margin: "6px 0 0 0",
+            lineHeight: 1.5,
+          }}
+        >
+          {image.caption}
+        </Text>
+      )}
+    </td>
+  );
+
+  const textCell = (
+    <td valign="top" style={{ verticalAlign: "top" }}>
+      <Text
+        style={{
+          fontSize: "15px",
+          color: colors.textBody,
+          lineHeight: 1.85,
+          fontWeight: 400,
+          margin: 0,
+        }}
+        dangerouslySetInnerHTML={{
+          __html: renderInlineHtml(paragraph.text),
+        }}
+      />
+    </td>
+  );
+
+  return (
+    <table
+      role="presentation"
+      cellPadding={0}
+      cellSpacing={0}
+      border={0}
+      width="100%"
+      style={{
+        borderCollapse: "collapse",
+        margin: "16px 0",
+      }}
+    >
+      <tbody>
+        <tr>
+          {layout === "left" ? imgCell : textCell}
+          {layout === "left" ? textCell : imgCell}
+        </tr>
+      </tbody>
+    </table>
+  );
 }
 
 // ─────────────────────────────────────────────

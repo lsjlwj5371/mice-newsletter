@@ -47,6 +47,7 @@ export const BLOCK_TYPES = [
   "event_radar",
   "blog_card_grid",
   "promo_banner",
+  "special_article",
 ] as const;
 
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -64,6 +65,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   event_radar: "이달의 주목할 행사 (Event Radar)",
   blog_card_grid: "블로그 카드 그리드",
   promo_banner: "홍보 배너",
+  special_article: "특별 기사 (자유 구조)",
 };
 
 export const BLOCK_DESCRIPTIONS: Record<BlockType, string> = {
@@ -79,6 +81,8 @@ export const BLOCK_DESCRIPTIONS: Record<BlockType, string> = {
   event_radar: "업계 관계자도 놓치기 쉬운 개최 예정 행사 2~4건 소개 (URL 붙여넣으면 실제 본문 반영)",
   blog_card_grid: "외부 블로그 글을 카드로 소개 (2~6개)",
   promo_banner: "이미지 + 링크만 들어가는 가로 풀폭 홍보 배너 (권장 1280×426)",
+  special_article:
+    "자유 구조 특별 기사. 단락·소제목·인용구·이미지·구분선을 자유롭게 배치, 이미지는 본문 어디든 N장 삽입 가능",
 };
 
 /**
@@ -102,6 +106,10 @@ export const BLOCK_NEEDS_RESEARCH: Record<BlockType, boolean> = {
   blog_card_grid: false,
   // promo_banner = pure admin-supplied media. No Claude, no articles.
   promo_banner: false,
+  // special_article = Claude generates the text structure (eyebrow, title,
+  // subtitle, items[paragraph|heading|quote]) from candidate articles in
+  // the MICE Insight tone. Images are admin-added post-generation.
+  special_article: true,
 };
 
 // ─────────────────────────────────────────────
@@ -121,7 +129,8 @@ export type BlockInstance =
   | ConsolidatedInsightBlock
   | EventRadarBlock
   | BlogCardGridBlock
-  | PromoBannerBlock;
+  | PromoBannerBlock
+  | SpecialArticleBlock;
 
 interface BlockBase {
   /** Stable id for drag-drop + edit tracking. Generated client-side. */
@@ -429,6 +438,89 @@ export interface PromoBannerBlock extends BlockBase {
     alt?: string;
     /** 호환용 — 항상 "full" 처럼 동작. 다른 블록과 동일하게 필드만 둔다. */
     imageLayout?: ImageLayout;
+  };
+}
+
+/**
+ * 특별 기사 블록 — 자유 순서 ContentItem 배열로 본문을 구성한다.
+ * 기존 블록들이 paragraphs:string[] 평탄 배열에 imageUrl 한 개 고정인
+ * 것과 달리, items 배열에 단락·소제목·인용구·이미지·구분선을 admin 이
+ * 원하는 순서·개수로 섞어 넣는다. 이미지 개수 제한 없음. Claude 는
+ * 텍스트 부분만 생성하고 (이미지 생성 불가) admin 이 편집 패널에서
+ * 원하는 위치에 이미지 슬롯을 끼워넣는다.
+ */
+export type SpecialArticleImageLayout =
+  | "full"
+  | "left"
+  | "right"
+  | "small-center";
+
+export const SPECIAL_ARTICLE_IMAGE_LAYOUTS: readonly SpecialArticleImageLayout[] = [
+  "full",
+  "left",
+  "right",
+  "small-center",
+] as const;
+
+export const SPECIAL_ARTICLE_IMAGE_LAYOUT_LABELS: Record<
+  SpecialArticleImageLayout,
+  string
+> = {
+  full: "풀폭",
+  left: "왼쪽 (글과 나란히)",
+  right: "오른쪽 (글과 나란히)",
+  "small-center": "작게 · 중앙",
+};
+
+export type SpecialArticleItem =
+  | { kind: "paragraph"; text: string }
+  | { kind: "heading"; text: string; level?: 2 | 3 }
+  | { kind: "quote"; text: string; attribution?: string }
+  | {
+      kind: "image";
+      imageUrl: string;
+      caption?: string;
+      layout?: SpecialArticleImageLayout;
+    }
+  | { kind: "divider" };
+
+export type SpecialArticleItemKind = SpecialArticleItem["kind"];
+
+export const SPECIAL_ARTICLE_ITEM_KINDS: readonly SpecialArticleItemKind[] = [
+  "paragraph",
+  "heading",
+  "quote",
+  "image",
+  "divider",
+] as const;
+
+export const SPECIAL_ARTICLE_ITEM_KIND_LABELS: Record<
+  SpecialArticleItemKind,
+  string
+> = {
+  paragraph: "단락",
+  heading: "소제목",
+  quote: "인용구",
+  image: "이미지",
+  divider: "구분선",
+};
+
+export interface SpecialArticleBlock extends BlockBase {
+  type: "special_article";
+  data: {
+    englishLabel: string; // "Special Feature"
+    /** 작은 상단 라벨 (예: "특집", "이달의 인터뷰"). */
+    eyebrow?: string;
+    title: string;
+    subtitle?: string;
+    /**
+     * 본문 콘텐츠의 순서 있는 자유 배열. admin 은 단락·소제목·인용구를
+     * 배치한 사이 어디든 image item 을 N개 끼워넣을 수 있다.
+     */
+    items: SpecialArticleItem[];
+    closingNote?: string;
+    /** Optional admin-supplied origin URL; rendered as "원문 보기 →" link. */
+    sourceUrl?: string;
   };
 }
 

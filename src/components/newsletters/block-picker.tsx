@@ -493,6 +493,8 @@ function instructionPlaceholder(type: BlockType): string {
       // 이 함수는 호출되지 않음 (위 분기에서 promo_banner 의 textarea 자체를 숨김).
       // exhaustive type check 를 만족시키기 위한 placeholder.
       return "";
+    case "special_article":
+      return "예: 신라호텔 MICE 운영 변화 주제로. 인터뷰 형식 톤 살리고, 본문 후반에 강한 인용구 1개 들어가게 해줘";
   }
 }
 

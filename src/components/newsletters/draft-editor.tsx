@@ -19,6 +19,7 @@ import {
 } from "@/app/(admin)/newsletters/actions";
 import { Input } from "@/components/ui/input";
 import { BlockImageSlot } from "./block-image-slot";
+import { SpecialArticleEditor } from "./special-article-editor";
 import { SendPanel } from "./send-panel";
 import { HtmlSourceDialog } from "./html-source-dialog";
 import { ArticlePicker } from "@/components/articles/article-picker";
@@ -32,6 +33,7 @@ import {
   type NewsletterRow,
   type BlockInstance,
   type ImageLayout,
+  type SpecialArticleItem,
 } from "@/types/newsletter";
 
 type ViewMode = "desktop" | "mobile" | "dark";
@@ -959,6 +961,16 @@ function BlockCard({
                 onDone={onDone}
               />
             </div>
+          ) : block.type === "special_article" ? (
+            <SpecialArticleEditor
+              newsletterId={newsletterId}
+              blockIndex={blockIndex}
+              initialItems={
+                (block.data as { items?: SpecialArticleItem[] }).items ?? []
+              }
+              disabled={pending || disabled}
+              onDone={onDone}
+            />
           ) : (
             <BlockImageSlot
               newsletterId={newsletterId}
@@ -1260,6 +1272,7 @@ function collectSourceUrlTargets(block: BlockInstance): SourceUrlTarget[] {
     case "theory_to_field":
     case "editor_take":
     case "consolidated_insight":
+    case "special_article":
       return [
         { kind: "block", current: (d.sourceUrl as string | undefined) ?? "" },
       ];

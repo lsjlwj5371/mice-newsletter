@@ -273,6 +273,55 @@ export const promoBannerDataSchema = z.object({
   imageLayout: imageLayoutSchema,
 });
 
+/**
+ * special_article — 자유 구조 특별 기사 블록.
+ *
+ * 기존 블록들이 paragraphs:string[] 평탄 배열 + imageUrl 단일 고정 위치인
+ * 것과 달리, 본문이 5종 ContentItem 의 자유 순서 배열로 구성된다. admin
+ * 이 본문 어디든 이미지를 N개 끼워넣고 단락·소제목·인용구·구분선을
+ * 자유롭게 섞을 수 있다. Claude 는 텍스트 부분만 생성하고 (이미지 생성
+ * 불가) admin 이 편집 단계에서 이미지를 원하는 위치에 추가한다.
+ */
+const specialArticleItemImageLayoutSchema = z
+  .enum(["full", "left", "right", "small-center"])
+  .optional();
+
+const specialArticleItemSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("paragraph"),
+    text: z.string(),
+  }),
+  z.object({
+    kind: z.literal("heading"),
+    text: z.string(),
+    level: z.union([z.literal(2), z.literal(3)]).default(2),
+  }),
+  z.object({
+    kind: z.literal("quote"),
+    text: z.string(),
+    attribution: z.string().optional(),
+  }),
+  z.object({
+    kind: z.literal("image"),
+    imageUrl: z.string().default(""),
+    caption: z.string().optional(),
+    layout: specialArticleItemImageLayoutSchema,
+  }),
+  z.object({
+    kind: z.literal("divider"),
+  }),
+]);
+
+export const specialArticleDataSchema = z.object({
+  englishLabel: z.string(),
+  eyebrow: z.string().optional(),
+  title: z.string(),
+  subtitle: z.string().optional(),
+  items: z.array(specialArticleItemSchema).default([]),
+  closingNote: z.string().optional(),
+  sourceUrl: z.string().optional(),
+});
+
 /** Block data schema lookup — indexed by block type. */
 export const BLOCK_DATA_SCHEMAS = {
   opening_lede: openingLedeDataSchema,
@@ -287,6 +336,7 @@ export const BLOCK_DATA_SCHEMAS = {
   event_radar: eventRadarDataSchema,
   blog_card_grid: blogCardGridDataSchema,
   promo_banner: promoBannerDataSchema,
+  special_article: specialArticleDataSchema,
 } as const;
 
 // Per-block wrappers (unchanged contract, but now built on the exported
@@ -364,6 +414,12 @@ const promoBannerBlock = z.object({
   data: promoBannerDataSchema,
 });
 
+const specialArticleBlock = z.object({
+  ...blockBase,
+  type: z.literal("special_article"),
+  data: specialArticleDataSchema,
+});
+
 export const blockInstanceSchema = z.discriminatedUnion("type", [
   openingLedeBlock,
   statFeatureBlock,
@@ -377,6 +433,7 @@ export const blockInstanceSchema = z.discriminatedUnion("type", [
   eventRadarBlock,
   blogCardGridBlock,
   promoBannerBlock,
+  specialArticleBlock,
 ]);
 
 export const newsletterContentSchema = z.object({

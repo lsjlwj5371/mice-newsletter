@@ -47,6 +47,7 @@ const CANONICAL_ENGLISH_LABELS: Partial<Record<BlockType, string>> = {
   event_radar: "Event Radar",
   blog_card_grid: "GroundK Blog",
   // promo_banner 는 섹션 헤더가 없으므로 영문 라벨도 없음 (생략).
+  special_article: "Special Feature",
 };
 
 function applyCanonicalLabel(type: BlockType, data: unknown): unknown {
@@ -93,6 +94,22 @@ const BLOCK_SCHEMA_PROMPT: Record<BlockType, string> = {
   // promo_banner 는 ADMIN_ONLY 라 Claude 가 본문을 만들지 않습니다. 관리자가
   // 폼에서 입력한 imageUrl/linkUrl 을 서버측에서 그대로 박는 placeholder 흐름.
   promo_banner: `{ "imageUrl": "", "linkUrl": "", "alt": "" }`,
+  special_article: `{ "englishLabel": "Special Feature", "eyebrow": "특집 / 이달의 인터뷰 / 기획 등 짧은 라벨", "title": "메인 헤드라인 (16~32자 권장)", "subtitle": "부제 1줄 (선택)", "items": [ContentItem 배열. 단락·소제목·인용구를 기승전결 흐름으로 배치. 권장: paragraph 5~8개 + heading(level:2) 1~3개로 단락 그룹 구분 + quote 1~2개. **image item 은 절대 생성하지 마십시오** (이미지는 관리자가 후에 직접 추가). divider 도 생성하지 마십시오.], "closingNote": "1문장 마무리 (선택)" }
+
+## ContentItem 형식
+- { "kind": "paragraph", "text": "단락 본문. 줄바꿈은 \\n\\n 으로 구분." }
+- { "kind": "heading", "text": "소제목 (12~20자)", "level": 2 }   // 본문 그룹의 굵은 소제목
+- { "kind": "quote", "text": "강조하고 싶은 한 문장", "attribution": "(선택) 출처" }
+
+## special_article 전용 지침 (매우 중요)
+- 톤은 **MICE Insight 와 동일**합니다: 산업 동료 톤, 격식 있는 ~습니다 끝맺음, 확신 표현 절제(가능성·시사·암시), 한 문장 짧게.
+- 자유 형식 블록이지만 **기승전결 흐름은 유지**합니다: 도입(paragraph 1~2개) → 본격 전개(heading + paragraph 묶음 1~3개) → 클라이맥스(quote 또는 강한 paragraph) → 마무리(paragraph + closingNote).
+- **소제목(heading)은 본문 그룹을 의미상 잘라주는 용도**로만 씁니다. 단순 장식이 아니라 그 아래 단락들이 새로운 측면을 다룬다는 걸 알려야 합니다.
+- **인용구(quote)는 호 전체에서 가장 강조하고 싶은 한 문장**을 골라 1~2회만 사용합니다. 남발하지 마십시오.
+- 후보 기사가 여러 개 주어져도 **단 하나**(가장 풀어낼 거리 많은 기사)에 집중합니다. consolidated_insight 와 동일한 단일 주제 심층 분석 방식입니다.
+- **image / divider item 은 생성 금지** — 관리자가 편집 단계에서 본문 어디든 자유 배치합니다.
+- 다른 후보 기사는 배경 이해용 참고일 뿐, 본문에 직접 인용하지 않습니다.
+- \`_citedIndices\`는 본문 근거로 삼은 기사 한 건의 번호만 담습니다 (예: \`[2]\`).`,
 };
 
 /**
@@ -233,6 +250,23 @@ const BLOCK_ARTICLE_POLICY: Record<BlockType, BlockArticlePolicy> = {
     fallback: [],
     ignoreDateFilter: false,
     limit: 0,
+  },
+  special_article: {
+    // Same shared-pool deep-dive policy as consolidated_insight — Claude
+    // picks one article and writes a single-topic special feature in the
+    // MICE Insight tone. Pulls from the broadest category set so any
+    // strong story can become the special.
+    primary: [
+      "consolidated_insight",
+      "news_briefing",
+      "in_out_comparison",
+      "tech_signal",
+      "theory_to_field",
+    ],
+    fallback: [],
+    ignoreDateFilter: false,
+    limit: 6,
+    sharesPool: true,
   },
 };
 
@@ -387,6 +421,25 @@ function getPlaceholderData(type: BlockType): unknown {
         imageUrl: "",
         linkUrl: "",
         alt: "",
+      };
+    case "special_article":
+      return {
+        englishLabel: "Special Feature",
+        eyebrow: "특집",
+        title: "이번 호의 특별 기사 제목을 작성하세요.",
+        subtitle: "",
+        items: [
+          {
+            kind: "paragraph",
+            text: "본문 첫 단락을 작성하세요. 도입에서 주제의 배경을 짚어주면 좋습니다.",
+          },
+          { kind: "heading", text: "본격 전개의 소제목", level: 2 },
+          {
+            kind: "paragraph",
+            text: "이어지는 단락. 핵심 논점을 전개합니다.",
+          },
+        ],
+        closingNote: "",
       };
   }
 }
@@ -860,6 +913,9 @@ const REFERENCE_REQUIRED_BLOCKS: Set<BlockType> = new Set([
   "stat_feature",
   "consolidated_insight",
   "event_radar",
+  // special_article 도 단일 기사 심층 분석 — 후보 기사 없이는 placeholder
+  // 로 떨어뜨려 어드민이 직접 작성하도록 유도.
+  "special_article",
 ]);
 
 /**
@@ -953,7 +1009,13 @@ async function generateBlockData(
   // mid-array truncation (response cut off inside a chapter body,
   // breaking JSON.parse downstream). Haiku 4.5's hard ceiling for
   // output is 8192 tokens, so use 8000 with a bit of headroom.
-  const maxTokens = type === "consolidated_insight" ? 8000 : 2000;
+  // consolidated_insight + special_article 둘 다 단일 주제 심층 분석으로
+  // 분량이 길어질 수 있어 같은 한도 사용. 8192 가 Haiku 4.5 출력 상한이라
+  // 8000 으로 약간 여유 둠.
+  const maxTokens =
+    type === "consolidated_insight" || type === "special_article"
+      ? 8000
+      : 2000;
 
   try {
     const response = await client.messages.create({
