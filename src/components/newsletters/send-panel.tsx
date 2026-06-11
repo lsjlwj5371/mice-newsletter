@@ -6,9 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input, Textarea, Label } from "@/components/ui/input";
 import {
   sendTestEmailAction,
-  sendNewsletterAction,
+  markNewsletterSentAction,
   resendNewsletterAction,
-  scheduleNewsletterAction,
   cancelScheduledSendAction,
   type ResendAudience,
 } from "@/app/(admin)/newsletters/send-actions";
@@ -38,8 +37,6 @@ export function SendPanel({
   const [resendAudience, setResendAudience] =
     React.useState<ResendAudience>("non_openers");
   const [resendEmails, setResendEmails] = React.useState("");
-  const [scheduleDate, setScheduleDate] = React.useState("");
-  const [scheduleTime, setScheduleTime] = React.useState("09:00");
   const [msg, setMsg] = React.useState<{
     type: "success" | "error";
     text: string;
@@ -66,43 +63,17 @@ export function SendPanel({
     });
   }
 
-  function handleMassSend() {
-    const confirmMsg = `활성 수신자 ${activeRecipientCount}명에게 발송합니다.\n\n이 작업은 취소할 수 없습니다. 정말 발송할까요?`;
+  function handleMarkSent() {
+    const confirmMsg =
+      "이 호를 발송 완료 상태로 표시합니다.\n\n" +
+      "수신자에게 이메일은 발송되지 않습니다 (실제 발송은 NCP 동기화 등 외부 채널로 진행). " +
+      "이 호의 인용 기사는 사용 완료로 마킹되어 다음 호 후보에서 제외됩니다.\n\n계속할까요?";
     if (!confirm(confirmMsg)) return;
     setMsg(null);
     startMass(async () => {
-      const res = await sendNewsletterAction(newsletterId);
+      const res = await markNewsletterSentAction(newsletterId);
       if (res.ok) {
-        setMsg({ type: "success", text: res.message ?? "발송 완료" });
-        router.refresh();
-      } else {
-        setMsg({ type: "error", text: res.error });
-      }
-    });
-  }
-
-  function handleSchedule() {
-    if (!scheduleDate || !scheduleTime) {
-      setMsg({ type: "error", text: "날짜와 시각을 모두 선택해 주세요." });
-      return;
-    }
-    // Combine into local datetime, then convert to ISO.
-    const localIso = `${scheduleDate}T${scheduleTime}:00`;
-    const d = new Date(localIso);
-    if (Number.isNaN(d.getTime())) {
-      setMsg({ type: "error", text: "예약 시각 형식이 잘못되었습니다." });
-      return;
-    }
-    const confirmMsg = `${d.toLocaleString("ko-KR")}에 활성 수신자 ${activeRecipientCount}명에게 자동 발송됩니다.\n\n계속할까요?`;
-    if (!confirm(confirmMsg)) return;
-    setMsg(null);
-    startSchedule(async () => {
-      const res = await scheduleNewsletterAction({
-        newsletterId,
-        scheduledAt: d.toISOString(),
-      });
-      if (res.ok) {
-        setMsg({ type: "success", text: res.message ?? "예약 완료" });
+        setMsg({ type: "success", text: res.message ?? "발송 완료 처리됨" });
         router.refresh();
       } else {
         setMsg({ type: "error", text: res.error });
@@ -157,18 +128,12 @@ export function SendPanel({
   const alreadySent = status === "sent";
   const isScheduled = status === "scheduled" && !!scheduledAt;
 
-  // Default the date picker to tomorrow so the calendar isn't blank
-  const tomorrow = React.useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return formatDateForInput(d);
-  }, []);
-
   return (
     <div className="space-y-6">
       <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-900">
         💡 먼저 본인 이메일로 <strong>테스트 발송</strong> 해서 실제 이메일
-        클라이언트에서 어떻게 보이는지 확인한 뒤 일괄 발송하는 것을 권장합니다.
+        클라이언트에서 어떻게 보이는지 확인한 뒤 발송 완료 처리하는 것을
+        권장합니다. 실제 수신자 발송은 NCP 동기화로 별도 진행됩니다.
       </div>
 
       {/* Test send */}
@@ -225,96 +190,32 @@ export function SendPanel({
         </section>
       )}
 
-      {/* Mass send */}
+      {/* 발송 완료 처리 — 상태값만 sent 로 전환 (실제 수신자 발송 없음).
+          실제 발송은 NCP 동기화 등 외부 채널로 분리되어 있어, 이 admin
+          도구에서는 호의 트래킹(상태/사용 기사 마킹)만 담당. */}
       <section className="rounded-xl border border-border bg-background p-4 space-y-3">
         <div>
-          <Label className="text-sm font-semibold">정식 발송</Label>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            현재 활성 상태인 수신자{" "}
-            <span className="font-semibold text-foreground">
-              {activeRecipientCount}명
-            </span>
-            에게 발송합니다.
+          <Label className="text-sm font-semibold">발송 완료 처리</Label>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+            이 호의 상태를 <strong className="text-foreground">발송 완료</strong>로
+            표시합니다. 수신자에게 이메일이 발송되지는 않습니다 (실제 발송은 NCP
+            동기화 등 외부 채널로 진행). 인용된 기사는 사용 완료로 마킹되어 다음
+            호 후보에서 빠집니다.
           </p>
         </div>
         {alreadySent ? (
           <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-            이 호는 이미 발송 완료되었습니다. 아래 <strong>재발송</strong> 섹션을
-            사용하세요.
-          </div>
-        ) : activeRecipientCount === 0 ? (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            활성 수신자가 없습니다. <strong>수신자</strong> 메뉴에서 먼저 등록해
-            주세요.
+            이 호는 이미 발송 완료 상태입니다.
           </div>
         ) : (
           <Button
-            onClick={handleMassSend}
+            onClick={handleMarkSent}
             disabled={testPending || massPending}
           >
-            {massPending
-              ? "발송 중..."
-              : `${activeRecipientCount}명에게 발송`}
+            {massPending ? "처리 중..." : "발송 완료 처리"}
           </Button>
         )}
       </section>
-
-      {/* Schedule — visible when not yet sent or scheduled */}
-      {!alreadySent && !isScheduled && activeRecipientCount > 0 && (
-        <section className="rounded-xl border border-border bg-background p-4 space-y-3">
-          <div>
-            <Label className="text-sm font-semibold">예약 발송</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              즉시 발송 대신 특정 시각에 자동 발송하고 싶으면 여기서 설정하세요.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-3 max-w-md">
-            <div className="space-y-1">
-              <Label htmlFor="schedule-date" className="text-xs">
-                날짜
-              </Label>
-              <Input
-                id="schedule-date"
-                type="date"
-                min={tomorrow}
-                value={scheduleDate}
-                onChange={(e) => setScheduleDate(e.target.value)}
-                disabled={schedulePending}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="schedule-time" className="text-xs">
-                시각
-              </Label>
-              <Input
-                id="schedule-time"
-                type="time"
-                value={scheduleTime}
-                onChange={(e) => setScheduleTime(e.target.value)}
-                disabled={schedulePending}
-              />
-            </div>
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            Vercel Hobby 플랜의 제약으로 예약 시각에서 최대 24시간 늦게 발송될 수
-            있습니다. 정확한 시각 발송이 필요하면 "즉시 발송"을 사용하세요.
-          </p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleSchedule}
-            disabled={
-              schedulePending ||
-              testPending ||
-              massPending ||
-              !scheduleDate ||
-              !scheduleTime
-            }
-          >
-            {schedulePending ? "설정 중..." : "예약 설정"}
-          </Button>
-        </section>
-      )}
 
       {/* Resend — visible only once the newsletter has been sent at least once */}
       {alreadySent && (
@@ -395,9 +296,3 @@ export function SendPanel({
   );
 }
 
-function formatDateForInput(d: Date): string {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}

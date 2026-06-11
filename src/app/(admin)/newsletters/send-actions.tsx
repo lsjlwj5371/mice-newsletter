@@ -124,6 +124,69 @@ export async function sendTestEmailAction(
 // MASS SEND — enqueue all active recipients
 // ─────────────────────────────────────────────
 
+// ─────────────────────────────────────────────
+// MARK SENT — 수신자 발송 없이 상태값만 sent 로 전환
+//
+// 실제 수신자 발송은 NCP 동기화 등 외부 채널로 분리되어, 이 admin 도구
+// 에서는 호의 상태 트래킹만 한다. 호출 시 status='sent', sent_at=now()
+// 으로 박고, 사용된 기사도 used 로 마킹 (기존 sendNewsletterAction 의
+// "큐 완전 소진" 분기에서 하던 처리와 동일).
+//
+// 멱등성: 이미 sent 인 호는 그대로 ok 반환 (재호출해도 sent_at 재기록
+// 안 함). archived 는 거절.
+// ─────────────────────────────────────────────
+export async function markNewsletterSentAction(
+  newsletterId: string
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const supabase = createAdminClient();
+
+  const { data: nl, error: nlErr } = await supabase
+    .from("newsletters")
+    .select("id, issue_label, status")
+    .eq("id", newsletterId)
+    .single();
+  if (nlErr || !nl) {
+    return { ok: false, error: "뉴스레터를 찾을 수 없습니다." };
+  }
+  if (nl.status === "archived") {
+    return { ok: false, error: "보관된 호는 발송 완료 처리할 수 없습니다." };
+  }
+  if (nl.status === "sent") {
+    // 이미 처리됨 — 멱등.
+    return { ok: true, message: "이미 발송 완료 처리된 호입니다." };
+  }
+
+  const nowIso = new Date().toISOString();
+  const { error: updErr } = await supabase
+    .from("newsletters")
+    .update({ status: "sent", sent_at: nowIso })
+    .eq("id", newsletterId);
+  if (updErr) {
+    return { ok: false, error: `상태 변경 실패: ${updErr.message}` };
+  }
+
+  // 인용된 기사 used 마킹 — 외부 채널로 발송됐으니 이 호의 기사들도
+  // "사용 완료" 풀로 옮겨야 다음 호 후보에서 빠진다.
+  await markArticlesUsedForSentNewsletter(supabase, newsletterId);
+
+  await logAudit({
+    adminId: admin.id,
+    action: "newsletter.mark_sent",
+    entity: "newsletter",
+    entityId: newsletterId,
+    metadata: {
+      previous_status: nl.status,
+      sent_at: nowIso,
+    },
+  });
+
+  revalidatePath(`/newsletters/${newsletterId}`);
+  revalidatePath("/newsletters");
+
+  return { ok: true, message: "발송 완료 처리되었습니다." };
+}
+
 export async function sendNewsletterAction(
   newsletterId: string
 ): Promise<ActionResult> {
