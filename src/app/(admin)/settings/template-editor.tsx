@@ -31,6 +31,7 @@ export function TemplateEditor({ initial }: Props) {
 
   const [header, setHeader] = React.useState(initial.header);
   const [referralCta, setReferralCta] = React.useState(initial.referralCta);
+  const [inquiryCta, setInquiryCta] = React.useState(initial.inquiryCta);
   const [footer, setFooter] = React.useState(initial.footer);
 
   function updateFooterLink(
@@ -62,6 +63,7 @@ export function TemplateEditor({ initial }: Props) {
       const res = await updateTemplateSettingsAction({
         header,
         referralCta,
+        inquiryCta,
         footer,
       });
       if (res.ok) {
@@ -348,6 +350,67 @@ export function TemplateEditor({ initial }: Props) {
               }
               disabled={pending}
               placeholder="{{REFERRAL_HREF}}"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ── 문의 CTA ────────────────────────────────────
+          푸터 바로 위에 렌더되는 "문의하기" 버튼 섹션. 어드민 메뉴
+          /events 에서 문의용 폼을 만들고 (성함·소속·이메일·문의 내용),
+          그 폼의 공개 URL (/f/{token}) 을 아래 버튼 URL 칸에 박으면
+          모든 호에 자동으로 버튼이 나타난다. URL 이 비어있으면 섹션
+          자체가 렌더되지 않으므로, 미설정 상태에서도 안전. */}
+      <section className="rounded-xl border border-border bg-background p-6 space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold">문의 CTA</h2>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+            푸터 바로 위에 표시되는 "문의하기" 메시지와 버튼입니다.
+            <strong className="text-foreground"> 사이드바의 "이벤트·의견" 메뉴에서 문의용 폼을 먼저 만들고</strong>
+            (필드: 성함·소속·이메일·문의 내용), 발급된 공개 URL
+            (<code className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">/f/&#123;토큰&#125;</code>)
+            을 아래 버튼 URL 칸에 붙여넣으세요. URL 이 비어있으면 버튼은
+            노출되지 않습니다.
+          </p>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="inquiry-message">메시지</Label>
+          <Textarea
+            id="inquiry-message"
+            value={inquiryCta.message}
+            onChange={(e) =>
+              setInquiryCta({ ...inquiryCta, message: e.target.value })
+            }
+            rows={3}
+            disabled={pending}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="inquiry-label">버튼 라벨 *</Label>
+            <Input
+              id="inquiry-label"
+              value={inquiryCta.buttonLabel}
+              onChange={(e) =>
+                setInquiryCta({
+                  ...inquiryCta,
+                  buttonLabel: e.target.value,
+                })
+              }
+              disabled={pending}
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="inquiry-href">버튼 URL (비우면 버튼 숨김)</Label>
+            <Input
+              id="inquiry-href"
+              value={inquiryCta.buttonHref}
+              onChange={(e) =>
+                setInquiryCta({ ...inquiryCta, buttonHref: e.target.value })
+              }
+              disabled={pending}
+              placeholder="https://your-app.vercel.app/f/abcd1234..."
             />
           </div>
         </div>

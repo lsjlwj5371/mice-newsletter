@@ -44,6 +44,7 @@ export default async function SettingsPage() {
                 wordmarkLogoHeight: template.header.wordmarkLogoHeight ?? null,
               },
               referralCta: template.referralCta,
+              inquiryCta: template.inquiryCta,
               footer: {
                 brandName: template.footer.brandName,
                 brandTagline: template.footer.brandTagline ?? "",

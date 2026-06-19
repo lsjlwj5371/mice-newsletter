@@ -29,6 +29,7 @@ import type {
   BlockInstance,
   HeaderContent,
   ReferralCtaContent,
+  InquiryCtaContent,
   FooterContent,
   OpeningLedeBlock,
   StatFeatureBlock,
@@ -450,6 +451,90 @@ export function ReferralCtaBlock({
           </tr>
         </tbody>
       </table>
+      </div>
+    </Section>
+  );
+}
+
+// ─────────────────────────────────────────────
+// FIXED: Inquiry CTA — referralCta 와 동일 디자인. 푸터 직전에 렌더되며,
+//        buttonHref 가 비어있거나 content.inquiryCta 자체가 없으면
+//        섹션을 통째로 건너뛴다 (마이그레이션 0021 이전 호 호환).
+// ─────────────────────────────────────────────
+export function InquiryCtaBlock({
+  content,
+}: {
+  content?: InquiryCtaContent;
+}) {
+  // 옵션 가드 — 미설정 / 빈 URL 이면 렌더하지 않음.
+  if (!content || !content.buttonHref || content.buttonHref.trim() === "") {
+    return null;
+  }
+  return (
+    <Section
+      style={{
+        marginTop: "24px",
+        paddingTop: "24px",
+        borderTop: `1px solid ${colors.borderSoft}`,
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: colors.bgInsightSoft,
+          padding: "20px 24px",
+          borderRadius: "8px",
+        }}
+      >
+        <table
+          role="presentation"
+          cellPadding={0}
+          cellSpacing={0}
+          border={0}
+          width="100%"
+          className="cta-row"
+          style={{ borderCollapse: "collapse" }}
+        >
+          <tbody>
+            <tr>
+              <td style={{ verticalAlign: "middle" }}>
+                <Text
+                  style={{
+                    fontSize: "15px",
+                    lineHeight: 1.7,
+                    color: colors.textBody,
+                    fontWeight: 400,
+                    margin: 0,
+                  }}
+                >
+                  {content.message}
+                </Text>
+              </td>
+              <td
+                className="cta-button-col"
+                align="right"
+                style={{ verticalAlign: "middle", width: "140px" }}
+              >
+                <Link
+                  href={content.buttonHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-block",
+                    backgroundColor: colors.brandNavy,
+                    color: colors.textOnDark,
+                    textDecoration: "none",
+                    ...typography.ctaButton,
+                    padding: "10px 18px",
+                    borderRadius: "4px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {content.buttonLabel} →
+                </Link>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </Section>
   );

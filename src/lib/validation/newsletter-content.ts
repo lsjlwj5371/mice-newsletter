@@ -32,6 +32,12 @@ const referralCtaSchema = z.object({
   buttonHref: z.string(),
 });
 
+const inquiryCtaSchema = z.object({
+  message: z.string(),
+  buttonLabel: z.string(),
+  buttonHref: z.string(),
+});
+
 const footerSchema = z.object({
   brandName: z.string(),
   brandTagline: z.string().optional(),
@@ -442,6 +448,9 @@ export const newsletterContentSchema = z.object({
   header: headerSchema,
   referralCta: referralCtaSchema,
   blocks: z.array(blockInstanceSchema),
+  // 옵션 — 마이그레이션 0021 이전에 만들어진 호는 inquiryCta 없이 그대로
+  // 검증 통과. 렌더러가 미존재/빈 buttonHref 일 때 섹션 자체를 숨김.
+  inquiryCta: inquiryCtaSchema.optional(),
   footer: footerSchema,
 });
 

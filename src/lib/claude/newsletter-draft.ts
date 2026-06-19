@@ -1535,6 +1535,10 @@ export async function generateNewsletterDraft(
       issueDate: input.issueDate,
     },
     referralCta: template.referralCta,
+    // template.inquiryCta 는 항상 채워져 있다 (load 시 fallback 적용).
+    // buttonHref 가 비어있으면 렌더러가 알아서 섹션을 숨기므로,
+    // 어드민이 폼 URL 을 박지 않은 상태라도 안전하게 저장된다.
+    inquiryCta: template.inquiryCta,
     blocks,
     footer: template.footer,
   };

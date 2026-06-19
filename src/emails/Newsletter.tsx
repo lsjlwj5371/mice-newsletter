@@ -12,6 +12,7 @@ import { colors, typography, spacing } from "./tokens";
 import {
   NewsletterHeaderBlock,
   ReferralCtaBlock,
+  InquiryCtaBlock,
   NewsletterFooterBlock,
   BlockRenderer,
   isNumberedBlock,
@@ -249,6 +250,10 @@ export default function Newsletter({ content, appUrl }: Props) {
             ))}
 
             <ReferralCtaBlock content={content.referralCta} />
+            {/* InquiryCtaBlock 은 buttonHref 가 비어있거나 inquiryCta 자체가
+                없으면 알아서 null 을 반환 → 미설정 호환 (마이그레이션 0021
+                이전 호도 그대로 살아남음). */}
+            <InquiryCtaBlock content={content.inquiryCta} />
             <NewsletterFooterBlock content={content.footer} appUrl={appUrl} />
           </div>
         </Container>

@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   HeaderContent,
   ReferralCtaContent,
+  InquiryCtaContent,
   FooterContent,
 } from "@/types/newsletter";
 
@@ -25,6 +26,16 @@ const REFERRAL_FALLBACK: ReferralCtaContent = {
   buttonHref: "{{REFERRAL_HREF}}",
 };
 
+// inquiryCta — buttonHref 가 비어있는 동안 렌더러는 섹션 자체를 숨김.
+// 어드민이 /events 에서 폼을 만든 뒤 그 /f/{token} URL 을 여기에 박으면
+// 푸터 위에 "문의하기" 버튼이 자동으로 나타난다.
+const INQUIRY_FALLBACK: InquiryCtaContent = {
+  message:
+    "뉴스레터에 대해 문의·피드백이 있으시다면 아래 버튼을 통해 알려주세요.",
+  buttonLabel: "문의하기",
+  buttonHref: "",
+};
+
 const FOOTER_FALLBACK: FooterContent = {
   brandName: "MICE人sight by GroundK",
   brandTagline: "We pick what moves you",
@@ -41,6 +52,7 @@ const FOOTER_FALLBACK: FooterContent = {
 export interface TemplateSettings {
   header: HeaderContent;
   referralCta: ReferralCtaContent;
+  inquiryCta: InquiryCtaContent;
   footer: FooterContent;
 }
 
@@ -55,13 +67,14 @@ export async function loadTemplateSettings(): Promise<TemplateSettings> {
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("template_settings")
-      .select("header, referral_cta, footer")
+      .select("header, referral_cta, inquiry_cta, footer")
       .eq("id", "default")
       .maybeSingle();
     if (error || !data) {
       return {
         header: HEADER_FALLBACK,
         referralCta: REFERRAL_FALLBACK,
+        inquiryCta: INQUIRY_FALLBACK,
         footer: FOOTER_FALLBACK,
       };
     }
@@ -74,6 +87,10 @@ export async function loadTemplateSettings(): Promise<TemplateSettings> {
         ...REFERRAL_FALLBACK,
         ...(data.referral_cta as Partial<ReferralCtaContent>),
       },
+      inquiryCta: {
+        ...INQUIRY_FALLBACK,
+        ...((data.inquiry_cta as Partial<InquiryCtaContent> | null) ?? {}),
+      },
       footer: {
         ...FOOTER_FALLBACK,
         ...(data.footer as Partial<FooterContent>),
@@ -83,6 +100,7 @@ export async function loadTemplateSettings(): Promise<TemplateSettings> {
     return {
       header: HEADER_FALLBACK,
       referralCta: REFERRAL_FALLBACK,
+      inquiryCta: INQUIRY_FALLBACK,
       footer: FOOTER_FALLBACK,
     };
   }
@@ -91,5 +109,6 @@ export async function loadTemplateSettings(): Promise<TemplateSettings> {
 export const TEMPLATE_FALLBACKS = {
   header: HEADER_FALLBACK,
   referralCta: REFERRAL_FALLBACK,
+  inquiryCta: INQUIRY_FALLBACK,
   footer: FOOTER_FALLBACK,
 };

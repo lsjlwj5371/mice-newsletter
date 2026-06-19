@@ -26,6 +26,13 @@ export const sampleNewsletter: NewsletterContent = {
     buttonHref: "https://mice-newsletter.vercel.app/r/sample-token",
   },
 
+  inquiryCta: {
+    message:
+      "뉴스레터에 대해 문의·피드백이 있으시다면 아래 버튼을 통해 알려주세요.",
+    buttonLabel: "문의하기",
+    buttonHref: "https://mice-newsletter.vercel.app/f/sample-inquiry-token",
+  },
+
   blocks: [
     {
       id: "b1",

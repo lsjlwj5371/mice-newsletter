@@ -27,6 +27,13 @@ export interface NewsletterContent {
   /** Ordered content blocks that vary per issue */
   blocks: BlockInstance[];
 
+  /**
+   * 문의 CTA — 푸터 바로 위에 렌더되는 1줄 메시지 + 버튼. buttonHref 가
+   * 비어있거나 필드 자체가 없으면 (예: 마이그레이션 0021 이전에 만들어진
+   * 호) 렌더러가 섹션을 통째로 숨김. 정상 동작에 필수 아닌 옵션.
+   */
+  inquiryCta?: InquiryCtaContent;
+
   /** Fixed bottom section */
   footer: FooterContent;
 }
@@ -571,6 +578,17 @@ export interface HeaderContent {
 }
 
 export interface ReferralCtaContent {
+  message: string;
+  buttonLabel: string;
+  buttonHref: string;
+}
+
+/**
+ * 문의 CTA — referralCta 와 동일한 shape. 어드민이 /events 에서 만든
+ * 문의 폼의 /f/{token} URL 을 한 번 입력해두면 모든 호에 자동 적용된다.
+ * buttonHref 가 비어있으면 렌더러가 섹션 자체를 숨김 — 미설정 호환.
+ */
+export interface InquiryCtaContent {
   message: string;
   buttonLabel: string;
   buttonHref: string;

@@ -8,6 +8,7 @@ import { loadTemplateSettings } from "@/lib/template-settings";
 import type {
   HeaderContent,
   ReferralCtaContent,
+  InquiryCtaContent,
   FooterContent,
 } from "@/types/newsletter";
 
@@ -32,6 +33,12 @@ export interface UpdateTemplateInput {
     wordmarkLogoHeight?: number | null;
   };
   referralCta: {
+    message: string;
+    buttonLabel: string;
+    buttonHref: string;
+  };
+  /** 문의 CTA — buttonHref 가 비어있으면 렌더러가 섹션을 숨김. */
+  inquiryCta: {
     message: string;
     buttonLabel: string;
     buttonHref: string;
@@ -71,6 +78,9 @@ export async function updateTemplateSettingsAction(
   }
   if (!input.referralCta.buttonLabel.trim()) {
     return { ok: false, error: "추천 CTA 버튼 라벨은 비워둘 수 없습니다." };
+  }
+  if (!input.inquiryCta.buttonLabel.trim()) {
+    return { ok: false, error: "문의 CTA 버튼 라벨은 비워둘 수 없습니다." };
   }
   if (input.footer.links.length > 10) {
     return { ok: false, error: "푸터 링크는 최대 10개까지 허용됩니다." };
@@ -171,6 +181,7 @@ export async function updateTemplateSettingsAction(
         id: "default",
         header: cleanedHeader,
         referral_cta: input.referralCta,
+        inquiry_cta: input.inquiryCta,
         footer: cleanedFooter,
         updated_at: new Date().toISOString(),
         updated_by: admin.id,
@@ -244,6 +255,7 @@ async function propagateTemplateToDrafts(
       const content = d.content_json as {
         header?: { issueMeta?: string } & Record<string, unknown>;
         referralCta?: Record<string, unknown>;
+        inquiryCta?: Record<string, unknown>;
         footer?: Record<string, unknown>;
       } | null;
       if (!content) continue;
@@ -261,6 +273,9 @@ async function propagateTemplateToDrafts(
         },
         referralCta: {
           ...input.referralCta,
+        },
+        inquiryCta: {
+          ...input.inquiryCta,
         },
         footer: {
           ...cleanedFooter,
@@ -287,6 +302,7 @@ async function propagateTemplateToDrafts(
 export async function getTemplateSettingsAction(): Promise<{
   header: HeaderContent;
   referralCta: ReferralCtaContent;
+  inquiryCta: InquiryCtaContent;
   footer: FooterContent;
 }> {
   await requireAdmin();
