@@ -12,8 +12,6 @@ export function PublicForm({
   form: FormRow;
 }) {
   const [answers, setAnswers] = React.useState<Record<string, unknown>>({});
-  const [email, setEmail] = React.useState("");
-  const [name, setName] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
   const [done, setDone] = React.useState<null | {
     type: "success" | "error";
@@ -29,11 +27,11 @@ export function PublicForm({
     setSubmitting(true);
     setDone(null);
     try {
+      // email / name 은 폼 fields 안에 직접 받게 되어 별도 응답자 정보 섹션은
+      // 제거. 어드민이 만든 fields 중 email/text 항목으로 자연스럽게 수집됨.
       const res = await submitFormAction({
         token,
         answers,
-        email: email || undefined,
-        name: name || undefined,
       });
       if (res.ok) {
         setDone({ type: "success", text: res.message ?? "응답이 제출되었습니다." });
@@ -82,38 +80,6 @@ export function PublicForm({
           disabled={submitting}
         />
       ))}
-
-      {/* Optional: email + name so admin can attribute responses */}
-      <div
-        style={{
-          marginTop: 16,
-          padding: "16px",
-          background: "#f9fafb",
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-        }}
-      >
-        <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 12px 0" }}>
-          응답자 정보 (선택) — 입력하시면 관리자가 후속 연락을 드릴 수 있습니다.
-        </p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Input
-            id="resp-email"
-            type="email"
-            placeholder="이메일"
-            value={email}
-            onChange={setEmail}
-            disabled={submitting}
-          />
-          <Input
-            id="resp-name"
-            placeholder="이름"
-            value={name}
-            onChange={setName}
-            disabled={submitting}
-          />
-        </div>
-      </div>
 
       {done?.type === "error" && (
         <div
