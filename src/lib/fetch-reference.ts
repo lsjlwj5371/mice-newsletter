@@ -169,6 +169,18 @@ export async function fetchReferences(
 }
 
 /**
+ * 단일 article URL 의 본문을 추출해 반환. collect-articles cron 에서
+ * 수집 시점에 본문을 미리 캐싱하기 위해 사용 (fetchReferences 는 어드민
+ * 인스트럭션의 URL 다중 처리용). 동일한 8초 timeout, 512KB 본문 cap,
+ * 12000자 텍스트 cap 적용.
+ */
+export async function fetchArticleBody(
+  url: string
+): Promise<FetchedReference> {
+  return fetchOne(url);
+}
+
+/**
  * Format fetched references for direct inclusion in a Claude prompt.
  * Uses [R1], [R2], ... labels to make it easy to ask Claude to cite
  * them. Failed fetches are rendered as a short note so Claude doesn't

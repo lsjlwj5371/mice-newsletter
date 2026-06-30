@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseFeed } from "@/lib/rss/parse";
 import { analyzeArticle } from "@/lib/claude/article-analyze";
+import { fetchArticleBody } from "@/lib/fetch-reference";
 import type { ArticleCategory, RssFeed } from "@/lib/validation/rss";
 
 // This route can be called by:
@@ -191,6 +192,30 @@ async function runCollection(): Promise<RunSummary> {
       summary.skipped_low_importance += skippedLow;
       if (skippedLow > 0) detail.skipped_low_importance = skippedLow;
 
+      // ─── Fetch article bodies in parallel ───
+      // Pre-cache the real article body so Claude has the full text when
+      // generating newsletter blocks — without this, the model only sees
+      // title + 1~3-sentence summary, which produces keyword-shaped
+      // hallucinations instead of source-faithful prose. Per-URL timeout
+      // 8s, 12000-char cap (matches fetch-reference.ts internals). Run
+      // ALL fetches in parallel — feed loop already capped at 15 items
+      // so worst case is 15 concurrent connections per feed iteration.
+      // Failures fall back to NULL full_text with an error string saved
+      // for admin diagnostics; the article still lands in the table.
+      const bodyFetches = await Promise.all(
+        toInsert.map(async ({ item }) => {
+          try {
+            const res = await fetchArticleBody(item.url);
+            return res.ok
+              ? { full_text: res.text ?? null, full_text_error: null }
+              : { full_text: null, full_text_error: res.error ?? "unknown" };
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            return { full_text: null, full_text_error: msg.slice(0, 500) };
+          }
+        })
+      );
+
       // Bulk upsert. `ignoreDuplicates` swallows the rare race-loss when
       // a parallel collection run inserts the same GUID first. The `data`
       // we get back is the set of rows that actually landed, which lets
@@ -198,7 +223,7 @@ async function runCollection(): Promise<RunSummary> {
       let insertedCount = 0;
       if (toInsert.length > 0) {
         const nowIso = new Date().toISOString();
-        const rows = toInsert.map(({ item, analysis, error }) => ({
+        const rows = toInsert.map(({ item, analysis, error }, i) => ({
           feed_id: feed.id,
           guid: item.guid,
           url: item.url,
@@ -212,6 +237,9 @@ async function runCollection(): Promise<RunSummary> {
           importance: analysis?.importance ?? null,
           analyzed_at: analysis ? nowIso : null,
           analysis_error: error,
+          full_text: bodyFetches[i].full_text,
+          full_text_fetched_at: nowIso,
+          full_text_error: bodyFetches[i].full_text_error,
         }));
 
         const { data: insertedRows, error: insertErr } = await supabase

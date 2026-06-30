@@ -526,15 +526,39 @@ function stripMetaForPrompt(data: unknown): unknown {
 }
 
 function formatArticleForPrompt(a: Article, idx: number): string {
-  const parts = [
+  // full_text 우선 — 수집 cron 이 article URL 페이지에서 미리 추출해둔
+  // 원문 본문 (최대 12000자). 없으면 raw_excerpt → summary 순으로 폴백.
+  // 본문 충실도 보장의 핵심: Claude 가 summary 1~3문장만 보고 추론하던
+  // 이전 동작 → 실제 본문 12000자를 보고 사실 추출하는 동작으로 전환.
+  const body =
+    (a.full_text && a.full_text.trim().length > 0 && a.full_text) ||
+    (a.raw_excerpt && a.raw_excerpt.trim().length > 0 && a.raw_excerpt) ||
+    null;
+
+  const parts: Array<string | null> = [
     `[${idx + 1}] ${a.title}`,
     a.source ? `    출처: ${a.source}` : null,
     a.published_at ? `    발행: ${a.published_at.slice(0, 10)}` : null,
-    a.summary ? `    요약: ${a.summary}` : null,
+    a.summary ? `    한줄 요약: ${a.summary}` : null,
     a.tags.length > 0 ? `    태그: ${a.tags.join(", ")}` : null,
     `    URL: ${a.url}`,
-  ].filter(Boolean);
-  return parts.join("\n");
+  ];
+
+  if (body) {
+    parts.push(`    본문:`);
+    // 본문은 들여쓰기 없이 통째로 — 길어도 그대로 박는다. 12000자 cap 은
+    // 수집 시점에 이미 적용되어 있어 프롬프트 폭주 위험 없음.
+    parts.push(body);
+  } else {
+    // 본문 추출 실패 케이스 — Claude 에게 명시적으로 알려서 추론 보충을
+    // 하지 않도록 경고. summary/tags 만으로 본문을 지어내는 게 정확히
+    // 우리가 막고 싶은 행동.
+    parts.push(
+      `    (원문 본문 자동 수집 실패 — 위 한줄 요약과 태그를 넘는 사실은 본문에 넣지 마십시오)`
+    );
+  }
+
+  return parts.filter((p): p is string => p !== null).join("\n");
 }
 
 function buildBlockSystemPrompt(
@@ -640,7 +664,13 @@ function buildBlockSystemPrompt(
 - 제공되지 않은 출처·수치·고유명사를 **절대 지어내지 마십시오.** 예시 금지: 제공된 본문에 없는 행사명·개최일·금액·통계·연구자 이름·URL을 추측으로 채우는 행위.
 - 본문에 포함한 주장·수치·인용이 있다면, 그 근거는 반드시 제공된 자료 중 하나여야 합니다.
 - 관리자가 제공한 링크 본문이 있는 경우: 그 링크를 다룰 때는 **링크 본문에 명시된 내용만** 사용합니다. 본문에 "2026년 6월 서울 개최" 같은 문장이 있으면 그대로 쓰되, 본문에 없는 세부(예: 참가비, 연사 명단)는 추정·생성하지 말고 생략합니다.
-- 근거가 부족할 때는 내용을 지어내는 대신 해당 필드를 짧게 두거나, 더 모호한 일반 맥락(예: "관련 보도가 이어지고 있습니다") 수준으로 서술합니다.${factCheckProcedure}`;
+- 근거가 부족할 때는 내용을 지어내는 대신 해당 필드를 짧게 두거나, 더 모호한 일반 맥락(예: "관련 보도가 이어지고 있습니다") 수준으로 서술합니다.
+
+## 원문 충실도 (매우 중요 — 추상화·키워드화 방지)
+- **구체 정보 우선**: 후보 기사 본문에 등장하는 **숫자(인원·금액·일정·비율), 도시·국가·장소명, 기업·기관명, 도구·서비스명** 은 본문에 반드시 그대로 옮기십시오. 이걸 "AI 도구가 확산되고 있다" 같은 추상 표현으로 일반화하면 본문 충실도가 깨집니다.
+- **인물 인용은 직책 + 직접 인용 형식**: 후보 기사에 인용된 발언이 있으면 화자의 직책(예: "○○공사 △△ 본부장")을 반드시 함께 표기하고, 발언은 큰따옴표 안에 본문에서 본 표현을 유지하십시오. "관계자에 따르면" 류 익명화 금지.
+- **요약본만 보이고 본문이 비어있는 후보**(\`(원문 본문 자동 수집 실패…)\` 표시가 붙은 항목)는 한줄 요약과 태그를 넘는 사실을 본문에 넣지 마십시오. 그 후보에서 무리하게 본문을 구성하기보다, 본문이 들어온 다른 후보를 우선해서 글을 짭니다.
+- **추상화 회피 체크**: 단락마다 마지막 줄에서 "이 단락에 원문에서 가져온 구체 사실(인명·수치·고유명사 중 최소 하나)이 있는가" 를 내부적으로 점검하고, 없으면 본문에서 가져와 보강합니다.${factCheckProcedure}`;
 
   // 학술 모드 — theory_to_field 한정. 후보 기사가 없을 때 발동.
   // 출처 규칙을 외부 자료가 아닌 "Claude 학습 지식 내 검증 가능한 학술 자료"

@@ -115,6 +115,14 @@ export interface Article {
   collected_at: string;
   raw_excerpt: string | null;
   summary: string | null;
+  /**
+   * 수집 시점에 article URL 페이지에서 추출한 원문 본문 (최대 12000자).
+   * Claude 본문 생성 시 우선 사용 — 없으면 summary 폴백. NULL = 추출
+   * 실패 또는 마이그레이션 0022 이전에 수집된 기사. 마이그레이션 0022.
+   */
+  full_text: string | null;
+  full_text_fetched_at: string | null;
+  full_text_error: string | null;
   tags: string[];
   importance: number | null;
   analyzed_at: string | null;
