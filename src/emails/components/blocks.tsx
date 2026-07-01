@@ -194,8 +194,17 @@ export function NewsletterHeaderBlock({
  * issueMeta string render it as the single-line fallback.
  */
 function IssueMetaBadge({ content }: { content: HeaderContent }) {
+  // 방어층 — 어떤 이유로 issueNumber 가 유실됐지만 issueMeta 가 "N호"
+  // 형태면 N 을 뽑아 VOL 큰 글씨 경로로 렌더. 템플릿 저장 시 propagation
+  // 이 issueNumber 를 지우던 버그(2025-12) 로 이미 저장된 draft 는
+  // DB 상 issueNumber = undefined 인 상태 → 렌더 시점에 복원.
+  const derivedIssueNumber =
+    content.issueNumber !== undefined
+      ? content.issueNumber
+      : deriveIssueNumberFromMeta(content.issueMeta);
+
   const hasStructured =
-    content.issueNumber !== undefined || Boolean(content.issueDate);
+    derivedIssueNumber !== undefined || Boolean(content.issueDate);
   const hasLegacy = Boolean(content.issueMeta);
   if (!hasStructured && !hasLegacy) return null;
 
@@ -230,7 +239,7 @@ function IssueMetaBadge({ content }: { content: HeaderContent }) {
               ? ` · ${formatIssueDate(content.issueDate)}`
               : ""}
           </Text>
-          {content.issueNumber !== undefined && (
+          {derivedIssueNumber !== undefined && (
             <Text
               style={{
                 fontSize: "14px",
@@ -241,7 +250,7 @@ function IssueMetaBadge({ content }: { content: HeaderContent }) {
                 lineHeight: 1.1,
               }}
             >
-              VOL {formatIssueNumber(content.issueNumber)}
+              VOL {formatIssueNumber(derivedIssueNumber)}
             </Text>
           )}
         </>
@@ -286,6 +295,33 @@ function formatIssueDate(raw: string): string {
 /** 1 → "001", 7 → "007", 42 → "042", 1000 → "1000". */
 function formatIssueNumber(n: number): string {
   return n.toString().padStart(3, "0");
+}
+
+/**
+ * issueMeta 문자열에서 호 번호를 추출한다. issueNumber 필드가 유실된
+ * 옛/버그 draft 를 위한 폴백 — 새 호 생성 시 사용된 다음 포맷을 지원:
+ *   - "5호"          → 5
+ *   - "VOL 005"       → 5
+ *   - "VOL.005"       → 5
+ *   - "VOL.01 · 2026년 4월호" (샘플 포맷) → 1
+ * 인식 못 하면 undefined 반환 → 기존 legacy 폴백 경로 유지.
+ */
+function deriveIssueNumberFromMeta(meta?: string): number | undefined {
+  if (!meta) return undefined;
+  const s = meta.trim();
+  // 1) "VOL 005" / "VOL.005" / "VOL.01" — VOL 뒤 첫 숫자군
+  const vol = s.match(/VOL[.\s]*(\d+)/i);
+  if (vol) {
+    const n = parseInt(vol[1], 10);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  // 2) "5호" — 숫자 뒤에 "호" 붙는 한국식
+  const kor = s.match(/^(\d+)\s*호\b/);
+  if (kor) {
+    const n = parseInt(kor[1], 10);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return undefined;
 }
 
 /**

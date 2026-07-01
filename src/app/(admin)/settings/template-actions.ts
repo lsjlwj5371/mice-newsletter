@@ -253,23 +253,33 @@ async function propagateTemplateToDrafts(
     let updated = 0;
     for (const d of drafts) {
       const content = d.content_json as {
-        header?: { issueMeta?: string } & Record<string, unknown>;
+        header?: {
+          issueMeta?: string;
+          issueNumber?: number;
+          issueDate?: string;
+        } & Record<string, unknown>;
         referralCta?: Record<string, unknown>;
         inquiryCta?: Record<string, unknown>;
         footer?: Record<string, unknown>;
       } | null;
       if (!content) continue;
 
-      // Preserve this draft's issueMeta (per-issue label like "VOL.01 …").
-      // Everything else in the fixed sections is replaced. cleanedHeader
-      // already omits unset optional style fields so drafts don't carry
-      // stale wordmarkFontSize/color after admin clears them.
-      const issueMeta = content.header?.issueMeta ?? "";
+      // Preserve ALL per-issue header fields — not just issueMeta.
+      // issueNumber (예: 5) 와 issueDate 는 호마다 다른 값이라 템플릿
+      // 저장 시 절대 덮으면 안 된다. 이전엔 issueMeta 만 보존해서
+      // issueNumber/issueDate 가 undefined 로 지워지고 헤더가 폴백
+      // 경로(12px muted "5호")로 렌더되는 버그가 있었다.
+      const oldHeader = content.header ?? {};
+      const issueMeta = oldHeader.issueMeta ?? "";
+      const issueNumber = oldHeader.issueNumber;
+      const issueDate = oldHeader.issueDate;
       const nextContent = {
         ...content,
         header: {
           ...cleanedHeader,
           issueMeta,
+          ...(issueNumber !== undefined ? { issueNumber } : {}),
+          ...(issueDate !== undefined ? { issueDate } : {}),
         },
         referralCta: {
           ...input.referralCta,
