@@ -194,12 +194,14 @@ export default function Newsletter({ content, appUrl }: Props) {
         />
       </Head>
       <Preview>{content.subject}</Preview>
-      {/* Outer Body: soft neutral canvas behind the newsletter card so
-          the inner white container reads as a distinct sheet even in
-          mail clients that default to a white background. */}
+      {/* Outer Body: white canvas so the exported HTML blends into the
+          external site background (외부 사이트 아카이브 게시 목적).
+          이전엔 soft neutral #eceff3 로 카드감을 강조했지만 사이트 흰
+          배경 위에 올렸을 때 색이 튀어 흰색으로 통일. Container 자체는
+          border + rounded corner + shadow 로 카드 경계가 여전히 살아있다. */}
       <Body
         style={{
-          backgroundColor: "#eceff3",
+          backgroundColor: "#ffffff",
           margin: 0,
           padding: "24px 12px",
           fontFamily: typography.fontFamily,
