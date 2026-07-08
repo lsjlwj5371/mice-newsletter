@@ -179,6 +179,31 @@ export function NewsletterHeaderBlock({
               }}
             >
               <IssueMetaBadge content={content} />
+              {/* 지난 호 보기 버튼 — VOL 배지 아래 여백을 활용해 아카이브
+                  링크를 노출. groundk.co.kr/ko/newsletter 로 이동. 배지
+                  스타일(그레이 보더 + soft 배경) 과 결이 같은 outlined
+                  pill 형태로 배지와 시각적 대구를 이룬다. */}
+              <div style={{ marginTop: "10px" }}>
+                <Link
+                  href="https://groundk.co.kr/ko/newsletter"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-block",
+                    padding: "6px 12px",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    color: colors.textMuted,
+                    textDecoration: "none",
+                    letterSpacing: "0.3px",
+                    border: `1px solid ${colors.borderSoft}`,
+                    borderRadius: "4px",
+                    backgroundColor: "#fafbfc",
+                  }}
+                >
+                  지난 호 보기 →
+                </Link>
+              </div>
             </td>
           </tr>
         </tbody>
