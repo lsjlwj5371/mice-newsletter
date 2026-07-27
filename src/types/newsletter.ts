@@ -273,6 +273,14 @@ export interface TheoryToFieldBlock extends BlockBase {
     sourceYear?: string;
     sourceAuthor?: string;
     sourceMeta?: string;
+    /**
+     * 학술 논문/저작의 원문 정식 명칭 (예: "Multi-Period Adaptive
+     * Spatiotemporal Convolutional Network (MP-ASTCN)"). 세팅되면
+     * 헤더 상단 라인에 굵게 표시되며, 저널·저자 정보는 그 아래 한
+     * 줄로 결합 렌더. 미세팅이면 기존 레이아웃(저자 → 저널)으로
+     * 폴백해 호환성 유지.
+     */
+    sourcePaperTitle?: string;
     title: string;
     introParagraphs: string[];
     bridge: { label?: string; text: string };

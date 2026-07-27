@@ -1146,7 +1146,9 @@ function TheoryToField({
         label={block.data.englishLabel}
         emoji="📚"
       />
-      {(block.data.sourceYear || block.data.sourceAuthor) && (
+      {(block.data.sourceYear ||
+        block.data.sourceAuthor ||
+        block.data.sourcePaperTitle) && (
         <Section style={{ marginBottom: "18px" }}>
           <Row>
             {block.data.sourceYear && (
@@ -1189,30 +1191,70 @@ function TheoryToField({
                 borderLeft: `1px solid ${colors.borderSoft}`,
               }}
             >
-              {block.data.sourceAuthor && (
-                <Text
-                  style={{
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    color: colors.textMuted,
-                    letterSpacing: "0.5px",
-                    margin: "0 0 2px 0",
-                  }}
-                >
-                  {block.data.sourceAuthor}
-                </Text>
-              )}
-              {block.data.sourceMeta && (
-                <Text
-                  style={{
-                    fontSize: "10px",
-                    color: colors.textFaint,
-                    fontStyle: "italic",
-                    margin: 0,
-                  }}
-                >
-                  {block.data.sourceMeta}
-                </Text>
+              {block.data.sourcePaperTitle ? (
+                <>
+                  {/* 신규 레이아웃 — sourcePaperTitle 세팅된 draft 에만 적용.
+                      Line 1: 논문 정식 명칭 (굵게)
+                      Line 2: 저널명 · Volume + " | " + 저자들 (한 줄) */}
+                  <Text
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      color: colors.textHeadline,
+                      letterSpacing: "-0.1px",
+                      lineHeight: 1.4,
+                      margin: "0 0 4px 0",
+                    }}
+                  >
+                    {block.data.sourcePaperTitle}
+                  </Text>
+                  {(block.data.sourceMeta || block.data.sourceAuthor) && (
+                    <Text
+                      style={{
+                        fontSize: "10px",
+                        color: colors.textFaint,
+                        fontStyle: "italic",
+                        lineHeight: 1.5,
+                        margin: 0,
+                      }}
+                    >
+                      {[block.data.sourceMeta, block.data.sourceAuthor]
+                        .filter((v) => v && v.trim() !== "")
+                        .join(" | ")}
+                    </Text>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* 레거시 레이아웃 — sourcePaperTitle 없는 이전 호는 그대로.
+                      Line 1: 저자 (bold small)
+                      Line 2: 저널 (italic faint) */}
+                  {block.data.sourceAuthor && (
+                    <Text
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        color: colors.textMuted,
+                        letterSpacing: "0.5px",
+                        margin: "0 0 2px 0",
+                      }}
+                    >
+                      {block.data.sourceAuthor}
+                    </Text>
+                  )}
+                  {block.data.sourceMeta && (
+                    <Text
+                      style={{
+                        fontSize: "10px",
+                        color: colors.textFaint,
+                        fontStyle: "italic",
+                        margin: 0,
+                      }}
+                    >
+                      {block.data.sourceMeta}
+                    </Text>
+                  )}
+                </>
               )}
             </Column>
           </Row>

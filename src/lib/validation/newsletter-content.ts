@@ -136,6 +136,8 @@ export const theoryToFieldDataSchema = z.object({
   sourceYear: z.string().optional(),
   sourceAuthor: z.string().optional(),
   sourceMeta: z.string().optional(),
+  // 논문 정식 명칭 (신규). 세팅되면 헤더 신규 레이아웃 사용.
+  sourcePaperTitle: z.string().optional(),
   title: z.string(),
   introParagraphs: z.array(z.string()).min(1),
   bridge: z.object({

@@ -69,7 +69,12 @@ const BLOCK_SCHEMA_PROMPT: Record<BlockType, string> = {
   news_briefing: `{ "englishLabel": "News Briefing", "items": [정확히 3개. 각 item = { "categoryTag": "경제 · 산업 등", "title": "14~28자의 헤드라인", "body": "2~3문장", "insight": { "label": "MICE 연결", "text": "1~2문장의 MICE 산업 함의" }, "sourceUrl": "제공된 기사의 실제 URL" }] }`,
   in_out_comparison: `{ "englishLabel": "MICE IN & OUT", "inItem": { "categoryTag": "IN · 국내", "title": "한국 관련 소식 제목", "body": "2~3문장", "source": "제공된 기사의 실제 출처명 (예: 한국관광공사 보도자료, 2026.04)" }, "outItem": { "categoryTag": "OUT · 글로벌", "title": "해외 관련 소식 제목", "body": "2~3문장", "source": "제공된 기사의 실제 출처명" } }`,
   tech_signal: `{ "englishLabel": "Tech Signal", "topicLabel": "Agentic AI 등 키워드", "topicMeta": "YYYY.MM · 이번 달 가장 뜨거운 기술 이슈", "title": "헤드라인", "paragraphs": ["1~2개의 단락"], "miceInsight": "1~2문장" }`,
-  theory_to_field: `{ "englishLabel": "From Theory to Field", "sourceYear": "학술 모드: 선정한 고전 연구의 대표 저작 발표 연도(예: '2000'). 기사 모드: 제공된 기사의 발행 연도. 확신 없으면 빈 문자열", "sourceAuthor": "학술 모드: 선정한 학자명(예: 'Robert D. Putnam') 또는 학파(예: '사회자본 이론 학파'). 기사 모드: 제공된 기사의 저자/매체. 위조 절대 금지, 확신 없으면 빈 문자열", "sourceMeta": "학술 모드: 저작명(예: 'Bowling Alone') 또는 학파 분야. 기사 모드: 부제·메타. 확신 없으면 빈 문자열", "title": "호기심을 자극하는 헤드라인", "introParagraphs": ["1~2단락 — 학술 모드에서는 선정한 고전 이론의 핵심 개념 소개"], "bridge": { "label": "→ 현장에서는", "text": "1~2문장 — 이 이론이 MICE 산업에 적용되는 핵심 지점" }, "outroParagraphs": ["1단락 — 구체적 MICE 현장 적용 시나리오/함의"], "closingNote": "1문장의 마무리" }`,
+  theory_to_field: `{ "englishLabel": "From Theory to Field", "sourceYear": "학술 모드: 선정한 고전 연구의 대표 저작 발표 연도(예: '2000'). 기사 모드: 제공된 기사의 발행 연도. 확신 없으면 빈 문자열", "sourcePaperTitle": "논문/저작의 정식 명칭. 학술 모드: 원문 저작명 그대로(예: 'Bowling Alone: The Collapse and Revival of American Community'). 기사 모드: 논문의 정확한 제목(약어가 있으면 괄호 안에 함께, 예: 'Multi-Period Adaptive Spatiotemporal Convolutional Network (MP-ASTCN)'). 확신 없으면 빈 문자열. **절대 지어내지 마십시오.**", "sourceMeta": "저널명 + Volume/Issue (예: 'Annals of Tourism Research, Volume 119') 또는 학파·분야명. 기사 모드에서는 저널 정보 정확히. 확신 없으면 빈 문자열", "sourceAuthor": "저자명들을 원문 순서대로 콤마로 구분(예: 'Luyao Gu, Junjie Wen, Zhixue Liao'). 학술 모드에서는 학자명(예: 'Robert D. Putnam') 또는 학파(예: '사회자본 이론 학파'). 위조 절대 금지, 확신 없으면 빈 문자열", "title": "호기심을 자극하는 헤드라인 (뉴스레터 본문 표제 — 논문 원제와 다른, 독자용 훅 제목)", "introParagraphs": ["1~2단락 — 학술 모드에서는 선정한 고전 이론의 핵심 개념 소개"], "bridge": { "label": "→ 현장에서는", "text": "1~2문장 — 이 이론이 MICE 산업에 적용되는 핵심 지점" }, "outroParagraphs": ["1단락 — 구체적 MICE 현장 적용 시나리오/함의"], "closingNote": "1문장의 마무리" }
+
+## theory_to_field 헤더 필드 배치 지침
+- **sourcePaperTitle**: 논문·저작의 정식 명칭. 뉴스레터 헤더 상단 라인에 굵게 노출됩니다. 반드시 원문 표기를 따르십시오 (약어 있으면 괄호 병기).
+- **sourceMeta + sourceAuthor**: 헤더 하단 한 줄에 "저널 | 저자" 형태로 결합 렌더됩니다. 두 필드 모두 정확한 원문 표기 유지.
+- **title**: 이 값은 헤더가 아니라 본문 위 큰 헤딩 (골드 밑줄) 으로 렌더됩니다. 논문 원제를 그대로 넣지 말고, 독자 관심을 끄는 뉴스레터용 훅 제목을 씁니다.`,
   editor_take: `{ "englishLabel": "지금 MICE는", "eyebrow": "이달의 이슈", "title": "\\n으로 줄바꿈 가능한 제목", "leadParagraph": "진입 1문장", "pullQuote": "짧고 강렬한 인용구", "paragraphs": ["2~3단락"], "closingNote": "1문장의 마무리" }`,
   groundk_story: `{ "englishLabel": "GroundK Story", "fieldBriefing": { "eyebrow": "이달의 현장 브리핑", "categoryTag": "공항 운영 등", "body": "1~2단락. 줄바꿈은 \\n\\n 로 구분" }, "projectSketch": { "projectMeta": "Project · 이름", "dateMeta": "YYYY.MM.DD", "eyebrow": "그라운드케이 프로젝트 스케치", "title": "프로젝트 타이틀", "paragraphs": ["정확히 3개의 단락"], "tags": ["태그 3개 정도"] } }`,
   consolidated_insight: `{ "englishLabel": "MICE Insight", "topicLabel": "주제 태그 (예: Agentic AI · MICE 운영)", "topicMeta": "YYYY.MM · 심층 분석", "title": "이 호에서 다루는 하나의 심층 주제 제목 (24~40자)", "leadParagraph": "이 주제를 왜 지금 다루는지 설명하는 도입 단락 2~4문장", "chapters": [정확히 3~5개. 각 chapter = { "chapterLabel": "01 · 배경", "heading": "이 챕터에서 밝힐 질문/포인트 (14~28자)", "paragraphs": ["2~4개의 두터운 단락. 문장은 문어체 ~습니다 끝맺음."], "pullQuote": "(선택) 이 챕터에서 가장 강조하고 싶은 1문장. 생략 가능" }] }
@@ -329,8 +334,9 @@ function getPlaceholderData(type: BlockType): unknown {
       return {
         englishLabel: "From Theory to Field",
         sourceYear: "",
-        sourceAuthor: "",
+        sourcePaperTitle: "",
         sourceMeta: "",
+        sourceAuthor: "",
         title: "이론·연구의 헤드라인",
         introParagraphs: ["이론 소개 단락을 작성하세요."],
         bridge: { label: "→ 현장에서는", text: "현장 적용 한두 문장을 작성하세요." },
@@ -686,11 +692,12 @@ function buildBlockSystemPrompt(
 4. 분야는 매 호 다양하게 — 같은 학파/저자가 반복되지 않도록 의식하십시오.
 
 ### 출처 표기 — 적극적이되 정확하게
-신뢰할 수 있는 학자·연구를 **적극적으로 명기**합니다:
-- sourceAuthor: 학자명 (예: "Robert D. Putnam", "Erving Goffman", "Edgar H. Schein", "Daniel Kahneman")
-- sourceYear: 대표 저작 발표 연도 (예: "2000")
-- sourceMeta: 저작명 또는 학파 (예: "Bowling Alone", "Frame Analysis", "Organizational Culture and Leadership")
-- sourceUrl: **반드시 빈 문자열로 두십시오.** URL 위조 금지.
+신뢰할 수 있는 학자·연구를 **적극적으로 명기**합니다. 헤더 렌더 배치:
+- **sourcePaperTitle**: 저작의 정식 명칭 (헤더 상단 굵게). 예: "Bowling Alone: The Collapse and Revival of American Community", "Frame Analysis: An Essay on the Organization of Experience". 원문 표기를 정확히 옮기고, 확신 없으면 학파 이름 (예: "사회자본 이론") 을 넣거나 빈 문자열.
+- **sourceMeta**: 저널·출판사·학파 분야 (헤더 하단 왼쪽). 예: "Simon & Schuster", "사회자본 이론 학파".
+- **sourceAuthor**: 학자명 콤마 구분 (헤더 하단 오른쪽에 "저널 | 저자" 로 결합 렌더). 예: "Robert D. Putnam", "Erving Goffman". 학자명 모르면 학파 (예: "사회자본 이론 학파").
+- **sourceYear**: 대표 저작 발표 연도 (헤더 좌측 큰 골드 숫자). 예: "2000".
+- **sourceUrl**: **반드시 빈 문자열로 두십시오.** URL 위조 금지.
 
 ### 절대 금지
 - **MICE 분야 직접 연구라며 가짜 논문/학자/저작 만들어내기.** 매우 흔한 함정.
