@@ -8,7 +8,18 @@ export function getClaudeClient(): Anthropic {
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY is not configured");
   }
-  _client = new Anthropic({ apiKey });
+  // 개인 키(sk-ant-usr-...)를 워크스페이스가 아니라 조직 범위로 발급하면
+  // 모든 요청에 anthropic-workspace-id 헤더가 필요하다. 헤더가 없으면
+  // 400 invalid_request_error 로 전부 실패한다. 키를 워크스페이스 범위로
+  // 발급하는 쪽이 간단하지만, 조직 범위 키를 써야 하는 경우를 위해
+  // ANTHROPIC_WORKSPACE_ID 가 있으면 헤더로 붙여 준다.
+  const workspaceId = process.env.ANTHROPIC_WORKSPACE_ID?.trim();
+  _client = new Anthropic({
+    apiKey,
+    ...(workspaceId
+      ? { defaultHeaders: { "anthropic-workspace-id": workspaceId } }
+      : {}),
+  });
   return _client;
 }
 

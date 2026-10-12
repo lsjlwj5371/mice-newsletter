@@ -233,7 +233,12 @@ async function runCollection(): Promise<RunSummary> {
           published_at: item.publishedAt?.toISOString() ?? null,
           raw_excerpt: item.rawExcerpt,
           summary: analysis?.summary ?? null,
-          tags: analysis?.tags ?? null,
+          // articles.tags 는 `text[] not null default '{}'` — 명시적 null 을
+          // 보내면 default 가 적용되지 않고 23502 로 터진다. 분석이 실패한
+          // 기사도 저장해야 하므로 빈 배열로 내려보낸다. 이 한 줄이 null 이던
+          // 동안에는 한 피드에서 분석 실패가 한 건만 나와도 bulk upsert 전체가
+          // 롤백돼 후보 기사가 0건으로 남았다.
+          tags: analysis?.tags ?? [],
           importance: analysis?.importance ?? null,
           analyzed_at: analysis ? nowIso : null,
           analysis_error: error,
@@ -250,6 +255,9 @@ async function runCollection(): Promise<RunSummary> {
         if (insertErr) {
           console.error("[collect] bulk insert error", insertErr);
           summary.errors++;
+          // 요약(summary.details)에도 남겨 둔다. 예전에는 console 에만 찍혀서
+          // 화면에는 "오류 N건" 숫자만 보이고 원인을 볼 방법이 없었다.
+          detail.error = `insert: ${insertErr.message}`.slice(0, 500);
         } else {
           insertedCount = insertedRows?.length ?? 0;
         }
