@@ -1,5 +1,5 @@
 /**
- * Newsletter content schema — BLOCK-BASED (schema_version = 2)
+ * Newsletter content schema - BLOCK-BASED (schema_version = 2)
  *
  * A newsletter is: fixed header + fixed referralCta + [ordered blocks] + fixed footer
  *
@@ -28,7 +28,7 @@ export interface NewsletterContent {
   blocks: BlockInstance[];
 
   /**
-   * 문의 CTA — 푸터 바로 위에 렌더되는 1줄 메시지 + 버튼. buttonHref 가
+   * 문의 CTA - 푸터 바로 위에 렌더되는 1줄 메시지 + 버튼. buttonHref 가
    * 비어있거나 필드 자체가 없으면 (예: 마이그레이션 0021 이전에 만들어진
    * 호) 렌더러가 섹션을 통째로 숨김. 정상 동작에 필수 아닌 옵션.
    */
@@ -52,7 +52,7 @@ export const BLOCK_TYPES = [
   "groundk_story",
   "consolidated_insight",
   "event_radar",
-  "blog_card_grid",
+  "mice_blog",
   "promo_banner",
   "special_article",
 ] as const;
@@ -70,7 +70,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   groundk_story: "그라운드케이 스토리",
   consolidated_insight: "MICE 인사이트 (단일 주제 심층 분석)",
   event_radar: "이달의 주목할 행사 (Event Radar)",
-  blog_card_grid: "블로그 카드 그리드",
+  mice_blog: "MICE人 Blog",
   promo_banner: "홍보 배너",
   special_article: "특별 기사 (자유 구조)",
 };
@@ -86,7 +86,8 @@ export const BLOCK_DESCRIPTIONS: Record<BlockType, string> = {
   groundk_story: "Field Briefing(짧은 현장 브리핑) + Project Sketch(프로젝트 소개)",
   consolidated_insight: "하나의 주제를 3~5개 챕터로 나눠 기승전결로 심층 분석. 분량 길게 허용",
   event_radar: "업계 관계자도 놓치기 쉬운 개최 예정 행사 2~4건 소개 (URL 붙여넣으면 실제 본문 반영)",
-  blog_card_grid: "외부 블로그 글을 카드로 소개 (2~6개)",
+  mice_blog:
+    "MICE人 네이버 블로그 글을 제목·한줄요약·원문링크만으로 소개 (1~4건). Claude 를 쓰지 않고 관리자가 직접 입력",
   promo_banner: "이미지 + 링크만 들어가는 가로 풀폭 홍보 배너 (권장 1280×426)",
   special_article:
     "자유 구조 특별 기사. 단락·소제목·인용구·이미지·구분선을 자유롭게 배치, 이미지는 본문 어디든 N장 삽입 가능",
@@ -110,7 +111,9 @@ export const BLOCK_NEEDS_RESEARCH: Record<BlockType, boolean> = {
   // pool, but we default autoSearch true so Claude can surface anything
   // event-related from the news categories when available.
   event_radar: true,
-  blog_card_grid: false,
+  // mice_blog = 네이버 블로그가 AI 크롤링을 막아 본문을 읽을 수 없다.
+  // 관리자가 제목·한줄요약·링크를 직접 넣는 입력 전용 블록.
+  mice_blog: false,
   // promo_banner = pure admin-supplied media. No Claude, no articles.
   promo_banner: false,
   // special_article = Claude generates the text structure (eyebrow, title,
@@ -135,7 +138,7 @@ export type BlockInstance =
   | GroundkStoryBlock
   | ConsolidatedInsightBlock
   | EventRadarBlock
-  | BlogCardGridBlock
+  | MiceBlogBlock
   | PromoBannerBlock
   | SpecialArticleBlock;
 
@@ -347,7 +350,7 @@ export interface GroundkStoryBlock extends BlockBase {
   };
 }
 
-/** Legacy shape — 2~4 mini-themes packed into one section. Kept so existing
+/** Legacy shape - 2~4 mini-themes packed into one section. Kept so existing
  *  drafts continue to validate while they transition to the new chapters[]
  *  format. */
 export interface ConsolidatedInsightPart {
@@ -358,7 +361,7 @@ export interface ConsolidatedInsightPart {
   imageUrl?: string;
 }
 
-/** New shape — ONE topic broken into ordered chapters (기승전결), closing
+/** New shape - ONE topic broken into ordered chapters (기승전결), closing
  *  with the brand's own take. Intended for long-form deep dives. */
 export interface ConsolidatedInsightChapter {
   chapterLabel: string; // "01 · 배경", "02 · 확산" …
@@ -392,9 +395,9 @@ export interface EventRadarItem {
   categoryTag: string;
   /** Event name as it should be published. */
   title: string;
-  /** Formatted date + place, e.g. "2026.06.12 – 14 · 서울 COEX". */
+  /** Formatted date + place, e.g. "2026.06.12 - 14 · 서울 COEX". */
   dateMeta: string;
-  /** 2~3 sentence description — what it is, who runs it, why it's notable. */
+  /** 2~3 sentence description - what it is, who runs it, why it's notable. */
   body: string;
   /** Optional 1-sentence "why MICE folks should care" takeaway. */
   whyItMatters?: string;
@@ -416,28 +419,41 @@ export interface EventRadarBlock extends BlockBase {
   };
 }
 
-export interface BlogCard {
-  label: string;
+/**
+ * MICE人 Blog 글 한 건. 네이버 블로그는 AI 크롤링을 막아 두어 본문을
+ * 읽어올 수 없다. 그래서 이 블록만은 Claude 를 거치지 않고 관리자가
+ * 제목·한줄요약·원문링크 세 값을 직접 입력한다. 카드가 정사각형에
+ * 가깝게 작게 렌더되므로 글자 수에 상한을 둔다.
+ */
+export interface MiceBlogPost {
+  /** 글 제목. 카드에서 최대 2줄. */
   title: string;
-  description: string;
-  linkText?: string;
+  /** 한 줄 요약. 카드에서 최대 3줄. */
+  summary: string;
+  /** 네이버 블로그 원문 URL. */
   linkUrl: string;
-  imageUrl?: string;
 }
 
-export interface BlogCardGridBlock extends BlockBase {
-  type: "blog_card_grid";
+/** 카드 폭이 좁아 제목은 두 줄, 요약은 세 줄에서 끊기는 길이. */
+export const MICE_BLOG_TITLE_MAX = 36;
+export const MICE_BLOG_SUMMARY_MAX = 60;
+/** 한 호에 넣는 글 수. 기본 2건, 최대 4건(2줄 × 2칸). */
+export const MICE_BLOG_DEFAULT_POSTS = 2;
+export const MICE_BLOG_MAX_POSTS = 4;
+
+export interface MiceBlogBlock extends BlockBase {
+  type: "mice_blog";
   data: {
-    englishLabel: string; // "GroundK Blog"
-    cards: BlogCard[]; // 2~6
+    englishLabel: string; // "MICE人 Blog"
+    posts: MiceBlogPost[]; // 1~4
   };
 }
 
 /**
- * 홍보 배너 — 이미지 + 링크만 있는 단순 배너 블록.
+ * 홍보 배너 - 이미지 + 링크만 있는 단순 배너 블록.
  * 챕터 라벨·본문 없음, 카드 가로 풀폭으로 가운데에 박힘. linkUrl 이
  * 있으면 클릭 시 새 탭으로 이동. 텍스트 본문이 없는 admin-only 블록이라
- * Claude 로 작성하지 않는다 — 관리자가 이미지와 링크를 직접 제공.
+ * Claude 로 작성하지 않는다 - 관리자가 이미지와 링크를 직접 제공.
  *
  * 권장 이미지 비율: 3:1 (예: 1280×426). 너무 두꺼우면 본문 흐름을
  * 끊고, 너무 얇으면 시인성이 떨어진다.
@@ -451,13 +467,13 @@ export interface PromoBannerBlock extends BlockBase {
     linkUrl: string;
     /** 이미지 alt. 없으면 빈 문자열. */
     alt?: string;
-    /** 호환용 — 항상 "full" 처럼 동작. 다른 블록과 동일하게 필드만 둔다. */
+    /** 호환용 - 항상 "full" 처럼 동작. 다른 블록과 동일하게 필드만 둔다. */
     imageLayout?: ImageLayout;
   };
 }
 
 /**
- * 특별 기사 블록 — 자유 순서 ContentItem 배열로 본문을 구성한다.
+ * 특별 기사 블록 - 자유 순서 ContentItem 배열로 본문을 구성한다.
  * 기존 블록들이 paragraphs:string[] 평탄 배열에 imageUrl 한 개 고정인
  * 것과 달리, items 배열에 단락·소제목·인용구·이미지·구분선을 admin 이
  * 원하는 순서·개수로 섞어 넣는다. 이미지 개수 제한 없음. Claude 는
@@ -572,7 +588,7 @@ export interface HeaderContent {
   /** CSS color (hex or keyword) applied to the wordmark. Defaults to
    *  the headline ink color. */
   wordmarkColor?: string;
-  /** Font weight applied to the wordmark (100–900). Defaults to 900. */
+  /** Font weight applied to the wordmark (100-900). Defaults to 900. */
   wordmarkFontWeight?: number;
   /** Letter spacing in px. Negative tightens the wordmark. Default -1. */
   wordmarkLetterSpacing?: number;
@@ -592,9 +608,9 @@ export interface ReferralCtaContent {
 }
 
 /**
- * 문의 CTA — referralCta 와 동일한 shape. 어드민이 /events 에서 만든
+ * 문의 CTA - referralCta 와 동일한 shape. 어드민이 /events 에서 만든
  * 문의 폼의 /f/{token} URL 을 한 번 입력해두면 모든 호에 자동 적용된다.
- * buttonHref 가 비어있으면 렌더러가 섹션 자체를 숨김 — 미설정 호환.
+ * buttonHref 가 비어있으면 렌더러가 섹션 자체를 숨김 - 미설정 호환.
  */
 export interface InquiryCtaContent {
   message: string;
@@ -657,7 +673,7 @@ export interface NewsletterRow {
    */
   forced_article_ids: string[];
   /**
-   * 특별호 플래그. true 면 정규 VOL 시퀀스에서 제외 — 헤더에 VOL 번호
+   * 특별호 플래그. true 면 정규 VOL 시퀀스에서 제외 - 헤더에 VOL 번호
    * 미표시, 다음 호 번호 추천 카운트에서도 빠진다. 마이그레이션 0020.
    */
   is_special: boolean;

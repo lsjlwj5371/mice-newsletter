@@ -10,7 +10,12 @@ import {
   BLOCK_LABELS,
   BLOCK_DESCRIPTIONS,
   BLOCK_NEEDS_RESEARCH,
+  MICE_BLOG_DEFAULT_POSTS,
+  MICE_BLOG_MAX_POSTS,
+  MICE_BLOG_SUMMARY_MAX,
+  MICE_BLOG_TITLE_MAX,
   type BlockType,
+  type MiceBlogPost,
 } from "@/types/newsletter";
 import { ArticlePicker } from "@/components/articles/article-picker";
 
@@ -31,24 +36,36 @@ export interface BlockConfig {
   autoSearch: boolean;
   /**
    * Admin-picked article IDs. When non-empty, those exact articles are
-   * passed to Claude for this block — bypassing the normal category/date
+   * passed to Claude for this block - bypassing the normal category/date
    * partition. Empty = automatic selection.
    */
   forcedArticleIds: string[];
   /**
-   * groundk_story only — per-part visibility. Default true. When false,
+   * groundk_story only - per-part visibility. Default true. When false,
    * that sub-section is not rendered on the final issue.
    */
   showFieldBriefing?: boolean;
   showProjectSketch?: boolean;
   /**
-   * promo_banner only — admin-supplied image and click target. Both
+   * promo_banner only - admin-supplied image and click target. Both
    * optional at this stage; admin can also leave them blank here and
    * fill via the post-creation edit panel.
    */
   promoBannerImageUrl?: string;
   promoBannerLinkUrl?: string;
+  /**
+   * mice_blog only - 네이버 블로그 글 목록. Claude 를 쓰지 않는 블록이라
+   * 제목·한줄요약·원문링크를 여기서 직접 받는다. 비워 두고 생성한 뒤
+   * 편집 패널에서 채워도 된다.
+   */
+  miceBlogPosts?: MiceBlogPost[];
 }
+
+const emptyMiceBlogPost = (): MiceBlogPost => ({
+  title: "",
+  summary: "",
+  linkUrl: "",
+});
 
 interface Props {
   blocks: BlockConfig[];
@@ -80,7 +97,9 @@ export function BlockPicker({ blocks, onChange }: Props) {
       instructions: "",
       // admin-only blocks force autoSearch off
       autoSearch:
-        type === "groundk_story" || type === "promo_banner"
+        type === "groundk_story" ||
+        type === "promo_banner" ||
+        type === "mice_blog"
           ? false
           : BLOCK_NEEDS_RESEARCH[type],
       forcedArticleIds: [],
@@ -89,6 +108,14 @@ export function BlockPicker({ blocks, onChange }: Props) {
         : {}),
       ...(type === "promo_banner"
         ? { promoBannerImageUrl: "", promoBannerLinkUrl: "" }
+        : {}),
+      ...(type === "mice_blog"
+        ? {
+            miceBlogPosts: Array.from(
+              { length: MICE_BLOG_DEFAULT_POSTS },
+              emptyMiceBlogPost
+            ),
+          }
         : {}),
     };
     onChange([...blocks, newBlock]);
@@ -283,7 +310,7 @@ export function BlockPicker({ blocks, onChange }: Props) {
                   {block.type === "promo_banner" ? (
                     <>
                       <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                        <strong>홍보 배너</strong> — Claude 가 본문을 만들지 않는 이미지 전용 블록입니다.
+                        <strong>홍보 배너</strong> - Claude 가 본문을 만들지 않는 이미지 전용 블록입니다.
                         가로 풀폭으로 가운데 정렬됩니다. 권장 이미지 비율 <strong>3:1 (예: 1280 × 426 px)</strong>.
                       </div>
                       <div className="space-y-2 rounded-md border border-border bg-muted/30 px-3 py-2">
@@ -331,6 +358,23 @@ export function BlockPicker({ blocks, onChange }: Props) {
                           둘 다 비워둬도 블록은 생성되며, 이후 편집 패널에서 이미지 업로드·링크 입력이 가능합니다.
                         </p>
                       </div>
+                    </>
+                  ) : block.type === "mice_blog" ? (
+                    <>
+                      <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        <strong>MICE人 Blog</strong> - 네이버 블로그는 AI가 본문을
+                        읽을 수 없어 Claude가 쓰지 않습니다. 제목·한줄요약·원문
+                        링크를 직접 입력하면 됩니다. 카드가 작게 들어가므로
+                        제목은 {MICE_BLOG_TITLE_MAX}자, 요약은{" "}
+                        {MICE_BLOG_SUMMARY_MAX}자까지입니다.
+                      </div>
+                      <MiceBlogPostsFields
+                        posts={block.miceBlogPosts ?? []}
+                        onChange={(posts) =>
+                          updateBlock(i, { miceBlogPosts: posts })
+                        }
+                        idPrefix={`mice-blog-${i}`}
+                      />
                     </>
                   ) : block.type === "groundk_story" ? (
                     <>
@@ -396,7 +440,7 @@ export function BlockPicker({ blocks, onChange }: Props) {
                         자동 생성 (Claude가 후보 기사로 작성)
                         {!block.autoSearch && (
                           <span className="text-amber-700 ml-1">
-                            — placeholder만 생성, 수동 입력 필요
+                            - placeholder만 생성, 수동 입력 필요
                           </span>
                         )}
                       </Label>
@@ -405,6 +449,7 @@ export function BlockPicker({ blocks, onChange }: Props) {
 
                   {block.type !== "groundk_story" &&
                     block.type !== "promo_banner" &&
+                    block.type !== "mice_blog" &&
                     block.autoSearch && (
                     <div>
                       <Label className="text-xs text-muted-foreground">
@@ -419,7 +464,7 @@ export function BlockPicker({ blocks, onChange }: Props) {
                           articleUsedBy={Object.fromEntries(
                             Array.from(usageByArticleId.entries()).filter(
                               // Hide "used by" badge for articles this block
-                              // itself picked — otherwise every selected chip
+                              // itself picked - otherwise every selected chip
                               // would show a redundant self-reference.
                               ([id]) => !block.forcedArticleIds.includes(id)
                             )
@@ -432,8 +477,10 @@ export function BlockPicker({ blocks, onChange }: Props) {
                     </div>
                   )}
 
-                  {/* promo_banner 는 Claude 가 본문을 만들지 않으므로 지시문 입력칸 자체를 숨김. */}
-                  {block.type !== "promo_banner" && (
+                  {/* promo_banner·mice_blog 는 Claude 가 본문을 만들지 않으므로
+                      지시문 입력칸 자체를 숨김. */}
+                  {block.type !== "promo_banner" &&
+                    block.type !== "mice_blog" && (
                     <div>
                       <Label
                         htmlFor={`inst-${i}`}
@@ -465,6 +512,138 @@ export function BlockPicker({ blocks, onChange }: Props) {
   );
 }
 
+/**
+ * MICE人 Blog 글 입력 필드 묶음. 새 호 만들기 폼과 초안 편집 패널이
+ * 같은 입력 모양을 쓰도록 컴포넌트로 뺐다. 저장은 호출하는 쪽이
+ * 담당하고, 여기서는 값만 올려 준다.
+ */
+export function MiceBlogPostsFields({
+  posts,
+  onChange,
+  idPrefix,
+  disabled,
+}: {
+  posts: MiceBlogPost[];
+  onChange: (next: MiceBlogPost[]) => void;
+  idPrefix: string;
+  disabled?: boolean;
+}) {
+  const list = posts.length > 0 ? posts : [emptyMiceBlogPost()];
+
+  function patch(index: number, part: Partial<MiceBlogPost>) {
+    const next = list.map((p, i) => (i === index ? { ...p, ...part } : p));
+    onChange(next);
+  }
+  function remove(index: number) {
+    onChange(list.filter((_, i) => i !== index));
+  }
+  function add() {
+    if (list.length >= MICE_BLOG_MAX_POSTS) return;
+    onChange([...list, emptyMiceBlogPost()]);
+  }
+
+  return (
+    <div className="space-y-3">
+      {list.map((post, i) => (
+        <div
+          key={i}
+          className="space-y-2 rounded-md border border-border bg-muted/30 px-3 py-2"
+        >
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-semibold">글 {i + 1}</Label>
+            {list.length > 1 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => remove(i)}
+                disabled={disabled}
+                className="h-6 px-2 text-[11px] text-rose-600 hover:bg-rose-50"
+              >
+                삭제
+              </Button>
+            )}
+          </div>
+
+          <div>
+            <Label
+              htmlFor={`${idPrefix}-title-${i}`}
+              className="text-[11px] text-muted-foreground"
+            >
+              제목
+              <span className="ml-1 tabular-nums">
+                ({post.title.length}/{MICE_BLOG_TITLE_MAX})
+              </span>
+            </Label>
+            <Input
+              id={`${idPrefix}-title-${i}`}
+              value={post.title}
+              maxLength={MICE_BLOG_TITLE_MAX}
+              disabled={disabled}
+              onChange={(e) => patch(i, { title: e.target.value })}
+              placeholder="블로그 글 제목"
+              className="mt-1 text-xs"
+            />
+          </div>
+
+          <div>
+            <Label
+              htmlFor={`${idPrefix}-summary-${i}`}
+              className="text-[11px] text-muted-foreground"
+            >
+              한줄요약
+              <span className="ml-1 tabular-nums">
+                ({post.summary.length}/{MICE_BLOG_SUMMARY_MAX})
+              </span>
+            </Label>
+            <Textarea
+              id={`${idPrefix}-summary-${i}`}
+              value={post.summary}
+              maxLength={MICE_BLOG_SUMMARY_MAX}
+              disabled={disabled}
+              onChange={(e) => patch(i, { summary: e.target.value })}
+              rows={2}
+              placeholder="한 문장으로 무슨 글인지"
+              className="mt-1 text-xs"
+            />
+          </div>
+
+          <div>
+            <Label
+              htmlFor={`${idPrefix}-link-${i}`}
+              className="text-[11px] text-muted-foreground"
+            >
+              원문 링크
+            </Label>
+            <Input
+              id={`${idPrefix}-link-${i}`}
+              type="url"
+              value={post.linkUrl}
+              disabled={disabled}
+              onChange={(e) => patch(i, { linkUrl: e.target.value })}
+              placeholder="https://blog.naver.com/…"
+              className="mt-1 text-xs"
+            />
+          </div>
+        </div>
+      ))}
+
+      {list.length < MICE_BLOG_MAX_POSTS && (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={add}
+          disabled={disabled}
+          className="h-7 text-xs"
+        >
+          + 글 추가 ({list.length}/{MICE_BLOG_MAX_POSTS})
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function instructionPlaceholder(type: BlockType): string {
   switch (type) {
     case "opening_lede":
@@ -484,11 +663,12 @@ function instructionPlaceholder(type: BlockType): string {
     case "groundk_story":
       return "예: Project Sketch는 지난 주 COS 패션쇼 프로젝트로. Field Briefing은 공항 의전 지연 이슈";
     case "consolidated_insight":
-      return "예: 3개 파트로 — 인바운드 변화 / AI 자동화 / ESG 압박";
+      return "예: 3개 파트로 - 인바운드 변화 / AI 자동화 / ESG 압박";
     case "event_radar":
       return "예: 이달 행사 URL 2~3개 붙여주세요. https://… / https://…  (내용은 링크의 실제 본문에서만 가져옵니다)";
-    case "blog_card_grid":
-      return "예: 4개 카드 — Field Note, Project Story, Industry Insight, Tech & MICE";
+    case "mice_blog":
+      // 호출되지 않음 (위 분기에서 mice_blog 의 textarea 자체를 숨김).
+      return "";
     case "promo_banner":
       // 이 함수는 호출되지 않음 (위 분기에서 promo_banner 의 textarea 자체를 숨김).
       // exhaustive type check 를 만족시키기 위한 placeholder.
@@ -499,7 +679,7 @@ function instructionPlaceholder(type: BlockType): string {
 }
 
 /**
- * Default block selection for the new-draft form — modular Ver.1 layout.
+ * Default block selection for the new-draft form - modular Ver.1 layout.
  */
 export const DEFAULT_BLOCK_CONFIGS: BlockConfig[] = [
   { type: "opening_lede", instructions: "", autoSearch: false, forcedArticleIds: [] },

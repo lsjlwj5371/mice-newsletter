@@ -1,5 +1,5 @@
 /**
- * Block components — one renderer per BlockType.
+ * Block components - one renderer per BlockType.
  * Each component receives a typed block instance and renders it inline-styled
  * for email client compatibility.
  *
@@ -42,7 +42,7 @@ import type {
   GroundkStoryBlock,
   ConsolidatedInsightBlock,
   EventRadarBlock,
-  BlogCardGridBlock,
+  MiceBlogBlock,
   PromoBannerBlock,
   SpecialArticleBlock,
   SpecialArticleItem,
@@ -50,7 +50,7 @@ import type {
 } from "@/types/newsletter";
 
 // ─────────────────────────────────────────────
-// FIXED: Header — brand wordmark
+// FIXED: Header - brand wordmark
 // ─────────────────────────────────────────────
 export function NewsletterHeaderBlock({
   content,
@@ -65,7 +65,7 @@ export function NewsletterHeaderBlock({
         borderBottom: `2px solid ${colors.borderStrong}`,
       }}
     >
-      {/* Industry tag eyebrow — only rendered when non-empty. Admins
+      {/* Industry tag eyebrow - only rendered when non-empty. Admins
           can clear it from the template settings if they don't want
           an industry label above the wordmark. */}
       {content.industryTag && content.industryTag.trim() !== "" && (
@@ -84,7 +84,7 @@ export function NewsletterHeaderBlock({
       )}
 
       {/* Header row: brand block on the left, issue meta badge on the
-          right — masthead-style so the date + VOL are the first thing a
+          right - masthead-style so the date + VOL are the first thing a
           reader's eye hits after the brand, without crowding the body.
           The .header-row className lets the mobile stylesheet collapse
           the row into a vertical stack below 480px so the tagline +
@@ -179,7 +179,7 @@ export function NewsletterHeaderBlock({
               }}
             >
               <IssueMetaBadge content={content} />
-              {/* 지난 호 보기 버튼 — VOL 배지 아래 여백을 활용해 아카이브
+              {/* 지난 호 보기 버튼 - VOL 배지 아래 여백을 활용해 아카이브
                   링크를 노출. groundk.co.kr/ko/newsletter 로 이동. 배지
                   스타일(그레이 보더 + soft 배경) 과 결이 같은 outlined
                   pill 형태로 배지와 시각적 대구를 이룬다. */}
@@ -219,7 +219,7 @@ export function NewsletterHeaderBlock({
  * issueMeta string render it as the single-line fallback.
  */
 function IssueMetaBadge({ content }: { content: HeaderContent }) {
-  // 방어층 — 어떤 이유로 issueNumber 가 유실됐지만 issueMeta 가 "N호"
+  // 방어층 - 어떤 이유로 issueNumber 가 유실됐지만 issueMeta 가 "N호"
   // 형태면 N 을 뽑아 VOL 큰 글씨 경로로 렌더. 템플릿 저장 시 propagation
   // 이 issueNumber 를 지우던 버그(2025-12) 로 이미 저장된 draft 는
   // DB 상 issueNumber = undefined 인 상태 → 렌더 시점에 복원.
@@ -324,7 +324,7 @@ function formatIssueNumber(n: number): string {
 
 /**
  * issueMeta 문자열에서 호 번호를 추출한다. issueNumber 필드가 유실된
- * 옛/버그 draft 를 위한 폴백 — 새 호 생성 시 사용된 다음 포맷을 지원:
+ * 옛/버그 draft 를 위한 폴백 - 새 호 생성 시 사용된 다음 포맷을 지원:
  *   - "5호"          → 5
  *   - "VOL 005"       → 5
  *   - "VOL.005"       → 5
@@ -334,13 +334,13 @@ function formatIssueNumber(n: number): string {
 function deriveIssueNumberFromMeta(meta?: string): number | undefined {
   if (!meta) return undefined;
   const s = meta.trim();
-  // 1) "VOL 005" / "VOL.005" / "VOL.01" — VOL 뒤 첫 숫자군
+  // 1) "VOL 005" / "VOL.005" / "VOL.01" - VOL 뒤 첫 숫자군
   const vol = s.match(/VOL[.\s]*(\d+)/i);
   if (vol) {
     const n = parseInt(vol[1], 10);
     if (Number.isFinite(n) && n > 0) return n;
   }
-  // 2) "5호" — 숫자 뒤에 "호" 붙는 한국식
+  // 2) "5호" - 숫자 뒤에 "호" 붙는 한국식
   const kor = s.match(/^(\d+)\s*호\b/);
   if (kor) {
     const n = parseInt(kor[1], 10);
@@ -362,7 +362,7 @@ function renderWordmarkWithDiamond(
   const chars = Array.from(wordmark);
   if (chars.length === 0) return wordmark;
   // When the admin has chosen an explicit wordmarkColor, honor it across
-  // the entire string — disable the per-character navy accent so the
+  // the entire string - disable the per-character navy accent so the
   // color choice actually shows through.
   if (customColor) {
     return (
@@ -383,7 +383,7 @@ function renderWordmarkWithDiamond(
 
 /**
  * Pick a sensible default font size based on wordmark length. Keeps the
- * classic 56px for 1–4 character wordmarks and steps down for longer
+ * classic 56px for 1-4 character wordmarks and steps down for longer
  * brand strings so "MICE 人 Insight" doesn't overflow the column.
  * Admin can always override via wordmarkFontSize on the template.
  */
@@ -398,7 +398,7 @@ function autoWordmarkFontSize(wordmark: string): number {
 
 /**
  * "원문 보기 →" link rendered as a compact button block so readers
- * actually notice it — the earlier inline gray link was nearly
+ * actually notice it - the earlier inline gray link was nearly
  * invisible against body text. Emits nothing when the URL is empty.
  *
  * Style notes (email-safe):
@@ -518,7 +518,7 @@ export function ReferralCtaBlock({
 }
 
 // ─────────────────────────────────────────────
-// FIXED: Inquiry CTA — referralCta 와 동일 디자인. 푸터 직전에 렌더되며,
+// FIXED: Inquiry CTA - referralCta 와 동일 디자인. 푸터 직전에 렌더되며,
 //        buttonHref 가 비어있거나 content.inquiryCta 자체가 없으면
 //        섹션을 통째로 건너뛴다 (마이그레이션 0021 이전 호 호환).
 // ─────────────────────────────────────────────
@@ -527,7 +527,7 @@ export function InquiryCtaBlock({
 }: {
   content?: InquiryCtaContent;
 }) {
-  // 옵션 가드 — 미설정 / 빈 URL 이면 렌더하지 않음.
+  // 옵션 가드 - 미설정 / 빈 URL 이면 렌더하지 않음.
   if (!content || !content.buttonHref || content.buttonHref.trim() === "") {
     return null;
   }
@@ -613,13 +613,13 @@ export function NewsletterFooterBlock({
 }) {
   // Centered footer composition:
   //   1) Unsubscribe line (with inline "여기" link)
-  //   2) "MICE人 Sponsored by GroundK" — brand wordmarks inline-colored
+  //   2) "MICE人 Sponsored by GroundK" - brand wordmarks inline-colored
   //   3) Two circular gray logos side-by-side (MICE人 + GroundK)
   const miceLogoSrc = `${appUrl}/footer-mice-logo.png`;
   const groundkLogoSrc = `${appUrl}/footer-groundk-logo.jpg`;
 
   // Wrap a logo image in a Link when an href is configured, otherwise
-  // render the bare Img — keeps the footer valid even while one of the
+  // render the bare Img - keeps the footer valid even while one of the
   // brand URLs is still TBD.
   const wrapInLink = (node: React.ReactNode, href?: string) =>
     href && href.trim() !== "" ? (
@@ -666,7 +666,7 @@ export function NewsletterFooterBlock({
         textAlign: "center",
       }}
     >
-      {/* Row 1: unsubscribe notice — centered, one line on desktop */}
+      {/* Row 1: unsubscribe notice - centered, one line on desktop */}
       <Text
         style={{
           ...typography.footerSmall,
@@ -904,7 +904,7 @@ function InOutComparison({
   index: string;
   isLast?: boolean;
 }) {
-  // 세로 스택 레이아웃 — IN(국내) 위, OUT(글로벌) 아래.
+  // 세로 스택 레이아웃 - IN(국내) 위, OUT(글로벌) 아래.
   // 이전 버전은 2-col 좌우 분할이었지만, 본문이 길어지면 한 컬럼이
   // 다른 컬럼보다 수직으로 늘어나면서 카드 높이가 길게 어긋나 가독성이
   // 떨어졌다. 풀폭 스택으로 바꿔서 각 카드에 본문 폭(640px) 을 그대로
@@ -1025,7 +1025,7 @@ function TechSignal({
         emoji="💡"
       />
 
-      {/* Topic tag (accent gold) + date meta — kept as inline identifiers
+      {/* Topic tag (accent gold) + date meta - kept as inline identifiers
           because tech_signal tracks "이달의 테크 키워드". Flattened into
           the block body now that the outer tinted card is gone. */}
       <Text
@@ -1159,7 +1159,7 @@ function TheoryToField({
                   // mobile / narrow webview broke it onto two lines (the
                   // "202" / "6" wrap the user reported). Bumped to 84px so
                   // we have a comfortable char of headroom; nowrap below
-                  // is the real guarantee — width is just for layout.
+                  // is the real guarantee - width is just for layout.
                   width: "84px",
                   verticalAlign: "middle",
                   whiteSpace: "nowrap",
@@ -1193,7 +1193,7 @@ function TheoryToField({
             >
               {block.data.sourcePaperTitle ? (
                 <>
-                  {/* 신규 레이아웃 — sourcePaperTitle 세팅된 draft 에만 적용.
+                  {/* 신규 레이아웃 - sourcePaperTitle 세팅된 draft 에만 적용.
                       Line 1: 논문 정식 명칭 (굵게)
                       Line 2: 저널명 · Volume + " | " + 저자들 (한 줄) */}
                   <Text
@@ -1226,7 +1226,7 @@ function TheoryToField({
                 </>
               ) : (
                 <>
-                  {/* 레거시 레이아웃 — sourcePaperTitle 없는 이전 호는 그대로.
+                  {/* 레거시 레이아웃 - sourcePaperTitle 없는 이전 호는 그대로.
                       Line 1: 저자 (bold small)
                       Line 2: 저널 (italic faint) */}
                   {block.data.sourceAuthor && (
@@ -1529,7 +1529,7 @@ function GroundkStory({
         emoji="🎯"
       />
 
-      {/* Field Briefing — light tinted card */}
+      {/* Field Briefing - light tinted card */}
       {showFieldBriefing && (
       <Section
         style={{
@@ -1587,7 +1587,7 @@ function GroundkStory({
                 // 줄바꿈 보존이 중복입니다. 오히려 NCP 처럼 HTML 을 외부 에디터에
                 // 붙여넣어 발송하는 경로에서 코드 포매터가 가독성용으로 끼워넣는
                 // raw newline 까지 시각적 줄바꿈으로 렌더되어 본문이 잘게 끊기는
-                // 버그의 원인이 됐습니다 — 우리 시스템 발송에선 직렬화 방식이
+                // 버그의 원인이 됐습니다 - 우리 시스템 발송에선 직렬화 방식이
                 // 달라 표면화하지 않았습니다.
               }}
               dangerouslySetInnerHTML={{
@@ -1605,7 +1605,7 @@ function GroundkStory({
       </Section>
       )}
 
-      {/* Project Sketch — light card */}
+      {/* Project Sketch - light card */}
       {showProjectSketch && (
       <Section
         style={{
@@ -1727,7 +1727,7 @@ function GroundkStory({
 }
 
 // ─────────────────────────────────────────────
-// BLOCK: consolidated_insight — NEW single-topic chapter layout
+// BLOCK: consolidated_insight - NEW single-topic chapter layout
 // ─────────────────────────────────────────────
 function ConsolidatedInsightSingleTopic({
   block,
@@ -1750,7 +1750,7 @@ function ConsolidatedInsightSingleTopic({
         emoji="🔍"
       />
 
-      {/* Full-bleed hero — td-background overlay, no CSS gradient.
+      {/* Full-bleed hero - td-background overlay, no CSS gradient.
           Admin bakes any gradient effect directly into the uploaded
           image, so the HTML side only provides the text overlay.
 
@@ -1766,7 +1766,7 @@ function ConsolidatedInsightSingleTopic({
 
           Works across Apple Mail / Gmail (web+app) / Naver / Daum.
           Outlook desktop falls back to bgcolor (solid #14152a) + the
-          overlay text — loses only the background image. Tweak from
+          overlay text - loses only the background image. Tweak from
           the earlier version: the linear-gradient `backgroundImage`
           on the overlay div is GONE, because the admin's uploaded
           image already carries its own gradient. */}
@@ -1880,7 +1880,7 @@ function ConsolidatedInsightSingleTopic({
       </div>
 
       {/* Lead paragraph now sits under the hero in the normal flow.
-          No ImageWithBody — hero is the image. */}
+          No ImageWithBody - hero is the image. */}
       {block.data.leadParagraph && (
         <Text
           style={{
@@ -1963,7 +1963,7 @@ function ConsolidatedInsightSingleTopic({
       ))}
 
       {/* closingInsight (GROUNDK TAKE) is intentionally NOT rendered.
-          The final chapter now carries the takeaway itself — a separate
+          The final chapter now carries the takeaway itself - a separate
           closing box duplicated the conclusion. Field is kept in the
           schema so older drafts don't fail validation. */}
       {block.data.sourceUrl && block.data.sourceUrl.trim() !== "" && (
@@ -1990,7 +1990,7 @@ function ConsolidatedInsightSingleTopic({
 }
 
 // ─────────────────────────────────────────────
-// BLOCK: consolidated_insight — legacy multi-theme layout (fallback)
+// BLOCK: consolidated_insight - legacy multi-theme layout (fallback)
 // ─────────────────────────────────────────────
 function ConsolidatedInsight({
   block,
@@ -2117,7 +2117,7 @@ function ConsolidatedInsight({
 }
 
 // ─────────────────────────────────────────────
-// BLOCK: event_radar — upcoming events admins curate for the issue
+// BLOCK: event_radar - upcoming events admins curate for the issue
 // ─────────────────────────────────────────────
 function EventRadar({
   block,
@@ -2243,22 +2243,36 @@ function EventRadar({
 }
 
 // ─────────────────────────────────────────────
-// BLOCK: blog_card_grid (Ver.2 2x2 cards)
+// BLOCK: mice_blog - 네이버 블로그 글 소개 (작은 정사각 카드 2열)
+//
+// 네이버 블로그는 AI 크롤링을 막아 두어 본문을 읽어올 수 없다. 그래서
+// 이 블록은 Claude 를 거치지 않고 관리자가 넣은 제목·한줄요약·원문링크
+// 세 값만 렌더한다. 카드는 한 행에 2개, 폭 대비 높이를 맞춰 정사각형에
+// 가깝게 둔다. 모바일에서는 .mice-blog-row 규칙이 한 칸씩 쌓고 높이를
+// 자동으로 풀어 준다.
 // ─────────────────────────────────────────────
-function BlogCardGrid({
+const MICE_BLOG_CARD_HEIGHT = 250;
+
+function MiceBlog({
   block,
   index,
   isLast,
 }: {
-  block: BlogCardGridBlock;
+  block: MiceBlogBlock;
   index: string;
   isLast?: boolean;
 }) {
-  // Pair cards into rows of 2 for email-safe layout
-  const rows: Array<typeof block.data.cards> = [];
-  for (let i = 0; i < block.data.cards.length; i += 2) {
-    rows.push(block.data.cards.slice(i, i + 2));
+  const posts = (block.data.posts ?? []).filter(
+    (p) => (p.title ?? "").trim() !== "" || (p.summary ?? "").trim() !== ""
+  );
+  if (posts.length === 0) return null;
+
+  // 이메일 클라이언트는 flex/grid 를 신뢰할 수 없어 2개씩 행으로 끊는다.
+  const rows: Array<typeof posts> = [];
+  for (let i = 0; i < posts.length; i += 2) {
+    rows.push(posts.slice(i, i + 2));
   }
+
   return (
     <MajorSection isLast={isLast}>
       <SectionLabel
@@ -2267,87 +2281,128 @@ function BlogCardGrid({
         emoji="📝"
       />
       {rows.map((row, rowIdx) => (
-        <Row key={rowIdx} style={{ marginBottom: rowIdx === rows.length - 1 ? "0" : "14px" }}>
-          {row.map((card, i) => (
-            <Column
-              key={i}
-              style={{
-                verticalAlign: "top",
-                width: "50%",
-                paddingLeft: i === 1 ? "7px" : "0",
-                paddingRight: i === 0 ? "7px" : "0",
-              }}
-            >
-              <Section
-                style={{
-                  border: `1px solid ${colors.borderSoft}`,
-                  borderRadius: "8px",
-                  padding: "18px",
-                }}
-              >
-                <Text
+        <table
+          key={rowIdx}
+          role="presentation"
+          cellPadding={0}
+          cellSpacing={0}
+          border={0}
+          width="100%"
+          className="mice-blog-row"
+          style={{
+            borderCollapse: "collapse",
+            marginBottom: rowIdx === rows.length - 1 ? "0" : "14px",
+          }}
+        >
+          <tbody>
+            <tr>
+              {row.map((post, i) => (
+                <td
+                  key={i}
+                  width="50%"
                   style={{
-                    fontSize: "10px",
-                    fontWeight: 700,
-                    letterSpacing: "1.5px",
-                    color: colors.brandNavy,
-                    textTransform: "uppercase",
-                    margin: "0 0 8px 0",
+                    verticalAlign: "top",
+                    width: "50%",
+                    paddingLeft: i === 1 ? "7px" : "0",
+                    paddingRight: i === 0 ? "7px" : "0",
                   }}
                 >
-                  {card.label}
-                </Text>
-                <Heading
-                  as="h4"
-                  style={{
-                    fontSize: "16px",
-                    fontWeight: 700,
-                    color: colors.textHeadline,
-                    lineHeight: 1.4,
-                    letterSpacing: "-0.2px",
-                    margin: "0 0 10px 0",
-                  }}
-                >
-                  {renderMultiline(card.title)}
-                </Heading>
-                <Text
-                  style={{
-                    fontSize: "12px",
-                    color: colors.textMuted,
-                    lineHeight: 1.7,
-                    fontWeight: 400,
-                    margin: "0 0 12px 0",
-                  }}
-                >
-                  {card.description}
-                </Text>
-                <Link
-                  href={card.linkUrl}
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    color: colors.brandNavy,
-                    textDecoration: "none",
-                    letterSpacing: "0.3px",
-                  }}
-                >
-                  {card.linkText ?? "블로그에서 읽기 →"}
-                </Link>
-              </Section>
-            </Column>
-          ))}
-          {/* Pad trailing empty column if odd count */}
-          {row.length === 1 && (
-            <Column style={{ width: "50%", paddingLeft: "7px" }}>&nbsp;</Column>
-          )}
-        </Row>
+                  <table
+                    role="presentation"
+                    cellPadding={0}
+                    cellSpacing={0}
+                    border={0}
+                    width="100%"
+                    className="mice-blog-card"
+                    style={{
+                      borderCollapse: "collapse",
+                      border: `1px solid ${colors.borderSoft}`,
+                      borderRadius: "8px",
+                      height: `${MICE_BLOG_CARD_HEIGHT}px`,
+                    }}
+                  >
+                    <tbody>
+                      <tr>
+                        <td
+                          style={{
+                            verticalAlign: "top",
+                            padding: "20px 18px 0 18px",
+                          }}
+                        >
+                          <Heading
+                            as="h4"
+                            style={{
+                              fontSize: "17px",
+                              fontWeight: 700,
+                              color: colors.textHeadline,
+                              lineHeight: 1.4,
+                              letterSpacing: "-0.2px",
+                              margin: "0 0 10px 0",
+                              // 좁은 카드에서 한글이 단어 중간에서 끊기지 않게
+                              wordBreak: "keep-all",
+                            }}
+                          >
+                            {renderMultiline(post.title)}
+                          </Heading>
+                          <Text
+                            style={{
+                              fontSize: "13px",
+                              color: colors.textMuted,
+                              lineHeight: 1.7,
+                              fontWeight: 400,
+                              margin: "0",
+                              wordBreak: "keep-all",
+                            }}
+                          >
+                            {post.summary}
+                          </Text>
+                        </td>
+                      </tr>
+                      {/* 링크는 카드 바닥에 붙인다. 글 길이가 달라도 두
+                          카드의 링크 위치가 같은 줄에 오게 된다. */}
+                      <tr>
+                        <td
+                          style={{
+                            verticalAlign: "bottom",
+                            padding: "12px 18px 20px 18px",
+                          }}
+                        >
+                          {post.linkUrl && post.linkUrl.trim() !== "" ? (
+                            <Link
+                              href={post.linkUrl}
+                              style={{
+                                fontSize: "12px",
+                                fontWeight: 700,
+                                color: colors.brandNavy,
+                                textDecoration: "none",
+                                letterSpacing: "0.3px",
+                              }}
+                            >
+                              블로그에서 읽기 →
+                            </Link>
+                          ) : null}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </td>
+              ))}
+              {/* 홀수 개일 때 오른쪽 칸을 비워 폭을 유지한다. */}
+              {row.length === 1 && (
+                <td width="50%" style={{ width: "50%", paddingLeft: "7px" }}>
+                  &nbsp;
+                </td>
+              )}
+            </tr>
+          </tbody>
+        </table>
       ))}
     </MajorSection>
   );
 }
 
 // ─────────────────────────────────────────────
-// Dispatcher — route each block to its renderer
+// Dispatcher - route each block to its renderer
 // ─────────────────────────────────────────────
 export function BlockRenderer({
   block,
@@ -2385,8 +2440,8 @@ export function BlockRenderer({
       );
     case "event_radar":
       return <EventRadar block={block} index={index} isLast={isLast} />;
-    case "blog_card_grid":
-      return <BlogCardGrid block={block} index={index} isLast={isLast} />;
+    case "mice_blog":
+      return <MiceBlog block={block} index={index} isLast={isLast} />;
     case "promo_banner":
       return <PromoBanner block={block} isLast={isLast} />;
     case "special_article":
@@ -2400,7 +2455,7 @@ export function BlockRenderer({
 }
 
 // ─────────────────────────────────────────────
-// BLOCK: promo_banner — 가로 풀폭 홍보 배너
+// BLOCK: promo_banner - 가로 풀폭 홍보 배너
 // ─────────────────────────────────────────────
 // 카드의 좌우 16px 패딩을 negative margin 으로 무시하고 가로 꽉 채움.
 // 챕터 라벨/제목 없음, 이미지만. linkUrl 이 있으면 <a> 로 감쌈.
@@ -2437,7 +2492,7 @@ function PromoBanner({
             fontStyle: "italic",
           }}
         >
-          [홍보 배너 — 편집 패널에서 이미지 업로드 필요]
+          [홍보 배너 - 편집 패널에서 이미지 업로드 필요]
         </Text>
       </Section>
     );
@@ -2492,7 +2547,7 @@ export function isNumberedBlock(type: BlockInstance["type"]): boolean {
 }
 
 // ─────────────────────────────────────────────
-// BLOCK: special_article — 자유 구조 특별 기사
+// BLOCK: special_article - 자유 구조 특별 기사
 // ─────────────────────────────────────────────
 // items 배열을 순회하며 kind 별로 다른 컴포넌트를 렌더한다. image item 의
 // layout 이 "left"/"right" 면 바로 다음 paragraph 와 짝지어 2-col 테이블로
@@ -2509,7 +2564,7 @@ function SpecialArticle({
   const data = block.data;
   const items = data.items ?? [];
 
-  // image+paragraph 짝짓기 — left/right wrap 케이스 식별
+  // image+paragraph 짝짓기 - left/right wrap 케이스 식별
   const rendered: React.ReactNode[] = [];
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
@@ -2593,7 +2648,7 @@ function SpecialArticle({
         </Text>
       )}
 
-      {/* 본문 — items 자유 순서 */}
+      {/* 본문 - items 자유 순서 */}
       {rendered}
 
       {data.closingNote && data.closingNote.trim() !== "" && (
@@ -2636,7 +2691,7 @@ function SpecialArticle({
 }
 
 /**
- * 단일 ContentItem 렌더러 — kind 별 분기.
+ * 단일 ContentItem 렌더러 - kind 별 분기.
  * image 의 left/right 케이스는 상위에서 wrap pair 로 처리하므로 여기서는
  * full / small-center 만 다룬다 (혹시 layout 이 left/right 인데 단독으로
  * 들어와도 small-center 로 안전 폴백).
@@ -2705,7 +2760,7 @@ function SpecialArticleItemRow({ item }: { item: SpecialArticleItem }) {
                 letterSpacing: "0.2px",
               }}
             >
-              — {item.attribution}
+              - {item.attribution}
             </span>
           )}
         </Text>
@@ -2835,7 +2890,7 @@ function SpecialArticleImage({
 }
 
 /**
- * left/right wrap 페어 — 이미지 + 바로 다음 단락을 2-col 테이블로 렌더.
+ * left/right wrap 페어 - 이미지 + 바로 다음 단락을 2-col 테이블로 렌더.
  * 이메일 호환을 위해 float 가 아니라 table 사용. 모바일에서는 표 셀이
  * 자동으로 위/아래 스택되도록 inline-block 폴백을 두지 않고 그냥 td 두 개로
  * 끝낸다 (대부분 모바일 클라가 narrow viewport 에서 stack 으로 자동 변환).
@@ -3037,14 +3092,14 @@ function ImageWithBody({
     );
   }
 
-  // left / right — magazine-style text wrap using CSS float. Body text
+  // left / right - magazine-style text wrap using CSS float. Body text
   // flows alongside the image until the image ends, then continues at
   // full width below. The previous 2-column table version left a big
   // empty gap under short images whenever the body was long.
   //
   // Compatibility: Apple Mail / Gmail (web+mobile) / Samsung Mail /
   // Naver all honor `float`. Outlook desktop (Word engine) ignores it
-  // → image renders block and text flows below — same as the `full`
+  // → image renders block and text flows below - same as the `full`
   // layout, a graceful fallback. Mobile override: the `.float-image`
   // class in the head stylesheet strips float + forces full width
   // below 480px so phones always see image-on-top stacked.

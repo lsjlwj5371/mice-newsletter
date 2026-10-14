@@ -16,6 +16,7 @@ import {
   updateNewsletterSubjectAction,
   setBlockSourceUrlAction,
   setPromoBannerLinkAction,
+  setMiceBlogPostsAction,
 } from "@/app/(admin)/newsletters/actions";
 import { Input } from "@/components/ui/input";
 import { BlockImageSlot } from "./block-image-slot";
@@ -23,6 +24,7 @@ import { SpecialArticleEditor } from "./special-article-editor";
 import { SendPanel } from "./send-panel";
 import { HtmlSourceDialog } from "./html-source-dialog";
 import { ArticlePicker } from "@/components/articles/article-picker";
+import { MiceBlogPostsFields } from "./block-picker";
 import {
   NEWSLETTER_STATUS_LABELS,
   BLOCK_LABELS,
@@ -34,6 +36,10 @@ import {
   type BlockInstance,
   type ImageLayout,
   type SpecialArticleItem,
+  MICE_BLOG_DEFAULT_POSTS,
+  MICE_BLOG_SUMMARY_MAX,
+  MICE_BLOG_TITLE_MAX,
+  type MiceBlogPost,
 } from "@/types/newsletter";
 
 type ViewMode = "desktop" | "mobile" | "dark";
@@ -84,7 +90,7 @@ export function DraftEditor({
   // 내려주면 JSON 탭도 거기에 맞춰 갱신. 이 effect 가 없으면 jsonText 가
   // 초기 마운트 시점의 useState initializer 값에 그대로 갇혀서 미리보기는
   // 갱신되는데 JSON 만 옛 버전으로 보이는 현상이 생긴다. 사용자가 JSON 탭에서
-  // 직접 편집 중인 텍스트가 있어도 덮어쓰는 게 의도된 동작 — refresh 의 트리거는
+  // 직접 편집 중인 텍스트가 있어도 덮어쓰는 게 의도된 동작 - refresh 의 트리거는
   // 사용자가 방금 일으킨 서버 mutation 이므로 최신 서버 상태가 권위 있는 값.
   React.useEffect(() => {
     setJsonText(JSON.stringify(newsletter.content_json, null, 2));
@@ -140,7 +146,7 @@ export function DraftEditor({
 
   return (
     <>
-      {/* ── Subject line (email 제목) — inline-editable ──── */}
+      {/* ── Subject line (email 제목) - inline-editable ──── */}
       <SubjectEditor
         newsletterId={newsletter.id}
         initialSubject={newsletter.subject}
@@ -340,7 +346,7 @@ export function DraftEditor({
 }
 
 // ─────────────────────────────────────────────
-// Block editor panel — per-block references + regenerate
+// Block editor panel - per-block references + regenerate
 // ─────────────────────────────────────────────
 
 interface BlockEditorPanelProps {
@@ -361,7 +367,7 @@ function BlockEditorPanel({
   /**
    * For every referenced article in this newsletter, remember which block
    * uses it. `articleUsageByBlockIndex[i]` is the usage map EXCLUDING
-   * block i — pass that to each BlockCard's picker so an article the
+   * block i - pass that to each BlockCard's picker so an article the
    * card itself already uses doesn't show a redundant self-warning.
    */
   const { addBlockUsage, perBlockExcluded } = React.useMemo(() => {
@@ -431,7 +437,7 @@ function BlockEditorPanel({
 }
 
 // ─────────────────────────────────────────────
-// Insertion point — "+ 여기에 블록 추가" between every pair of cards
+// Insertion point - "+ 여기에 블록 추가" between every pair of cards
 // Expands into a block-type picker inline.
 // ─────────────────────────────────────────────
 interface AddBlockInsertionPointProps {
@@ -439,7 +445,7 @@ interface AddBlockInsertionPointProps {
   position: number;
   disabled: boolean;
   onDone: () => void;
-  /** Article usage across sibling blocks — shown as a warning in the picker. */
+  /** Article usage across sibling blocks - shown as a warning in the picker. */
   articleUsedBy?: Record<string, string>;
 }
 
@@ -455,6 +461,15 @@ function AddBlockInsertionPoint({
   const [autoSearch, setAutoSearch] = React.useState(true);
   const [instructions, setInstructions] = React.useState("");
   const [forcedArticleIds, setForcedArticleIds] = React.useState<string[]>([]);
+  // mice_blog 전용. 제목, 한줄요약, 원문링크를 추가 폼에서 바로 받는다.
+  const [miceBlogPosts, setMiceBlogPosts] = React.useState<MiceBlogPost[]>(
+    () =>
+      Array.from({ length: MICE_BLOG_DEFAULT_POSTS }, () => ({
+        title: "",
+        summary: "",
+        linkUrl: "",
+      }))
+  );
   const [pending, startTransition] = React.useTransition();
   const [msg, setMsg] = React.useState<{
     type: "success" | "error";
@@ -474,14 +489,25 @@ function AddBlockInsertionPoint({
         position,
         blockType,
         instructions: instructions.trim() || null,
-        autoSearch: blockType === "groundk_story" ? false : autoSearch,
+        autoSearch:
+          blockType === "groundk_story" || blockType === "mice_blog"
+            ? false
+            : autoSearch,
         forcedArticleIds:
           forcedArticleIds.length > 0 ? forcedArticleIds : undefined,
+        miceBlogPosts: blockType === "mice_blog" ? miceBlogPosts : undefined,
       });
       if (res.ok) {
         setMsg({ type: "success", text: res.message ?? "추가됨" });
         setInstructions("");
         setForcedArticleIds([]);
+        setMiceBlogPosts(
+          Array.from({ length: MICE_BLOG_DEFAULT_POSTS }, () => ({
+            title: "",
+            summary: "",
+            linkUrl: "",
+          }))
+        );
         setOpen(false);
         onDone();
       } else {
@@ -542,7 +568,23 @@ function AddBlockInsertionPoint({
         </p>
       </div>
 
-      {blockType !== "groundk_story" && (
+      {blockType === "mice_blog" && (
+        <>
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            네이버 블로그는 AI가 본문을 읽을 수 없어 Claude가 쓰지 않습니다.
+            제목은 {MICE_BLOG_TITLE_MAX}자, 요약은 {MICE_BLOG_SUMMARY_MAX}자까지
+            입력할 수 있습니다. 비워 두고 추가한 뒤 편집 패널에서 채워도 됩니다.
+          </div>
+          <MiceBlogPostsFields
+            posts={miceBlogPosts}
+            onChange={setMiceBlogPosts}
+            idPrefix={`mice-blog-add-${position}`}
+            disabled={pending}
+          />
+        </>
+      )}
+
+      {blockType !== "groundk_story" && blockType !== "mice_blog" && (
         <>
           <div className="flex items-center gap-2">
             <input
@@ -579,21 +621,23 @@ function AddBlockInsertionPoint({
         </>
       )}
 
-      <div>
-        <Label className="text-xs">추가 지시 (선택)</Label>
-        <Textarea
-          value={instructions}
-          onChange={(e) => setInstructions(e.target.value)}
-          rows={2}
-          disabled={pending}
-          placeholder={
-            blockType === "groundk_story"
-              ? "예: Field Briefing은 공항 T2 수하물 판독 이슈, Project Sketch는 COS 패션쇼"
-              : "예: 이번엔 ESG 관련만, 분량은 짧게"
-          }
-          className="mt-1 text-xs"
-        />
-      </div>
+      {blockType !== "mice_blog" && (
+        <div>
+          <Label className="text-xs">추가 지시 (선택)</Label>
+          <Textarea
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            rows={2}
+            disabled={pending}
+            placeholder={
+              blockType === "groundk_story"
+                ? "예: Field Briefing은 공항 T2 수하물 판독 이슈, Project Sketch는 COS 패션쇼"
+                : "예: 이번엔 ESG 관련만, 분량은 짧게"
+            }
+            className="mt-1 text-xs"
+          />
+        </div>
+      )}
 
       {msg && (
         <div
@@ -624,7 +668,7 @@ interface BlockCardProps {
   articleMeta: Record<string, ArticleMetaEntry>;
   disabled: boolean;
   onDone: () => void;
-  /** Articles used by SIBLING blocks — shown as warnings in the picker. */
+  /** Articles used by SIBLING blocks - shown as warnings in the picker. */
   articleUsedBy?: Record<string, string>;
 }
 
@@ -645,7 +689,7 @@ function BlockCard({
     block.autoSearch ?? BLOCK_NEEDS_RESEARCH[block.type]
   );
   const [forcedArticleIds, setForcedArticleIds] = React.useState<string[]>([]);
-  // groundk_story 부분 편집 범위 — 'both' 면 기존 동작 (한 번의 지시로 둘 다
+  // groundk_story 부분 편집 범위 - 'both' 면 기존 동작 (한 번의 지시로 둘 다
   // 수정 가능), 'fieldBriefing'/'projectSketch' 면 서버측에서 반대편을
   // mechanical overlay 로 보호한다. groundk_story 가 아닌 블록에서는 무시됨.
   const [groundkTarget, setGroundkTarget] = React.useState<
@@ -689,7 +733,7 @@ function BlockCard({
 
   function handleRegenerate() {
     setMsg(null);
-    // groundk_story is admin-only — always pass autoSearch=false regardless
+    // groundk_story is admin-only - always pass autoSearch=false regardless
     // of UI state so it never pulls from RSS.
     const effectiveAutoSearch =
       block.type === "groundk_story" ? false : autoSearch;
@@ -802,7 +846,7 @@ function BlockCard({
                   if (!meta) {
                     return (
                       <li key={id} className="text-muted-foreground italic">
-                        (기사 정보를 찾을 수 없음 — 아마 삭제됨: {id.slice(0, 8)}…)
+                        (기사 정보를 찾을 수 없음 - 아마 삭제됨: {id.slice(0, 8)}…)
                       </li>
                     );
                   }
@@ -908,7 +952,7 @@ function BlockCard({
                   itemIndex={i}
                   allowItemLayout
                   label={`행사${
-                    ev.title ? ` — ${ev.title.slice(0, 30)}` : ""
+                    ev.title ? ` - ${ev.title.slice(0, 30)}` : ""
                   } 이미지 (선택)`}
                   currentUrl={ev.imageUrl ?? null}
                   currentLayout={ev.imageLayout ?? null}
@@ -929,7 +973,7 @@ function BlockCard({
                   blockIndex={blockIndex}
                   itemIndex={i}
                   label={`기사 ${i + 1}${
-                    it.title ? ` — ${it.title.slice(0, 30)}` : ""
+                    it.title ? ` - ${it.title.slice(0, 30)}` : ""
                   } 이미지 (선택)`}
                   currentUrl={it.imageUrl ?? null}
                   disabled={pending || disabled}
@@ -941,10 +985,10 @@ function BlockCard({
               <BlockImageSlot
                 newsletterId={newsletterId}
                 blockIndex={blockIndex}
-                /* variant=hero 가 1280px 와이드 리사이즈를 적용 — 풀폭 배너에
+                /* variant=hero 가 1280px 와이드 리사이즈를 적용 - 풀폭 배너에
                    적합. 권장 비율 3:1. */
                 variant="hero"
-                label="배너 이미지 — 권장 1280×426 (3:1)"
+                label="배너 이미지 - 권장 1280×426 (3:1)"
                 currentUrl={
                   ((block.data as { imageUrl?: string }).imageUrl ?? null) || null
                 }
@@ -961,6 +1005,16 @@ function BlockCard({
                 onDone={onDone}
               />
             </div>
+          ) : block.type === "mice_blog" ? (
+            <MiceBlogEditor
+              newsletterId={newsletterId}
+              blockIndex={blockIndex}
+              initialPosts={
+                (block.data as { posts?: MiceBlogPost[] }).posts ?? []
+              }
+              disabled={pending || disabled}
+              onDone={onDone}
+            />
           ) : block.type === "special_article" ? (
             <SpecialArticleEditor
               newsletterId={newsletterId}
@@ -977,7 +1031,7 @@ function BlockCard({
               blockIndex={blockIndex}
               label={
                 block.type === "consolidated_insight"
-                  ? "히어로 이미지 (선택) — 풀 블리드"
+                  ? "히어로 이미지 (선택) - 풀 블리드"
                   : "이미지 (선택)"
               }
               /* consolidated_insight renders its image as the full-bleed
@@ -995,11 +1049,11 @@ function BlockCard({
             />
           )}
 
-          {/* Source URL editor — shows "원문 보기 →" link on the rendered
+          {/* Source URL editor - shows "원문 보기 →" link on the rendered
               email when admin sets a URL. Per-item for multi-item blocks,
               block-level for single-topic blocks. promo_banner 는
               자체 linkUrl 만 쓰므로 별도 sourceUrl 편집기는 표시하지 않음. */}
-          {block.type !== "promo_banner" && (
+          {block.type !== "promo_banner" && block.type !== "mice_blog" && (
             <SourceUrlEditor
               newsletterId={newsletterId}
               blockIndex={blockIndex}
@@ -1009,10 +1063,10 @@ function BlockCard({
             />
           )}
 
-          {/* Regenerate controls — promo_banner 는 Claude 가 본문을 만들지
+          {/* Regenerate controls - promo_banner 는 Claude 가 본문을 만들지
               않는 admin-only 블록이라 재생성 입력칸 자체를 숨김. 이미지/링크는
               위에서 직접 편집. */}
-          {block.type !== "promo_banner" && (
+          {block.type !== "promo_banner" && block.type !== "mice_blog" && (
           <section className="space-y-2">
             <Label className="text-xs font-semibold">
               이 블록 수정
@@ -1114,7 +1168,7 @@ function BlockCard({
                 block.type === "groundk_story"
                   ? `예: Field Briefing은 "공항 T2 수하물 판독 15~20분 지연" 이슈. Project Sketch는 COS 패션쇼 (정릉동 브루탈리즘 공간, 40개 룩, 앰버서더+미디어+디너 동선 설계, 2026.03.25)`
                   : `예 (부분 수정): "제목만 더 짧게", "두 번째 문단의 수치를 삭제", "첫 문장만 좀 더 단정적으로"
-예 (전체 재작성): "아예 새롭게 생성해줘 — 이번엔 ESG 주제로"`
+예 (전체 재작성): "아예 새롭게 생성해줘 - 이번엔 ESG 주제로"`
               }
               className="text-xs"
             />
@@ -1153,7 +1207,7 @@ function BlockCard({
 }
 
 // ─────────────────────────────────────────────
-// PromoBannerLinkEditor — 홍보 배너 블록의 클릭 링크 URL 편집.
+// PromoBannerLinkEditor - 홍보 배너 블록의 클릭 링크 URL 편집.
 // 입력 → "저장" 누르면 setPromoBannerLinkAction 으로 서버 저장.
 // 빈 문자열 저장하면 링크 제거(클릭 비활성, 이미지만 표시).
 // ─────────────────────────────────────────────
@@ -1246,11 +1300,98 @@ function PromoBannerLinkEditor({
 }
 
 // ─────────────────────────────────────────────
-// GroundkStory part toggles — hide / show Field Briefing and Project Sketch
+// MiceBlogEditor - MICE人 Blog 블록의 글 목록 편집.
+//
+// 이 블록은 Claude 재생성 경로가 없어서(네이버 블로그 본문을 못 읽음)
+// 여기가 유일한 수정 통로다. 제목·한줄요약·원문링크를 고치고 "저장"을
+// 누르면 setMiceBlogPostsAction 이 블록의 글 목록을 통째로 교체한다.
+// ─────────────────────────────────────────────
+function MiceBlogEditor({
+  newsletterId,
+  blockIndex,
+  initialPosts,
+  disabled,
+  onDone,
+}: {
+  newsletterId: string;
+  blockIndex: number;
+  initialPosts: MiceBlogPost[];
+  disabled: boolean;
+  onDone: () => void;
+}) {
+  const [posts, setPosts] = React.useState<MiceBlogPost[]>(initialPosts);
+  const [pending, startTransition] = React.useTransition();
+  const [msg, setMsg] = React.useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  // 다른 블록을 열거나 서버 데이터가 갱신되면 입력값을 다시 맞춘다.
+  const initialKey = JSON.stringify(initialPosts);
+  React.useEffect(() => {
+    setPosts(JSON.parse(initialKey) as MiceBlogPost[]);
+  }, [initialKey]);
+
+  const dirty = JSON.stringify(posts) !== initialKey;
+
+  function handleSave() {
+    setMsg(null);
+    startTransition(async () => {
+      const res = await setMiceBlogPostsAction({
+        newsletterId,
+        blockIndex,
+        posts,
+      });
+      if (res.ok) {
+        setMsg({ type: "success", text: res.message ?? "저장되었습니다." });
+        onDone();
+      } else {
+        setMsg({ type: "error", text: res.error });
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <strong>MICE人 Blog</strong> - 네이버 블로그는 AI가 본문을 읽을 수 없어
+        Claude가 쓰지 않습니다. 아래 세 값만 직접 채우면 됩니다.
+      </div>
+      <MiceBlogPostsFields
+        posts={posts}
+        onChange={setPosts}
+        idPrefix={`mice-blog-edit-${blockIndex}`}
+        disabled={pending || disabled}
+      />
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          onClick={handleSave}
+          disabled={pending || disabled || !dirty}
+        >
+          {pending ? "저장 중…" : "저장"}
+        </Button>
+        {msg && (
+          <p
+            className={
+              "text-[11px] " +
+              (msg.type === "success" ? "text-emerald-700" : "text-rose-700")
+            }
+          >
+            {msg.text}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// GroundkStory part toggles - hide / show Field Briefing and Project Sketch
 // independently. Server-side blocks hiding BOTH to keep the block meaningful.
 // ─────────────────────────────────────────────
 // ─────────────────────────────────────────────
-// SourceUrlEditor — per-block / per-item "원문 링크" input.
+// SourceUrlEditor - per-block / per-item "원문 링크" input.
 //
 // Renders one URL field for single-topic blocks (tech_signal,
 // theory_to_field, consolidated_insight) and N fields for multi-item
@@ -1578,7 +1719,7 @@ function getBlockTitle(block: BlockInstance): string | null {
 }
 
 // ─────────────────────────────────────────────
-// Subject editor — inline-editable email subject line in the top bar
+// Subject editor - inline-editable email subject line in the top bar
 // ─────────────────────────────────────────────
 function SubjectEditor({
   newsletterId,

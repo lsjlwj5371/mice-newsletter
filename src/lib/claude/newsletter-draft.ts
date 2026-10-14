@@ -45,7 +45,7 @@ const CANONICAL_ENGLISH_LABELS: Partial<Record<BlockType, string>> = {
   groundk_story: "GroundK Story",
   consolidated_insight: "MICE Insight",
   event_radar: "Event Radar",
-  blog_card_grid: "GroundK Blog",
+  mice_blog: "MICE人 Blog",
   // promo_banner 는 섹션 헤더가 없으므로 영문 라벨도 없음 (생략).
   special_article: "Special Feature",
 };
@@ -69,7 +69,7 @@ const BLOCK_SCHEMA_PROMPT: Record<BlockType, string> = {
   news_briefing: `{ "englishLabel": "News Briefing", "items": [정확히 3개. 각 item = { "categoryTag": "경제 · 산업 등", "title": "14~28자의 헤드라인", "body": "2~3문장", "insight": { "label": "MICE 연결", "text": "1~2문장의 MICE 산업 함의" }, "sourceUrl": "제공된 기사의 실제 URL" }] }`,
   in_out_comparison: `{ "englishLabel": "MICE IN & OUT", "inItem": { "categoryTag": "IN · 국내", "title": "한국 관련 소식 제목", "body": "2~3문장", "source": "제공된 기사의 실제 출처명 (예: 한국관광공사 보도자료, 2026.04)" }, "outItem": { "categoryTag": "OUT · 글로벌", "title": "해외 관련 소식 제목", "body": "2~3문장", "source": "제공된 기사의 실제 출처명" } }`,
   tech_signal: `{ "englishLabel": "Tech Signal", "topicLabel": "Agentic AI 등 키워드", "topicMeta": "YYYY.MM · 이번 달 가장 뜨거운 기술 이슈", "title": "헤드라인", "paragraphs": ["1~2개의 단락"], "miceInsight": "1~2문장" }`,
-  theory_to_field: `{ "englishLabel": "From Theory to Field", "sourceYear": "학술 모드: 선정한 고전 연구의 대표 저작 발표 연도(예: '2000'). 기사 모드: 제공된 기사의 발행 연도. 확신 없으면 빈 문자열", "sourcePaperTitle": "논문/저작의 정식 명칭. 학술 모드: 원문 저작명 그대로(예: 'Bowling Alone: The Collapse and Revival of American Community'). 기사 모드: 논문의 정확한 제목(약어가 있으면 괄호 안에 함께, 예: 'Multi-Period Adaptive Spatiotemporal Convolutional Network (MP-ASTCN)'). 확신 없으면 빈 문자열. **절대 지어내지 마십시오.**", "sourceMeta": "저널명 + Volume/Issue (예: 'Annals of Tourism Research, Volume 119') 또는 학파·분야명. 기사 모드에서는 저널 정보 정확히. 확신 없으면 빈 문자열", "sourceAuthor": "저자명들을 원문 순서대로 콤마로 구분(예: 'Luyao Gu, Junjie Wen, Zhixue Liao'). 학술 모드에서는 학자명(예: 'Robert D. Putnam') 또는 학파(예: '사회자본 이론 학파'). 위조 절대 금지, 확신 없으면 빈 문자열", "title": "호기심을 자극하는 헤드라인 (뉴스레터 본문 표제 — 논문 원제와 다른, 독자용 훅 제목)", "introParagraphs": ["1~2단락 — 학술 모드에서는 선정한 고전 이론의 핵심 개념 소개"], "bridge": { "label": "→ 현장에서는", "text": "1~2문장 — 이 이론이 MICE 산업에 적용되는 핵심 지점" }, "outroParagraphs": ["1단락 — 구체적 MICE 현장 적용 시나리오/함의"], "closingNote": "1문장의 마무리" }
+  theory_to_field: `{ "englishLabel": "From Theory to Field", "sourceYear": "학술 모드: 선정한 고전 연구의 대표 저작 발표 연도(예: '2000'). 기사 모드: 제공된 기사의 발행 연도. 확신 없으면 빈 문자열", "sourcePaperTitle": "논문/저작의 정식 명칭. 학술 모드: 원문 저작명 그대로(예: 'Bowling Alone: The Collapse and Revival of American Community'). 기사 모드: 논문의 정확한 제목(약어가 있으면 괄호 안에 함께, 예: 'Multi-Period Adaptive Spatiotemporal Convolutional Network (MP-ASTCN)'). 확신 없으면 빈 문자열. **절대 지어내지 마십시오.**", "sourceMeta": "저널명 + Volume/Issue (예: 'Annals of Tourism Research, Volume 119') 또는 학파·분야명. 기사 모드에서는 저널 정보 정확히. 확신 없으면 빈 문자열", "sourceAuthor": "저자명들을 원문 순서대로 콤마로 구분(예: 'Luyao Gu, Junjie Wen, Zhixue Liao'). 학술 모드에서는 학자명(예: 'Robert D. Putnam') 또는 학파(예: '사회자본 이론 학파'). 위조 절대 금지, 확신 없으면 빈 문자열", "title": "호기심을 자극하는 헤드라인 (뉴스레터 본문 표제 - 논문 원제와 다른, 독자용 훅 제목)", "introParagraphs": ["1~2단락 - 학술 모드에서는 선정한 고전 이론의 핵심 개념 소개"], "bridge": { "label": "→ 현장에서는", "text": "1~2문장 - 이 이론이 MICE 산업에 적용되는 핵심 지점" }, "outroParagraphs": ["1단락 - 구체적 MICE 현장 적용 시나리오/함의"], "closingNote": "1문장의 마무리" }
 
 ## theory_to_field 헤더 필드 배치 지침
 - **sourcePaperTitle**: 논문·저작의 정식 명칭. 뉴스레터 헤더 상단 라인에 굵게 노출됩니다. 반드시 원문 표기를 따르십시오 (약어 있으면 괄호 병기).
@@ -83,10 +83,10 @@ const BLOCK_SCHEMA_PROMPT: Record<BlockType, string> = {
 - 이 블록은 **여러 기사를 짜깁기하는 섹션이 아닙니다.** 후보 기사 중 **단 하나**(가장 MICE 업계에 파급력 있고 다층적으로 풀어낼 수 있는 기사)를 고르고, 그 **하나의 기사만을 심층 분석**합니다.
 - 다른 후보 기사는 읽되 **본문에는 직접 인용하지 마십시오.** 배경 이해용 참고일 뿐입니다.
 - 3~5개의 챕터는 **서로 다른 주제를 병렬 나열하는 것이 아니라**, 선택한 하나의 주제를 기승전결(배경 → 전개 → 파급 → 현장 적용) 흐름으로 심층 전개합니다.
-- 각 챕터 본문은 **2~4개의 두터운 단락**으로 충분히 깊이 있게 씁니다. 분량이 길어지는 것은 환영합니다 — 얕은 설명을 여러 챕터에 흩뿌리는 것보다 한 챕터를 깊게 파는 편이 낫습니다.
+- 각 챕터 본문은 **2~4개의 두터운 단락**으로 충분히 깊이 있게 씁니다. 분량이 길어지는 것은 환영합니다 - 얕은 설명을 여러 챕터에 흩뿌리는 것보다 한 챕터를 깊게 파는 편이 낫습니다.
 - **최종 결론은 마지막 챕터(예: "05 · 정리" 또는 "04 · 실무 의미")에서 직접 마무리하십시오.** 별도의 "GroundK Take" 박스는 생성하지 않습니다. 마지막 챕터의 본문이 읽는 사람에게 "이 한 건의 소식이 MICE 실무에 어떤 결정을 요구하는가"까지 자연스럽게 전달되어야 합니다.
 - \`_citedIndices\`는 본문에서 실제로 근거로 삼은 기사 **한 건의 번호**만 담습니다 (예: \`[3]\`). 배경 참고만 한 다른 기사는 포함하지 않습니다.`,
-  event_radar: `{ "englishLabel": "Event Radar", "events": [정확히 1개. event = { "categoryTag": "Conference · 아시아 / Expo · 국내 / Workshop · 글로벌 등 (분류 + 지역)", "title": "행사 공식 명칭", "dateMeta": "개최일과 장소를 한 줄로 (예: 2026.06.12 – 14 · 서울 COEX)", "body": "3~5문장. 어떤 행사인지, 누가 주최하는지, 일반 업계인이 왜 놓치기 쉬운지, 어떤 인사이트를 얻을 수 있는지 충분히 서술.", "whyItMatters": "(선택) 1~2문장으로 MICE 실무자가 이 행사를 알아야 할 이유. 생략 가능.", "sourceUrl": "관리자가 제공한 URL 그대로. 없으면 빈 문자열." }] }
+  event_radar: `{ "englishLabel": "Event Radar", "events": [정확히 1개. event = { "categoryTag": "Conference · 아시아 / Expo · 국내 / Workshop · 글로벌 등 (분류 + 지역)", "title": "행사 공식 명칭", "dateMeta": "개최일과 장소를 한 줄로 (예: 2026.06.12 - 14 · 서울 COEX)", "body": "3~5문장. 어떤 행사인지, 누가 주최하는지, 일반 업계인이 왜 놓치기 쉬운지, 어떤 인사이트를 얻을 수 있는지 충분히 서술.", "whyItMatters": "(선택) 1~2문장으로 MICE 실무자가 이 행사를 알아야 할 이유. 생략 가능.", "sourceUrl": "관리자가 제공한 URL 그대로. 없으면 빈 문자열." }] }
 
 ## event_radar 전용 지침 (매우 중요)
 - 이 블록은 호당 **정확히 하나의 행사**만 집중 소개합니다. 여러 행사를 얕게 나열하지 말고, 선정한 하나를 깊이 있게 다루십시오.
@@ -95,7 +95,10 @@ const BLOCK_SCHEMA_PROMPT: Record<BlockType, string> = {
 - 제공된 후보 기사에만 근거가 있을 때도 마찬가지로 기사에 명시된 사실만 씁니다.
 - 근거가 부족해 단 하나의 행사도 신뢰성 있게 다룰 수 없다면 placeholder를 출력하십시오 (뒤의 서버 로직이 처리).
 - sourceUrl은 반드시 관리자가 붙여 넣은 URL 또는 후보 기사의 url만 씁니다. 임의 URL 생성 금지.`,
-  blog_card_grid: `{ "englishLabel": "GroundK Blog", "cards": [2~6개. 각 card = { "label": "Field Note / Project Story / Industry Insight / Tech & MICE 중 하나", "title": "제목", "description": "2~3줄의 설명", "linkUrl": "https://blog.naver.com/groundk" }] }`,
+  // mice_blog 는 네이버 블로그가 AI 크롤링을 막아 본문을 읽을 수 없어
+  // Claude 를 아예 거치지 않습니다. 관리자가 폼에서 입력한 제목·요약·링크를
+  // 서버에서 그대로 박는 placeholder 흐름.
+  mice_blog: `{ "englishLabel": "MICE人 Blog", "posts": [] }`,
   // promo_banner 는 ADMIN_ONLY 라 Claude 가 본문을 만들지 않습니다. 관리자가
   // 폼에서 입력한 imageUrl/linkUrl 을 서버측에서 그대로 박는 placeholder 흐름.
   promo_banner: `{ "imageUrl": "", "linkUrl": "", "alt": "" }`,
@@ -112,7 +115,7 @@ const BLOCK_SCHEMA_PROMPT: Record<BlockType, string> = {
 - **소제목(heading)은 본문 그룹을 의미상 잘라주는 용도**로만 씁니다. 단순 장식이 아니라 그 아래 단락들이 새로운 측면을 다룬다는 걸 알려야 합니다.
 - **인용구(quote)는 호 전체에서 가장 강조하고 싶은 한 문장**을 골라 1~2회만 사용합니다. 남발하지 마십시오.
 - 후보 기사가 여러 개 주어져도 **단 하나**(가장 풀어낼 거리 많은 기사)에 집중합니다. consolidated_insight 와 동일한 단일 주제 심층 분석 방식입니다.
-- **image / divider item 은 생성 금지** — 관리자가 편집 단계에서 본문 어디든 자유 배치합니다.
+- **image / divider item 은 생성 금지** - 관리자가 편집 단계에서 본문 어디든 자유 배치합니다.
 - 다른 후보 기사는 배경 이해용 참고일 뿐, 본문에 직접 인용하지 않습니다.
 - \`_citedIndices\`는 본문 근거로 삼은 기사 한 건의 번호만 담습니다 (예: \`[2]\`).`,
 };
@@ -122,7 +125,7 @@ const BLOCK_SCHEMA_PROMPT: Record<BlockType, string> = {
  *
  * - `primary`: preferred categories for this block
  * - `fallback`: secondary categories used when primary is sparse or empty
- *   (the admin may only have registered general `news` feeds — we still
+ *   (the admin may only have registered general `news` feeds - we still
  *   want tech_signal / in_out_comparison to find usable articles)
  * - `ignoreDateFilter`: when true, load articles regardless of the issue's
  *   collection period. Useful for theory_to_field where academic research
@@ -152,7 +155,7 @@ const BLOCK_ARTICLE_POLICY: Record<BlockType, BlockArticlePolicy> = {
     limit: 0,
   },
   stat_feature: {
-    // "이달의 숫자" — good stat can come from any time period, so we
+    // "이달의 숫자" - good stat can come from any time period, so we
     // read all-time like theory_to_field. Keeps statistic quality high
     // even for issues with a narrow collection window.
     primary: ["stat_feature", "news_briefing", "tech_signal", "in_out_comparison"],
@@ -224,7 +227,7 @@ const BLOCK_ARTICLE_POLICY: Record<BlockType, BlockArticlePolicy> = {
     fallback: [],
     ignoreDateFilter: false,
     // Claude is instructed to pick ONE article from this pool and deep-
-    // dive it, so the pool just needs enough variety for a good choice —
+    // dive it, so the pool just needs enough variety for a good choice -
     // not maximal coverage. 6 is a practical sweet spot.
     limit: 6,
     // Exclusive partitioning: synthesis/deep-dive blocks must not re-surface
@@ -242,8 +245,8 @@ const BLOCK_ARTICLE_POLICY: Record<BlockType, BlockArticlePolicy> = {
     // 2~4 event cards per issue → 6 candidates is a reasonable buffer.
     limit: 6,
   },
-  blog_card_grid: {
-    // Admin-curated external blog cards — no article pool.
+  mice_blog: {
+    // 관리자가 직접 입력하는 블로그 소개 - 기사 풀을 쓰지 않는다.
     primary: [],
     fallback: [],
     ignoreDateFilter: false,
@@ -257,7 +260,7 @@ const BLOCK_ARTICLE_POLICY: Record<BlockType, BlockArticlePolicy> = {
     limit: 0,
   },
   special_article: {
-    // Same shared-pool deep-dive policy as consolidated_insight — Claude
+    // Same shared-pool deep-dive policy as consolidated_insight - Claude
     // picks one article and writes a single-topic special feature in the
     // MICE Insight tone. Pulls from the broadest category set so any
     // strong story can become the special.
@@ -310,9 +313,9 @@ function getPlaceholderData(type: BlockType): unknown {
       return {
         englishLabel: "News Briefing",
         items: [
-          { categoryTag: "분류", title: "제목 1 — 관리자가 입력", body: "본문 1을 여기에 작성하세요.", insight: { label: "MICE 연결", text: "MICE 함의를 작성" } },
-          { categoryTag: "분류", title: "제목 2 — 관리자가 입력", body: "본문 2를 여기에 작성하세요.", insight: { label: "MICE 연결", text: "MICE 함의를 작성" } },
-          { categoryTag: "분류", title: "제목 3 — 관리자가 입력", body: "본문 3을 여기에 작성하세요.", insight: { label: "MICE 연결", text: "MICE 함의를 작성" } },
+          { categoryTag: "분류", title: "제목 1 - 관리자가 입력", body: "본문 1을 여기에 작성하세요.", insight: { label: "MICE 연결", text: "MICE 함의를 작성" } },
+          { categoryTag: "분류", title: "제목 2 - 관리자가 입력", body: "본문 2를 여기에 작성하세요.", insight: { label: "MICE 연결", text: "MICE 함의를 작성" } },
+          { categoryTag: "분류", title: "제목 3 - 관리자가 입력", body: "본문 3을 여기에 작성하세요.", insight: { label: "MICE 연결", text: "MICE 함의를 작성" } },
         ],
       };
     case "in_out_comparison":
@@ -414,12 +417,14 @@ function getPlaceholderData(type: BlockType): unknown {
           },
         ],
       };
-    case "blog_card_grid":
+    case "mice_blog":
+      // 관리자가 폼에서 글을 넣지 않은 경우의 빈 자리. 저장 직후 편집
+      // 패널에서 제목·요약·링크를 채우면 된다.
       return {
-        englishLabel: "GroundK Blog",
-        cards: [
-          { label: "Field Note", title: "카드 제목 1", description: "카드 설명 1을 작성하세요.", linkUrl: "https://blog.naver.com/groundk" },
-          { label: "Project Story", title: "카드 제목 2", description: "카드 설명 2을 작성하세요.", linkUrl: "https://blog.naver.com/groundk" },
+        englishLabel: "MICE人 Blog",
+        posts: [
+          { title: "블로그 글 제목", summary: "한 줄 요약을 입력합니다.", linkUrl: "" },
+          { title: "블로그 글 제목", summary: "한 줄 요약을 입력합니다.", linkUrl: "" },
         ],
       };
     case "promo_banner":
@@ -480,7 +485,7 @@ interface BlockGenContext {
    */
   manuallySelected: boolean;
   /**
-   * For groundk_story partial edits — which sub-object the admin is
+   * For groundk_story partial edits - which sub-object the admin is
    * editing. Drives an extra prompt section that tells Claude to leave
    * the other sub-object byte-identical; the server also overlays the
    * untargeted part as a hard guarantee.
@@ -505,7 +510,7 @@ interface BlockGenContext {
 }
 
 /**
- * Strip fields that shouldn't influence Claude's edit — uploaded image
+ * Strip fields that shouldn't influence Claude's edit - uploaded image
  * URLs, layout choices, part-visibility flags, and per-run meta like
  * _citedIndices. The server re-applies them via mergePreservedBlockFields
  * after generation. Recurses one level into nested objects (e.g.
@@ -532,7 +537,7 @@ function stripMetaForPrompt(data: unknown): unknown {
 }
 
 function formatArticleForPrompt(a: Article, idx: number): string {
-  // full_text 우선 — 수집 cron 이 article URL 페이지에서 미리 추출해둔
+  // full_text 우선 - 수집 cron 이 article URL 페이지에서 미리 추출해둔
   // 원문 본문 (최대 12000자). 없으면 raw_excerpt → summary 순으로 폴백.
   // 본문 충실도 보장의 핵심: Claude 가 summary 1~3문장만 보고 추론하던
   // 이전 동작 → 실제 본문 12000자를 보고 사실 추출하는 동작으로 전환.
@@ -552,15 +557,15 @@ function formatArticleForPrompt(a: Article, idx: number): string {
 
   if (body) {
     parts.push(`    본문:`);
-    // 본문은 들여쓰기 없이 통째로 — 길어도 그대로 박는다. 12000자 cap 은
+    // 본문은 들여쓰기 없이 통째로 - 길어도 그대로 박는다. 12000자 cap 은
     // 수집 시점에 이미 적용되어 있어 프롬프트 폭주 위험 없음.
     parts.push(body);
   } else {
-    // 본문 추출 실패 케이스 — Claude 에게 명시적으로 알려서 추론 보충을
+    // 본문 추출 실패 케이스 - Claude 에게 명시적으로 알려서 추론 보충을
     // 하지 않도록 경고. summary/tags 만으로 본문을 지어내는 게 정확히
     // 우리가 막고 싶은 행동.
     parts.push(
-      `    (원문 본문 자동 수집 실패 — 위 한줄 요약과 태그를 넘는 사실은 본문에 넣지 마십시오)`
+      `    (원문 본문 자동 수집 실패 - 위 한줄 요약과 태그를 넘는 사실은 본문에 넣지 마십시오)`
     );
   }
 
@@ -577,7 +582,7 @@ function buildBlockSystemPrompt(
    */
   manuallySelected: boolean = true,
   /**
-   * groundk_story 전용 — 부분 편집 대상 sub-object 이름. 지정되면
+   * groundk_story 전용 - 부분 편집 대상 sub-object 이름. 지정되면
    * Claude 에게 "다른 sub-object 는 글자 그대로 복사" 가이드가 추가된다.
    * 서버측에서도 mechanical overlay 로 한 번 더 보호한다.
    */
@@ -587,7 +592,7 @@ function buildBlockSystemPrompt(
     ? `이미 작성되어 있는 블록(${type})을 관리자 지시에 따라 **최소 수정**합니다. 본문에서 지시가 명시하지 않은 부분은 절대로 다시 쓰지 마십시오.`
     : `단 하나의 블록(${type}) 콘텐츠를 JSON으로 생성합니다.`;
 
-  // groundk_story 부분 편집 — Claude 에게 어떤 sub-object 만 만지고 다른
+  // groundk_story 부분 편집 - Claude 에게 어떤 sub-object 만 만지고 다른
   // sub-object 는 입력 그대로 돌려놓아야 하는지 명시. 서버 overlay 와 이중 방어.
   const partialEditBlock =
     type === "groundk_story" && targetPart
@@ -595,7 +600,7 @@ function buildBlockSystemPrompt(
 ## 부분 편집 (groundk_story 전용 · 매우 중요)
 이번 수정은 \`${targetPart}\` 객체만 대상입니다. 다른 sub-object (\`${
           targetPart === "fieldBriefing" ? "projectSketch" : "fieldBriefing"
-        }\`) 는 **현재 블록 내용에 있는 값을 글자 그대로 그대로 복사**하여 출력 JSON 에 포함하십시오. 한 글자도 바꾸지 마십시오 — 톤 다듬기·문장 정리·이모지 보정 등 어떤 자의적 변경도 금지입니다. 변경 대상이 아닌 sub-object 의 모든 필드는 입력 본문과 byte-identical 이어야 합니다.
+        }\`) 는 **현재 블록 내용에 있는 값을 글자 그대로 그대로 복사**하여 출력 JSON 에 포함하십시오. 한 글자도 바꾸지 마십시오 - 톤 다듬기·문장 정리·이모지 보정 등 어떤 자의적 변경도 금지입니다. 변경 대상이 아닌 sub-object 의 모든 필드는 입력 본문과 byte-identical 이어야 합니다.
 
 관리자 지시가 다른 sub-object 를 가리키더라도, 그 부분은 무시하고 \`${targetPart}\` 만 수정하십시오. 지시문이 모호하면 \`${targetPart}\` 안에서만 가장 작은 수정을 적용하십시오.
 `
@@ -612,16 +617,16 @@ function buildBlockSystemPrompt(
     !isAcademicMode &&
     (REFERENCE_REQUIRED_BLOCKS.has(type) || type === "theory_to_field");
 
-  // 사실 검증 절차 — 모델 내부 사고 흐름에만 적용. JSON 출력에는 포함 X.
+  // 사실 검증 절차 - 모델 내부 사고 흐름에만 적용. JSON 출력에는 포함 X.
   // 출처 규칙(기사 모드) 안에 통합되며, 학술 모드 분기에는 적용되지 않는다.
   const factCheckProcedure = isFactCheckRequired
     ? `
 
-### 사실 검증 절차 (내부 처리 — 출력 JSON 에는 포함하지 않음)
+### 사실 검증 절차 (내부 처리 - 출력 JSON 에는 포함하지 않음)
 
 본문 작성 전과 후로 다음 3단계를 모델 내부 사고 흐름에 적용합니다. 이 절차의 결과물(추출 메모, 점검 내역 등)은 절대 JSON 에 포함하지 않으며, 출력 JSON 스키마는 기존과 동일하게 유지됩니다.
 
-**단계 1 — 사실 추출 (본문 작성 전, 내부 처리)**
+**단계 1 - 사실 추출 (본문 작성 전, 내부 처리)**
 
 후보 기사 / 관리자 제공 링크 본문에서 다음 항목을 먼저 추려냅니다.
 - 인물·기관·기업명 (영문 원문 그대로 유지)
@@ -630,7 +635,7 @@ function buildBlockSystemPrompt(
 - 사건의 시점과 장소
 - 원문의 결론 한 줄
 
-**단계 2 — 작성 규칙**
+**단계 2 - 작성 규칙**
 
 본문은 단계 1에서 추출한 사실만으로 작성합니다.
 - 원문에 없는 정보를 추가하지 않습니다.
@@ -638,7 +643,7 @@ function buildBlockSystemPrompt(
 - 추측성 표현은 원문에 명시된 경우에만 사용합니다.
 - 인명·기관명은 영문 원문을 괄호 안에 병기합니다.
 
-**단계 3 — 자체 점검 (본문 작성 후, 내부 처리)**
+**단계 3 - 자체 점검 (본문 작성 후, 내부 처리)**
 
 본문을 완성한 뒤 모델 스스로 다음을 확인합니다.
 - 원문에 없는 수치를 추가하지 않았는가
@@ -653,12 +658,12 @@ function buildBlockSystemPrompt(
 ## 편집 모드 (매우 중요)
 이것은 "처음부터 생성"이 아니라 **기존 블록의 부분 수정**입니다. 아래 규칙을 엄격히 지키십시오.
 
-1. **기본 원칙 — 수정 최소화**. 아래 "현재 블록 내용"의 모든 필드를 그대로 유지하고, 관리자 지시가 **명시적으로 바꾸라고 요구한 부분만** 변경합니다.
+1. **기본 원칙 - 수정 최소화**. 아래 "현재 블록 내용"의 모든 필드를 그대로 유지하고, 관리자 지시가 **명시적으로 바꾸라고 요구한 부분만** 변경합니다.
 2. **변경하지 않는 필드는 현재 값을 글자 그대로 복사**합니다. 문장 다듬기·문체 개선·단어 교체 같은 "개선" 목적의 자의적 수정은 금지입니다.
 3. **전체 재작성 스위치**: 관리자 지시가 아래 표현 중 하나를 명시적으로 포함할 때에만 전체를 새로 작성합니다.
    - "아예 새롭게 생성" / "완전히 새로" / "처음부터 다시"
    - "전체 다시 써" / "다 갈아엎어" / "다른 방향으로 다시"
-   이외에 "좀 더 나은 느낌", "자연스럽게", "개선", "매끄럽게"는 **전체 재작성 신호가 아닙니다** — 최소 수정 원칙을 유지하십시오.
+   이외에 "좀 더 나은 느낌", "자연스럽게", "개선", "매끄럽게"는 **전체 재작성 신호가 아닙니다** - 최소 수정 원칙을 유지하십시오.
 4. 관리자 지시가 범위를 명시한 경우(예: "2번째 문단만", "제목만", "첫 문장만") 정확히 그 부분만 건드립니다.
 5. 지시가 모호하거나 범위가 불명확할 때는 가장 좁게 해석합니다. 불확실하면 아무것도 바꾸지 말고 가장 관련 깊은 필드 하나만 최소 수정합니다.
 6. 출력은 **여전히 전체 스키마를 채운 완전한 JSON**입니다. 변경이 없는 필드도 기존 값을 그대로 다시 적어 돌려주십시오.
@@ -672,16 +677,16 @@ function buildBlockSystemPrompt(
 - 관리자가 제공한 링크 본문이 있는 경우: 그 링크를 다룰 때는 **링크 본문에 명시된 내용만** 사용합니다. 본문에 "2026년 6월 서울 개최" 같은 문장이 있으면 그대로 쓰되, 본문에 없는 세부(예: 참가비, 연사 명단)는 추정·생성하지 말고 생략합니다.
 - 근거가 부족할 때는 내용을 지어내는 대신 해당 필드를 짧게 두거나, 더 모호한 일반 맥락(예: "관련 보도가 이어지고 있습니다") 수준으로 서술합니다.
 
-## 원문 충실도 (매우 중요 — 추상화·키워드화 방지)
+## 원문 충실도 (매우 중요 - 추상화·키워드화 방지)
 - **구체 정보 우선**: 후보 기사 본문에 등장하는 **숫자(인원·금액·일정·비율), 도시·국가·장소명, 기업·기관명, 도구·서비스명** 은 본문에 반드시 그대로 옮기십시오. 이걸 "AI 도구가 확산되고 있다" 같은 추상 표현으로 일반화하면 본문 충실도가 깨집니다.
 - **인물 인용은 직책 + 직접 인용 형식**: 후보 기사에 인용된 발언이 있으면 화자의 직책(예: "○○공사 △△ 본부장")을 반드시 함께 표기하고, 발언은 큰따옴표 안에 본문에서 본 표현을 유지하십시오. "관계자에 따르면" 류 익명화 금지.
 - **요약본만 보이고 본문이 비어있는 후보**(\`(원문 본문 자동 수집 실패…)\` 표시가 붙은 항목)는 한줄 요약과 태그를 넘는 사실을 본문에 넣지 마십시오. 그 후보에서 무리하게 본문을 구성하기보다, 본문이 들어온 다른 후보를 우선해서 글을 짭니다.
 - **추상화 회피 체크**: 단락마다 마지막 줄에서 "이 단락에 원문에서 가져온 구체 사실(인명·수치·고유명사 중 최소 하나)이 있는가" 를 내부적으로 점검하고, 없으면 본문에서 가져와 보강합니다.${factCheckProcedure}`;
 
-  // 학술 모드 — theory_to_field 한정. 후보 기사가 없을 때 발동.
+  // 학술 모드 - theory_to_field 한정. 후보 기사가 없을 때 발동.
   // 출처 규칙을 외부 자료가 아닌 "Claude 학습 지식 내 검증 가능한 학술 자료"
   // 기반으로 재정의하며, 추론 순서·할루시네이션 방지·분야 다양성을 명시한다.
-  const sourceRulesAcademicMode = `## 출처 규칙 — 학술 모드 (theory_to_field 전용 · 매우 중요)
+  const sourceRulesAcademicMode = `## 출처 규칙 - 학술 모드 (theory_to_field 전용 · 매우 중요)
 
 이 블록은 "**시간이 검증한 고전·중량 학술 연구**를 발굴해 오늘날 MICE 산업(이벤트·국제회의·전시·인센티브 행사)에 적용"하는 깊이 있는 글입니다. 최근 뉴스·보도자료 기반 글이 아닙니다.
 
@@ -689,9 +694,9 @@ function buildBlockSystemPrompt(
 1. **MICE 키워드부터 검색하지 마십시오.** MICE 분야는 직접적 학술 연구가 적기 때문에 "MICE 행사 연구" 부터 찾으면 출처 위조 위험이 매우 높습니다.
 2. 대신 **일반 학문 영역의 고전·중량 연구 1편**을 먼저 고릅니다. 사회학·심리학·경영학·도시계획학·관광학·행동경제학·문화인류학·조직이론 등 분야는 자율로 선택합니다.
 3. 그 연구가 MICE 의 어떤 측면(참가자 행동, 도시 입지, 네트워크 형성, 운영 효율, 정서적 임팩트, 사회적 자본, 의례·의식, 공간 디자인 등)에 적용 가능한지 추론합니다.
-4. 분야는 매 호 다양하게 — 같은 학파/저자가 반복되지 않도록 의식하십시오.
+4. 분야는 매 호 다양하게 - 같은 학파/저자가 반복되지 않도록 의식하십시오.
 
-### 출처 표기 — 적극적이되 정확하게
+### 출처 표기 - 적극적이되 정확하게
 신뢰할 수 있는 학자·연구를 **적극적으로 명기**합니다. 헤더 렌더 배치:
 - **sourcePaperTitle**: 저작의 정식 명칭 (헤더 상단 굵게). 예: "Bowling Alone: The Collapse and Revival of American Community", "Frame Analysis: An Essay on the Organization of Experience". 원문 표기를 정확히 옮기고, 확신 없으면 학파 이름 (예: "사회자본 이론") 을 넣거나 빈 문자열.
 - **sourceMeta**: 저널·출판사·학파 분야 (헤더 하단 왼쪽). 예: "Simon & Schuster", "사회자본 이론 학파".
@@ -708,7 +713,7 @@ function buildBlockSystemPrompt(
 - 학술 인용은 명료하게 표기합니다. 예: "Putnam은 2000년 저서 'Bowling Alone'에서 사회자본 개념을 제시했습니다."
 - 단, **이 연구가 MICE 를 직접 다룬 것은 아닙니다.** 적용 부분은 "~로 보입니다 / ~로 판단됩니다 / ~에 응용할 수 있습니다" 같은 완곡 표현으로 처리하십시오.
 - introParagraphs: 선정한 고전 이론·연구의 핵심 개념 소개
-- bridge: "→ 현장에서는" — MICE 산업에 적용되는 핵심 지점 1~2문장
+- bridge: "→ 현장에서는" - MICE 산업에 적용되는 핵심 지점 1~2문장
 - outroParagraphs: 구체적 MICE 현장 적용 시나리오 / 함의
 - closingNote: 함축적 한 줄
 
@@ -739,10 +744,10 @@ ${partialEditBlock}
 당신은 협회·PCO 실무자와 MICE 기업 임원을 대상으로 글을 쓰는 산업 동료입니다. 외부에서 산업을 분석하는 분석가나 보고서 작성자가 아니라, 같은 업계에서 일하며 매월 한 번 그달의 흐름을 정리해 건네는 동료의 자리에 있습니다. 컨퍼런스 연단의 발표자나 격식 있는 보고서 작성자가 아닌, 카페에 마주 앉아 그달의 산업 변화를 함께 정리해주는 거리감을 유지합니다. 정보 전달과 MICE 산업 관점의 인사이트를 균형 있게 담습니다.
 
 ### 톤의 네 축
-- **격식도: 중간** — 완전한 격식체와 회화체 사이의 균형을 유지합니다. 학회 발표문과 카페 대화의 중간 지점이 기준입니다.
-- **거리감: 동료에 가까움** — 객관적 외부 분석가가 아닌 같은 산업의 동료 시각으로 씁니다. 거리를 두고 평가하는 시선이 아니라, 함께 읽고 정리하는 시선을 유지합니다.
-- **확신도: 신중** — 단정형보다 조건부·완곡 표현을 우선합니다. 근거가 충분히 뒷받침될 때만 단정형을 사용합니다.
-- **호흡: 짧음** — 한 문장에 여러 절을 욱여넣는 학술체 대신 짧고 명료한 문장을 이어 붙입니다. 불필요한 수식·형용사·부사는 덜어내고, 한 호흡에 자연스럽게 읽히는 길이를 의식합니다.
+- **격식도: 중간** - 완전한 격식체와 회화체 사이의 균형을 유지합니다. 학회 발표문과 카페 대화의 중간 지점이 기준입니다.
+- **거리감: 동료에 가까움** - 객관적 외부 분석가가 아닌 같은 산업의 동료 시각으로 씁니다. 거리를 두고 평가하는 시선이 아니라, 함께 읽고 정리하는 시선을 유지합니다.
+- **확신도: 신중** - 단정형보다 조건부·완곡 표현을 우선합니다. 근거가 충분히 뒷받침될 때만 단정형을 사용합니다.
+- **호흡: 짧음** - 한 문장에 여러 절을 욱여넣는 학술체 대신 짧고 명료한 문장을 이어 붙입니다. 불필요한 수식·형용사·부사는 덜어내고, 한 호흡에 자연스럽게 읽히는 길이를 의식합니다.
 
 ### 종결어미
 - 종결어미는 "~합니다 / ~입니다 / ~됩니다 / ~하겠습니다" 중심으로 통일합니다.
@@ -787,7 +792,7 @@ function buildBlockUserMessage(
   // visibility flags via mergePreservedBlockFields after generation.
   if (ctx.previousData) {
     const cleaned = stripMetaForPrompt(ctx.previousData);
-    parts.push(`# 현재 블록 내용 (편집 대상 — 아래 "관리자 지시"가 명시한 부분만 바꾸고 나머지는 그대로 두십시오)`);
+    parts.push(`# 현재 블록 내용 (편집 대상 - 아래 "관리자 지시"가 명시한 부분만 바꾸고 나머지는 그대로 두십시오)`);
     parts.push("```json");
     parts.push(JSON.stringify(cleaned, null, 2));
     parts.push("```");
@@ -800,10 +805,10 @@ function buildBlockUserMessage(
 
   if (isAcademicMode) {
     parts.push(
-      `# 학술 모드 — 후보 기사 없음`
+      `# 학술 모드 - 후보 기사 없음`
     );
     parts.push(
-      `이 블록은 학술 모드로 동작합니다. 외부 후보 기사를 인용하는 대신, 당신의 학습 지식 안에서 검증 가능한 고전·중량 학술 연구 1편을 고르고 그것을 MICE 산업에 적용하는 글을 작성합니다. 시스템 프롬프트의 "학술 모드" 출처 규칙을 엄격히 따르십시오 — 추론 순서, 출처 정확성, 분야 다양성, 가짜 인용 금지 등.`
+      `이 블록은 학술 모드로 동작합니다. 외부 후보 기사를 인용하는 대신, 당신의 학습 지식 안에서 검증 가능한 고전·중량 학술 연구 1편을 고르고 그것을 MICE 산업에 적용하는 글을 작성합니다. 시스템 프롬프트의 "학술 모드" 출처 규칙을 엄격히 따르십시오 - 추론 순서, 출처 정확성, 분야 다양성, 가짜 인용 금지 등.`
     );
     parts.push("");
   } else if (ctx.autoSearch && ctx.articles.length > 0) {
@@ -816,7 +821,7 @@ function buildBlockUserMessage(
     parts.push("");
   } else if (!ctx.autoSearch) {
     parts.push(
-      `# 자동 검색 OFF — 후보 기사를 참조하지 않습니다. 아래 "관리자 지시"를 바탕으로, 전문 에디터가 현장 노트를 다듬어 원고를 완성한다는 느낌으로 작성하십시오. 출처 필드는 빈 문자열로 둡니다.`
+      `# 자동 검색 OFF - 후보 기사를 참조하지 않습니다. 아래 "관리자 지시"를 바탕으로, 전문 에디터가 현장 노트를 다듬어 원고를 완성한다는 느낌으로 작성하십시오. 출처 필드는 빈 문자열로 둡니다.`
     );
     parts.push("");
   }
@@ -870,13 +875,13 @@ function extractJson(raw: string): unknown {
 }
 
 /**
- * Escape raw control characters (U+0000–U+001F) that appear inside JSON
+ * Escape raw control characters (U+0000-U+001F) that appear inside JSON
  * string literals. LLMs routinely emit a literal newline or tab inside a
  * long-form Korean paragraph instead of `\n` / `\t`, which is technically
  * invalid JSON and makes JSON.parse fail with "Bad control character in
  * string literal". We walk the string with a tiny state machine that
  * tracks whether we're inside a string literal (between unescaped quotes)
- * and rewrite only the in-string control chars — whitespace between
+ * and rewrite only the in-string control chars - whitespace between
  * tokens is left alone since that's already valid JSON.
  */
 function escapeControlCharsInStrings(input: string): string {
@@ -943,14 +948,14 @@ const REFERENCE_REQUIRED_BLOCKS: Set<BlockType> = new Set([
   "news_briefing",
   "in_out_comparison",
   "tech_signal",
-  // theory_to_field 는 의도적으로 제외 — 후보 기사 없을 때 학술 모드로
+  // theory_to_field 는 의도적으로 제외 - 후보 기사 없을 때 학술 모드로
   // 전환되어 Claude 의 학습 지식 안에서 고전·중량 연구를 끌어와 MICE 산업에
   // 적용하는 글을 쓴다. 자세한 분기는 buildBlockSystemPrompt 의 학술 모드
   // 섹션 참고.
   "stat_feature",
   "consolidated_insight",
   "event_radar",
-  // special_article 도 단일 기사 심층 분석 — 후보 기사 없이는 placeholder
+  // special_article 도 단일 기사 심층 분석 - 후보 기사 없이는 placeholder
   // 로 떨어뜨려 어드민이 직접 작성하도록 유도.
   "special_article",
 ]);
@@ -959,7 +964,7 @@ const REFERENCE_REQUIRED_BLOCKS: Set<BlockType> = new Set([
  * Blocks that should ONLY be generated from admin-provided input (never
  * auto-searched from the article pool). groundk_story is first-party
  * GroundK content, so Claude rewrites the admin's notes rather than
- * inventing the event. promo_banner is pure image+link — no Claude path
+ * inventing the event. promo_banner is pure image+link - no Claude path
  * at all; the placeholder returned here is later overwritten by the
  * admin-supplied imageUrl/linkUrl in createDraftWithBlocksAction.
  */
@@ -968,13 +973,21 @@ const ADMIN_ONLY_BLOCKS: Set<BlockType> = new Set([
   "promo_banner",
 ]);
 
+/**
+ * Claude 를 아예 호출하지 않는 블록. promo_banner 는 이미지와 링크뿐이고,
+ * mice_blog 는 네이버 블로그가 AI 크롤링을 막아 본문을 읽을 수 없어
+ * 관리자가 제목·한줄요약·원문링크를 직접 넣는다. 둘 다 placeholder 를
+ * 돌려준 뒤 createDraftWithBlocksAction 에서 관리자 입력으로 덮어쓴다.
+ */
+const NO_CLAUDE_BLOCKS: Set<BlockType> = new Set(["promo_banner", "mice_blog"]);
+
 interface BlockGenOk {
   ok: true;
   data: unknown;
   /**
    * 1-based indices (matching the `[1]`, `[2]`, ... prompt labels) that
    * Claude marked as ACTUALLY used as evidence. When null, the caller
-   * should fall back to the full input pool — e.g. because Claude didn't
+   * should fall back to the full input pool - e.g. because Claude didn't
    * honor the `_citedIndices` contract, or the block didn't go through
    * the LLM path (placeholder / admin-only).
    */
@@ -987,6 +1000,16 @@ async function generateBlockData(
   type: BlockType,
   ctx: BlockGenContext
 ): Promise<BlockGenResult> {
+  // Claude 를 전혀 거치지 않는 블록. 여기서 돌려준 placeholder 는
+  // createDraftWithBlocksAction 에서 관리자가 입력한 값으로 덮인다.
+  if (NO_CLAUDE_BLOCKS.has(type)) {
+    return {
+      ok: true,
+      data: applyCanonicalLabel(type, getPlaceholderData(type)),
+      citedIndices: [],
+    };
+  }
+
   // Admin-only blocks require admin instructions. Without them, return a
   // placeholder so the user knows to supply source material.
   if (ADMIN_ONLY_BLOCKS.has(type)) {
@@ -1072,7 +1095,7 @@ async function generateBlockData(
       .map((b) => b.text);
     const raw = textBlocks.join("").trim();
 
-    // Surface truncation as its own error class — when stop_reason is
+    // Surface truncation as its own error class - when stop_reason is
     // 'max_tokens' the JSON is almost always incomplete, and the generic
     // "JSON 파싱 실패" message buries the actual cause. Bumping max_tokens
     // is the real fix; this just makes the next occurrence diagnose itself.
@@ -1159,13 +1182,13 @@ export interface RegenerateBlockInput {
   previousData?: unknown;
   /**
    * True when `articles` came from the admin's explicit forcedArticleIds
-   * pick. Only theory_to_field reads this — when false it triggers the
+   * pick. Only theory_to_field reads this - when false it triggers the
    * academic mode that pulls a classic theory from Claude's knowledge
    * instead of citing external articles.
    */
   manuallySelected?: boolean;
   /**
-   * groundk_story 부분 편집 — 어느 sub-object 만 수정 대상인지. 지정되면
+   * groundk_story 부분 편집 - 어느 sub-object 만 수정 대상인지. 지정되면
    * Claude 가 다른 sub-object 를 만지지 않도록 가이드되며, 서버는 응답을
    * 받은 뒤 mechanical overlay 로 한 번 더 보호한다.
    */
@@ -1212,7 +1235,7 @@ export async function regenerateSingleBlock(
 /**
  * Map Claude's `_citedIndices` (1-based) back to actual article IDs. When
  * Claude complied with the contract, this narrows the reference list to
- * only what the block actually used — so the draft editor no longer shows
+ * only what the block actually used - so the draft editor no longer shows
  * a dozen articles for a section that really drew on one or two.
  *
  * Fallbacks:
@@ -1270,7 +1293,7 @@ export interface BlockInstructionEntry {
 
 export interface DraftGenerationInput {
   issueLabel: string;
-  /** Volume number for the header's "VOL 001" line. Optional — when
+  /** Volume number for the header's "VOL 001" line. Optional - when
    *  undefined the renderer falls back to issueMeta. */
   issueNumber?: number;
   /** Send date shown next to "ISSUE" in the header (ISO YYYY-MM-DD). */
@@ -1314,7 +1337,7 @@ function getArticlesForBlock(
       ? articlesByCategoryAllTime
       : articlesByCategory;
 
-  // sharesPool blocks (e.g. consolidated_insight) ignore the claimed set —
+  // sharesPool blocks (e.g. consolidated_insight) ignore the claimed set -
   // they read the full pool so synthesis blocks still find articles even
   // when other blocks have partitioned their primary categories away.
   const claimed = policy.sharesPool ? new Set<string>() : (alreadyClaimed ?? new Set<string>());
@@ -1365,7 +1388,7 @@ export function partitionArticlePools(
   /**
    * Article IDs already claimed externally (e.g. by blocks that have
    * admin-forced article picks). Treated as already-consumed for every
-   * remaining block's partition — prevents the partition from handing
+   * remaining block's partition - prevents the partition from handing
    * a forced article back to another block too.
    */
   externallyClaimed?: Set<string>
@@ -1380,7 +1403,7 @@ export function partitionArticlePools(
   });
 
   // Seed both claimed sets with the externally-claimed IDs. These belong to
-  // blocks that use forced-article picks — we don't know whether those
+  // blocks that use forced-article picks - we don't know whether those
   // blocks partition from the date-filtered or all-time pool, so reserve
   // across both to be safe.
   const claimedDate = new Set<string>(externallyClaimed ?? []);
@@ -1395,7 +1418,7 @@ export function partitionArticlePools(
     }
 
     if (policy.sharesPool) {
-      // Synthesis block: draw from the full pool WITHOUT consuming — its
+      // Synthesis block: draw from the full pool WITHOUT consuming - its
       // articles may overlap with other blocks' references. getArticlesForBlock
       // itself ignores the claimed set for these policies, so just read
       // without mutating claimedDate/claimedAllTime.
@@ -1550,7 +1573,7 @@ export async function generateNewsletterDraft(
   });
 
   // Load admin-editable template defaults. When the row is missing or
-  // malformed, loadTemplateSettings returns the hardcoded fallbacks —
+  // malformed, loadTemplateSettings returns the hardcoded fallbacks -
   // generation must never block on a misconfigured template.
   const template = await loadTemplateSettings();
 

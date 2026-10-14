@@ -26,7 +26,7 @@ interface Props {
 }
 
 /**
- * MICE人sight newsletter email template (schema_version = 2 — block-based).
+ * MICE人sight newsletter email template (schema_version = 2 - block-based).
  *
  * Structure:
  *   - Header (fixed)
@@ -89,14 +89,14 @@ export default function Newsletter({ content, appUrl }: Props) {
           fontStyle="normal"
         />
         {/* Mobile overrides. iOS Mail / Apple Mail / Gmail mobile apps
-            all support @media in <style>. Outlook desktop ignores —
+            all support @media in <style>. Outlook desktop ignores -
             which is fine, desktop is where the 2-column layouts shine. */}
         <style
           dangerouslySetInnerHTML={{
             __html: `
 @media (max-width: 480px) {
   /* Image + body row in ImageWithBody left/right layouts: stack.
-     (Legacy 2-col variant — kept for any older renderings.) */
+     (Legacy 2-col variant - kept for any older renderings.) */
   .stack-on-mobile > tbody > tr > td {
     display: block !important;
     width: 100% !important;
@@ -108,7 +108,7 @@ export default function Newsletter({ content, appUrl }: Props) {
     margin: 0 0 14px 0 !important;
   }
   /* Float-based left/right wrap: drop the float and force full width
-     so on mobile the image sits on top with the body below it — same
+     so on mobile the image sits on top with the body below it - same
      pattern as "full" layout. */
   .float-image {
     float: none !important;
@@ -116,6 +116,18 @@ export default function Newsletter({ content, appUrl }: Props) {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 0 14px 0 !important;
+  }
+
+  /* MICE人 Blog: 데스크톱은 2열 정사각 카드. 모바일은 칸 폭이 좁아
+     같은 높이를 유지하면 길쭉해지므로, 한 칸씩 쌓고 높이는 내용에
+     맡긴다. */
+  .mice-blog-row > tbody > tr > td {
+    display: block !important;
+    width: 100% !important;
+    padding: 0 0 12px 0 !important;
+  }
+  .mice-blog-card {
+    height: auto !important;
   }
 
   /* Header row: brand block + issue meta badge → stack. */
@@ -141,18 +153,18 @@ export default function Newsletter({ content, appUrl }: Props) {
     font-size: 13px !important;
   }
   /* Issue badge: header-meta-col is now left-aligned, so align the
-     badge's internal text to the left too — otherwise VOL 001 and the
+     badge's internal text to the left too - otherwise VOL 001 and the
      Issue row right-hug a 110px min-width box, which looks off. */
   .issue-meta-badge {
     text-align: left !important;
     min-width: 0 !important;
   }
 
-  /* MICE Insight hero — HTML text overlaid on admin-gradiented image.
+  /* MICE Insight hero - HTML text overlaid on admin-gradiented image.
      td-background layout; mobile cell height is tuned to match a 2:1
      image aspect at the typical mobile card width (≈374px inside the
      card), so admin-uploaded 2:1 images fill the cell exactly with
-     background-size:cover — no edge cropping. Overlay padding + type
+     background-size:cover - no edge cropping. Overlay padding + type
      shrink so the text band fits over the image's baked gradient. */
   .hero-cell {
     height: 190px !important;
@@ -222,7 +234,7 @@ export default function Newsletter({ content, appUrl }: Props) {
           }}
         >
           {/* Brand accent bar: 5px navy band at the card's top edge.
-              Pure solid color so every mail client renders it — no VML
+              Pure solid color so every mail client renders it - no VML
               or CSS gradients needed. Fills the card width via a full
               table row; the Container's overflow:hidden + rounded
               corners clip it to the card's rounded top. */}

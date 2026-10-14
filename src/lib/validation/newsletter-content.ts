@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { BLOCK_TYPES, IMAGE_LAYOUTS } from "@/types/newsletter";
+import {
+  BLOCK_TYPES,
+  IMAGE_LAYOUTS,
+  MICE_BLOG_MAX_POSTS,
+  MICE_BLOG_SUMMARY_MAX,
+  MICE_BLOG_TITLE_MAX,
+} from "@/types/newsletter";
 
 const imageLayoutSchema = z.enum(IMAGE_LAYOUTS).optional();
 
@@ -254,24 +260,30 @@ export const eventRadarDataSchema = z.object({
     .min(1),
 });
 
-export const blogCardGridDataSchema = z.object({
+/**
+ * mice_blog - 관리자가 제목·한줄요약·원문링크만 입력하는 블록.
+ * 카드가 작게 렌더되므로 글자 수 상한을 스키마에서 막는다. 빈 글
+ * (제목·요약·링크가 모두 빈 값)은 저장 단계에서 걸러내므로 여기서는
+ * 최소 1건만 요구한다.
+ */
+export const miceBlogDataSchema = z.object({
   englishLabel: z.string(),
-  cards: z.array(
-    z.object({
-      label: z.string(),
-      title: z.string(),
-      description: z.string(),
-      linkText: z.string().optional(),
-      linkUrl: z.string(),
-      imageUrl: z.string().optional(),
-    })
-  ).min(1),
+  posts: z
+    .array(
+      z.object({
+        title: z.string().max(MICE_BLOG_TITLE_MAX),
+        summary: z.string().max(MICE_BLOG_SUMMARY_MAX),
+        linkUrl: z.string(),
+      })
+    )
+    .min(1)
+    .max(MICE_BLOG_MAX_POSTS),
 });
 
 /**
- * promo_banner — 외부 광고/스폰서/이벤트 홍보 배너.
+ * promo_banner - 외부 광고/스폰서/이벤트 홍보 배너.
  * 텍스트 본문 없이 이미지만 가로 풀폭으로 가운데 정렬해서 박는다.
- * linkUrl 있으면 클릭 시 새 탭으로 이동. 둘 다 옵션 — 초안 생성 시
+ * linkUrl 있으면 클릭 시 새 탭으로 이동. 둘 다 옵션 - 초안 생성 시
  * 비워두고 나중에 편집 패널에서 채울 수도 있다.
  */
 export const promoBannerDataSchema = z.object({
@@ -282,7 +294,7 @@ export const promoBannerDataSchema = z.object({
 });
 
 /**
- * special_article — 자유 구조 특별 기사 블록.
+ * special_article - 자유 구조 특별 기사 블록.
  *
  * 기존 블록들이 paragraphs:string[] 평탄 배열 + imageUrl 단일 고정 위치인
  * 것과 달리, 본문이 5종 ContentItem 의 자유 순서 배열로 구성된다. admin
@@ -330,7 +342,7 @@ export const specialArticleDataSchema = z.object({
   sourceUrl: z.string().optional(),
 });
 
-/** Block data schema lookup — indexed by block type. */
+/** Block data schema lookup - indexed by block type. */
 export const BLOCK_DATA_SCHEMAS = {
   opening_lede: openingLedeDataSchema,
   stat_feature: statFeatureDataSchema,
@@ -342,7 +354,7 @@ export const BLOCK_DATA_SCHEMAS = {
   groundk_story: groundkStoryDataSchema,
   consolidated_insight: consolidatedInsightDataSchema,
   event_radar: eventRadarDataSchema,
-  blog_card_grid: blogCardGridDataSchema,
+  mice_blog: miceBlogDataSchema,
   promo_banner: promoBannerDataSchema,
   special_article: specialArticleDataSchema,
 } as const;
@@ -410,10 +422,10 @@ const eventRadarBlock = z.object({
   data: eventRadarDataSchema,
 });
 
-const blogCardGridBlock = z.object({
+const miceBlogBlock = z.object({
   ...blockBase,
-  type: z.literal("blog_card_grid"),
-  data: blogCardGridDataSchema,
+  type: z.literal("mice_blog"),
+  data: miceBlogDataSchema,
 });
 
 const promoBannerBlock = z.object({
@@ -439,7 +451,7 @@ export const blockInstanceSchema = z.discriminatedUnion("type", [
   groundkStoryBlock,
   consolidatedInsightBlock,
   eventRadarBlock,
-  blogCardGridBlock,
+  miceBlogBlock,
   promoBannerBlock,
   specialArticleBlock,
 ]);
@@ -450,7 +462,7 @@ export const newsletterContentSchema = z.object({
   header: headerSchema,
   referralCta: referralCtaSchema,
   blocks: z.array(blockInstanceSchema),
-  // 옵션 — 마이그레이션 0021 이전에 만들어진 호는 inquiryCta 없이 그대로
+  // 옵션 - 마이그레이션 0021 이전에 만들어진 호는 inquiryCta 없이 그대로
   // 검증 통과. 렌더러가 미존재/빈 buttonHref 일 때 섹션 자체를 숨김.
   inquiryCta: inquiryCtaSchema.optional(),
   footer: footerSchema,

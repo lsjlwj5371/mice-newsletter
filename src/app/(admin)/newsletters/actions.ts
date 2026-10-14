@@ -27,9 +27,13 @@ import {
 import {
   BLOCK_TYPES,
   IMAGE_LAYOUTS,
+  MICE_BLOG_MAX_POSTS,
+  MICE_BLOG_SUMMARY_MAX,
+  MICE_BLOG_TITLE_MAX,
   type BlockType,
   type NewsletterContent,
   type ImageLayout,
+  type MiceBlogPost,
 } from "@/types/newsletter";
 
 export type ActionResult =
@@ -42,7 +46,7 @@ export type ActionResult =
  * choices, visibility toggles for compound blocks). Copy those fields
  * over from the OLD data onto the NEW data so they survive the swap.
  *
- * Everything else — text content, paragraph arrays, chapter lists — is
+ * Everything else - text content, paragraph arrays, chapter lists - is
  * replaced, because that's what the admin asked Claude to redo.
  */
 function mergePreservedBlockFields(
@@ -91,7 +95,7 @@ function mergePreservedBlockFields(
     // Claude 는 image / divider item 을 생성하지 않도록 프롬프트되어 있다 →
     // 재생성하면 admin 이 넣어둔 이미지·구분선이 사라질 위험이 있다. 기존
     // items 에서 image/divider 만 골라내 새 items 의 끝에 보존 (정확한
-    // 원위치 복원은 본문이 바뀌었으니 의미 없음 — admin 이 드래그로 재배치).
+    // 원위치 복원은 본문이 바뀌었으니 의미 없음 - admin 이 드래그로 재배치).
     const oldItems = Array.isArray(oldData.items)
       ? (oldData.items as Array<Record<string, unknown>>)
       : [];
@@ -127,7 +131,7 @@ function mergePreservedBlockFields(
 }
 
 /** Build an empty { [category]: [] } map that covers every current article
- *  category — derived from ARTICLE_CATEGORIES so new block types get keys
+ *  category - derived from ARTICLE_CATEGORIES so new block types get keys
  *  automatically. */
 function emptyArticlesByCategory(): Record<ArticleCategory, Article[]> {
   const out: Partial<Record<ArticleCategory, Article[]>> = {};
@@ -178,7 +182,7 @@ function formToObject(formData: FormData): Record<string, string> {
 }
 
 // ─────────────────────────────────────────────
-// CREATE DRAFT — runs Claude generation, saves new row
+// CREATE DRAFT - runs Claude generation, saves new row
 // ─────────────────────────────────────────────
 export async function createDraftNewsletterAction(
   formData: FormData
@@ -293,7 +297,7 @@ export async function createDraftNewsletterAction(
 }
 
 // ─────────────────────────────────────────────
-// UPDATE CONTENT — manual JSON edit
+// UPDATE CONTENT - manual JSON edit
 // ─────────────────────────────────────────────
 export async function updateNewsletterContentAction(
   id: string,
@@ -347,7 +351,7 @@ export async function updateNewsletterContentAction(
 }
 
 // ─────────────────────────────────────────────
-// UPDATE SUBJECT — quick edit of the email subject line alone
+// UPDATE SUBJECT - quick edit of the email subject line alone
 // ─────────────────────────────────────────────
 export async function updateNewsletterSubjectAction(
   id: string,
@@ -448,7 +452,7 @@ export async function deleteNewsletterAction(
 }
 
 // ─────────────────────────────────────────────
-// REGENERATE — re-run Claude with the same period/references
+// REGENERATE - re-run Claude with the same period/references
 // ─────────────────────────────────────────────
 export async function regenerateDraftAction(
   id: string
@@ -499,7 +503,7 @@ export async function regenerateDraftAction(
   // Preserve the existing header's structured fields (issueNumber /
   // issueDate). Previously this action passed only issueLabel, so a full
   // regenerate silently downgraded the header from "VOL 002 · 2026.05.11"
-  // to the legacy "2호" branch — admins lost their VOL number every time
+  // to the legacy "2호" branch - admins lost their VOL number every time
   // they hit 재생성. Pull the structured fields out of the row's content
   // and pass them through so the masthead survives a regenerate.
   const existingContent = existing.content_json as NewsletterContent | null;
@@ -547,7 +551,7 @@ export async function regenerateDraftAction(
 }
 
 // ─────────────────────────────────────────────
-// CREATE DRAFT (wrapper that throws — used by form action with redirect)
+// CREATE DRAFT (wrapper that throws - used by form action with redirect)
 // ─────────────────────────────────────────────
 export async function createDraftAndRedirect(formData: FormData) {
   const result = await createDraftNewsletterAction(formData);
@@ -572,14 +576,35 @@ export interface BlockConfigInput {
   /** Admin-picked article IDs for this block. When set, bypass the
    *  category/date partition and pass these exact articles to Claude. */
   forcedArticleIds?: string[];
-  /** groundk_story only — per-part visibility. Default true. */
+  /** groundk_story only - per-part visibility. Default true. */
   showFieldBriefing?: boolean;
   showProjectSketch?: boolean;
-  /** promo_banner only — admin-supplied image and click target.
+  /** promo_banner only - admin-supplied image and click target.
    *  Either / both may be empty strings; the post-creation edit panel
    *  can fill them in later. */
   promoBannerImageUrl?: string;
   promoBannerLinkUrl?: string;
+  /** mice_blog only - 관리자가 직접 넣는 블로그 글 목록 (제목·한줄요약·
+   *  원문링크). 비워 두고 생성한 뒤 편집 패널에서 채워도 된다. */
+  miceBlogPosts?: MiceBlogPost[];
+}
+
+/**
+ * mice_blog 글 목록 정리 - 공백 제거, 글자 수 상한 적용, 제목과 요약이
+ * 모두 빈 줄은 버리고, 최대 건수까지만 남긴다. 폼과 편집 패널 양쪽에서
+ * 같은 규칙을 쓰도록 여기 한 곳에 둔다.
+ */
+function normalizeMiceBlogPosts(
+  posts: MiceBlogPost[] | undefined
+): MiceBlogPost[] {
+  return (posts ?? [])
+    .map((p) => ({
+      title: (p?.title ?? "").trim().slice(0, MICE_BLOG_TITLE_MAX),
+      summary: (p?.summary ?? "").trim().slice(0, MICE_BLOG_SUMMARY_MAX),
+      linkUrl: (p?.linkUrl ?? "").trim(),
+    }))
+    .filter((p) => p.title !== "" || p.summary !== "")
+    .slice(0, MICE_BLOG_MAX_POSTS);
 }
 
 export interface CreateDraftWithBlocksInput {
@@ -590,7 +615,7 @@ export interface CreateDraftWithBlocksInput {
   issueNumber?: number;
   /** Intended send date shown next to the "ISSUE" label. ISO date. */
   issueDate?: string;
-  /** 특별호 플래그. true 면 정규 VOL 시퀀스에서 제외 — 다음 호 카운트에서
+  /** 특별호 플래그. true 면 정규 VOL 시퀀스에서 제외 - 다음 호 카운트에서
    *  빠지고, content_json.header.issueNumber 도 비워서 헤더에 "특별호"
    *  legacy 라벨이 표시되도록 한다. */
   isSpecial?: boolean;
@@ -627,7 +652,7 @@ export async function createDraftWithBlocksAction(
 
   const supabase = createAdminClient();
 
-  // Load candidate articles — both date-filtered (for most blocks) and
+  // Load candidate articles - both date-filtered (for most blocks) and
   // all-time (for blocks like theory_to_field that read academic/research
   // material regardless of when it was collected).
   const needsResearch = input.blocks.some((b) => b.autoSearch);
@@ -783,6 +808,16 @@ export async function createDraftWithBlocksAction(
         },
       } as typeof blk;
     }
+    if (cfg.type === "mice_blog") {
+      // 폼에서 한 건도 안 넣었으면 placeholder 를 그대로 둬서 편집
+      // 패널에서 채울 자리를 남긴다.
+      const posts = normalizeMiceBlogPosts(cfg.miceBlogPosts);
+      if (posts.length === 0) return blk;
+      return {
+        ...blk,
+        data: { ...(blk.data as Record<string, unknown>), posts },
+      } as typeof blk;
+    }
     return blk;
   });
 
@@ -811,7 +846,7 @@ export async function createDraftWithBlocksAction(
       reference_notes: input.referenceNotes,
       used_article_ids: draftResult.usedArticleIds,
       forced_article_ids: initialForcedIds,
-      // 특별호 플래그 — 다음 호 추천 카운트에서 제외되도록.
+      // 특별호 플래그 - 다음 호 추천 카운트에서 제외되도록.
       is_special: input.isSpecial === true,
       created_by: admin.id,
     })
@@ -822,7 +857,7 @@ export async function createDraftWithBlocksAction(
     return { ok: false, error: `DB 저장 실패: ${insertErr.message}` };
   }
 
-  // Pinned flag is a "please include this in the next draft" request —
+  // Pinned flag is a "please include this in the next draft" request -
   // its purpose is fulfilled the moment the article lands in a draft,
   // so clear it now. `used_in_newsletter_id` is NOT set here: that
   // backlink is reserved for articles that made it into an actually-sent
@@ -860,7 +895,7 @@ export async function createDraftWithBlocksAction(
   revalidatePath("/newsletters");
   revalidatePath("/articles");
   const failedSummary = draftResult.failedBlocks.length > 0
-    ? ` (경고: ${draftResult.failedBlocks.length}개 블록 생성 실패 — placeholder로 대체됨)`
+    ? ` (경고: ${draftResult.failedBlocks.length}개 블록 생성 실패 - placeholder로 대체됨)`
     : "";
   return { ok: true, id: inserted.id, message: `초안 생성 완료${failedSummary}` };
 }
@@ -1043,7 +1078,7 @@ export async function saveSpecialArticleItemsAction(
     };
   }
 
-  // items 형식 검증 — special_article data 스키마를 재사용.
+  // items 형식 검증 - special_article data 스키마를 재사용.
   const dataSchema = BLOCK_DATA_SCHEMAS["special_article"];
   const candidate = { ...block.data, items: input.items };
   const parsed = dataSchema.safeParse(candidate);
@@ -1159,7 +1194,7 @@ export async function setBlockSourceUrlAction(
   let updatedData: Record<string, unknown>;
 
   if (input.subKey) {
-    // Named sub-section — in_out_comparison (inItem / outItem) or
+    // Named sub-section - in_out_comparison (inItem / outItem) or
     // groundk_story (fieldBriefing / projectSketch).
     const allowed: Record<string, string[]> = {
       in_out_comparison: ["inItem", "outItem"],
@@ -1278,7 +1313,7 @@ export async function setGroundkStoryVisibilityAction(
     };
   }
 
-  // Refuse to hide both at once — the block would render empty (just the
+  // Refuse to hide both at once - the block would render empty (just the
   // section label). Admin can remove the block entirely via the block
   // delete button instead.
   const otherPart =
@@ -1470,7 +1505,7 @@ export interface RegenerateBlockInput {
   autoSearch: boolean;
   /**
    * If set (and non-empty), these exact article IDs are used as the candidate
-   * pool — the normal category/date/partition filtering is bypassed. Admin's
+   * pool - the normal category/date/partition filtering is bypassed. Admin's
    * explicit pick always wins. Ignored when autoSearch is false.
    */
   forcedArticleIds?: string[];
@@ -1515,7 +1550,7 @@ export async function regenerateBlockAction(
   if (input.autoSearch) {
     const forced = (input.forcedArticleIds ?? []).filter(Boolean);
     if (forced.length > 0) {
-      // Admin explicitly picked these — bypass the category/date filters and
+      // Admin explicitly picked these - bypass the category/date filters and
       // feed Claude exactly the chosen set. Category mismatch is respected
       // (the admin knows best). Preserve the order they were picked in.
       const { data, error } = await supabase
@@ -1600,7 +1635,7 @@ export async function regenerateBlockAction(
   // admin types ("아예 새롭게 생성해줘" etc.).
   // `manuallySelected` flags whether `articles` came from the admin's
   // explicit forcedArticleIds pick (vs. auto-pool). Only theory_to_field
-  // currently uses it — when false it switches Claude into academic mode.
+  // currently uses it - when false it switches Claude into academic mode.
   const manuallySelected =
     Array.isArray(input.forcedArticleIds) &&
     input.forcedArticleIds.filter(Boolean).length > 0;
@@ -1643,7 +1678,7 @@ export async function regenerateBlockAction(
   // groundk_story 부분 편집의 강제 보호: targetPart 가 지정되었으면
   // 반대편 sub-object 는 원본 그대로 덮어씌워서 한 글자도 안 바뀜을 보장.
   // Claude 가 (편집 모드 프롬프트에도 불구하고) "조금만 다듬으려는" 시도를
-  // 무력화한다. 이게 사용자의 핵심 요구 — "다른 섹션 수정하다가 확정된
+  // 무력화한다. 이게 사용자의 핵심 요구 - "다른 섹션 수정하다가 확정된
   // 섹션 내용도 바뀔까봐 두려워" 에 대한 mechanical guarantee.
   if (targetPart) {
     const original = targetBlock.data as Record<string, unknown>;
@@ -1718,7 +1753,7 @@ export async function regenerateBlockAction(
 
 // ─────────────────────────────────────────────
 // ADD / REMOVE / REORDER BLOCKS (post-draft editing)
-// Lets the admin shape an existing draft — insert a block that wasn't in
+// Lets the admin shape an existing draft - insert a block that wasn't in
 // the initial block picker, remove one, or nudge ordering up/down.
 // ─────────────────────────────────────────────
 
@@ -1732,6 +1767,8 @@ export interface AddBlockInput {
   /** Admin-picked article IDs. When set, bypass category/date filters and
    *  use these exact articles as the candidate pool. */
   forcedArticleIds?: string[];
+  /** mice_blog 전용. 제목, 한줄요약, 원문링크를 폼에서 바로 받는다. */
+  miceBlogPosts?: MiceBlogPost[];
 }
 
 export async function addBlockAction(
@@ -1761,9 +1798,12 @@ export async function addBlockAction(
   const insertAt = Math.max(0, Math.min(input.position, existingBlocks.length));
 
   // Build candidate article pool for the new block (mirrors regenerateBlockAction).
-  // groundk_story is admin-only — never research.
+  // groundk_story is admin-only - never research.
+  // mice_blog 도 입력 전용이라 기사 조회를 하지 않는다.
   const effectiveAutoSearch =
-    input.blockType === "groundk_story" ? false : input.autoSearch;
+    input.blockType === "groundk_story" || input.blockType === "mice_blog"
+      ? false
+      : input.autoSearch;
 
   let articles: Article[] = [];
   if (effectiveAutoSearch) {
@@ -1841,7 +1881,7 @@ export async function addBlockAction(
     }
   }
 
-  // Same flag as regenerateBlockAction — when forcedArticleIds is set the
+  // Same flag as regenerateBlockAction - when forcedArticleIds is set the
   // admin explicitly picked the source, otherwise theory_to_field switches
   // to academic mode in Claude.
   const manuallySelected =
@@ -1864,10 +1904,20 @@ export async function addBlockAction(
     return { ok: false, error: `블록 생성 실패: ${msg}` };
   }
 
+  // mice_blog 는 폼에서 받은 글을 그대로 넣는다. 한 건도 없으면
+  // placeholder 를 두어 편집 패널에서 채울 자리를 남긴다.
+  let blockData = result.data;
+  if (input.blockType === "mice_blog") {
+    const posts = normalizeMiceBlogPosts(input.miceBlogPosts);
+    if (posts.length > 0) {
+      blockData = { ...(result.data as Record<string, unknown>), posts };
+    }
+  }
+
   const newBlock = {
     id: randomUUID(),
     type: input.blockType,
-    data: result.data,
+    data: blockData,
     instructions: input.instructions ?? undefined,
     autoSearch: effectiveAutoSearch,
     referencedArticleIds: result.referencedArticleIds,
@@ -2047,10 +2097,86 @@ export async function moveBlockAction(
 
 
 // ─────────────────────────────────────────────
-// PROMO BANNER — set link URL
+// PROMO BANNER - set link URL
 // promo_banner 블록의 클릭 타겟 URL을 갱신.
 // 이미지 자체는 setBlockImageAction(기존)으로 처리되므로 별도 액션 불필요.
 // ─────────────────────────────────────────────
+/**
+ * mice_blog 블록의 글 목록을 통째로 교체한다. 이 블록은 Claude 재생성
+ * 경로가 없으므로, 편집 패널에서 제목·한줄요약·원문링크를 고치면 이
+ * 액션이 유일한 저장 통로가 된다.
+ */
+export async function setMiceBlogPostsAction(input: {
+  newsletterId: string;
+  blockIndex: number;
+  posts: MiceBlogPost[];
+}): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const supabase = createAdminClient();
+
+  const posts = normalizeMiceBlogPosts(input.posts);
+  if (posts.length === 0) {
+    return { ok: false, error: "최소 한 건은 제목 또는 요약이 필요합니다." };
+  }
+
+  const { data: row, error: fetchErr } = await supabase
+    .from("newsletters")
+    .select("id, status, content_json")
+    .eq("id", input.newsletterId)
+    .single();
+  if (fetchErr || !row) {
+    return { ok: false, error: "원본 호를 찾을 수 없습니다." };
+  }
+  if (row.status === "sent") {
+    return { ok: false, error: "이미 발송된 호는 수정할 수 없습니다." };
+  }
+
+  const content = row.content_json as NewsletterContent;
+  if (
+    !content.blocks ||
+    input.blockIndex < 0 ||
+    input.blockIndex >= content.blocks.length
+  ) {
+    return { ok: false, error: "해당 블록을 찾을 수 없습니다." };
+  }
+  const block = content.blocks[input.blockIndex];
+  if (block.type !== "mice_blog") {
+    return { ok: false, error: "mice_blog 블록이 아닙니다." };
+  }
+
+  const blocks = [...content.blocks];
+  blocks[input.blockIndex] = {
+    ...block,
+    data: { ...block.data, posts },
+  } as NewsletterContent["blocks"][number];
+
+  const { error: updErr } = await supabase
+    .from("newsletters")
+    .update({
+      content_json: { ...content, blocks },
+      status: "review",
+    })
+    .eq("id", input.newsletterId);
+  if (updErr) {
+    return { ok: false, error: `DB 저장 실패: ${updErr.message}` };
+  }
+
+  await logAudit({
+    adminId: admin.id,
+    action: "newsletter.mice_blog_posts",
+    entity: "newsletter",
+    entityId: input.newsletterId,
+    metadata: { blockIndex: input.blockIndex, count: posts.length },
+  });
+
+  revalidatePath(`/newsletters/${input.newsletterId}`);
+  return {
+    ok: true,
+    id: input.newsletterId,
+    message: `블로그 글 ${posts.length}건이 저장되었습니다.`,
+  };
+}
+
 export async function setPromoBannerLinkAction(input: {
   newsletterId: string;
   blockIndex: number;
